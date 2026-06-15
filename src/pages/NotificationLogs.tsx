@@ -465,7 +465,21 @@ export const NotificationLogs: React.FC = () => {
                         { id: toastId }
                     );
                 } catch (err: any) {
-                    const message = err?.message || String(err);
+                    const details = err?.details || {};
+                    const detailMessage =
+                        details?.original_message ||
+                        details?.message ||
+                        details?.reason ||
+                        details?.error ||
+                        "";
+
+                    const message = [
+                        err?.code || "",
+                        detailMessage || err?.message || String(err),
+                    ]
+                        .filter(Boolean)
+                        .join(": ");
+
                     setResetDedupeError(message);
                     setLastCallableError(message);
                     toast.error(
@@ -588,7 +602,21 @@ export const NotificationLogs: React.FC = () => {
                 toast(`Test dilewati: ${result.reason}`);
             }
         } catch (err: any) {
-            const message = err?.message || String(err);
+            const details = err?.details || {};
+            const detailMessage =
+                details?.original_message ||
+                details?.message ||
+                details?.reason ||
+                details?.error ||
+                "";
+
+            const message = [
+                err?.code || "",
+                detailMessage || err?.message || String(err),
+            ]
+                .filter(Boolean)
+                .join(": ");
+
             setLastCallableError(message);
             toast.error(`Kirim test gagal: ${message}`);
         } finally {

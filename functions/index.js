@@ -2041,6 +2041,20 @@ exports.resetAttendanceReminderDedupeCallable = onCall(
         throw error;
       }
 
+      try {
+        await admin.database().ref(`system_logs/callable_errors/resetAttendanceReminderDedupeCallable`).push().set({
+          code,
+          message,
+          company_id: request.data?.companyId || "",
+          caller_uid: request.auth?.uid || "",
+          created_at: Date.now(),
+        });
+      } catch (logError) {
+        logger.warn("Failed to write resetAttendanceReminderDedupeCallable diagnostic log.", {
+          message: logError?.message || String(logError),
+        });
+      }
+
       throw new HttpsError("internal", message, {
         original_code: code,
         original_message: message,
@@ -2141,6 +2155,21 @@ exports.createUserNotificationAndPushCallable = onCall(
         throw error;
       }
 
+      try {
+        await admin.database().ref(`system_logs/callable_errors/createUserNotificationAndPushCallable`).push().set({
+          code,
+          message,
+          company_id: request.data?.companyId || "",
+          target_uid: request.data?.uid || "",
+          caller_uid: request.auth?.uid || "",
+          created_at: Date.now(),
+        });
+      } catch (logError) {
+        logger.warn("Failed to write createUserNotificationAndPushCallable diagnostic log.", {
+          message: logError?.message || String(logError),
+        });
+      }
+
       throw new HttpsError("internal", message, {
         original_code: code,
         original_message: message,
@@ -2151,9 +2180,109 @@ exports.createUserNotificationAndPushCallable = onCall(
     }
   }
 );
+function normalizeAdminRole(user) {
+  return String(user?.role || user?.user_role || user?.level || "")
+    .trim()
+    .toLowerCase();
+}
+
+function isAllowedAdminLike(user) {
+  const role = normalizeAdminRole(user);
+
+  return (
+    role === "owner" ||
+    role === "system_owner" ||
+    role === "admin" ||
+    role === "super_admin" ||
+    user?.is_owner === true ||
+    user?.is_system_owner === true ||
+    user?.is_admin === true
+  );
+}
+
+async function safeGetFirestoreDoc(path, context = {}) {
+  try {
+    const snap = await firestore.doc(path).get();
+    return snap.exists && snap.data() ? snap.data() : null;
+  } catch (error) {
+    logger.warn("Firestore doc read skipped because it failed.", {
+      path,
+      message: error?.message || String(error),
+      code: error?.code || "",
+      ...context,
+    });
+    return null;
+  }
+}
+
+async function safeGetFirestoreActiveFcmTokens(companyId, uid) {
+  try {
+    const firestoreSnapshot = await firestore
+      .collection(`companies/${companyId}/users/${uid}/fcm_tokens`)
+      .where("active", "==", true)
+      .get();
+
+    return firestoreSnapshot.docs
+      .map((doc) => {
+        const data = doc.data() || {};
+        return {
+          id: doc.id,
+          token: String(data.token || "").trim(),
+          permission_status: data.permission_status || "",
+          statusbar_allowed: data.statusbar_allowed,
+          last_seen_at: data.last_seen_at || 0,
+          updated_at: data.updated_at || 0,
+          active: data.active,
+          source: "firestore",
+        };
+      })
+      .filter((item) => item.token.length > 0)
+      .filter((item) => item.active !== false);
+  } catch (error) {
+    logger.warn("Firestore FCM token read failed. Falling back to RTDB.", {
+      companyId,
+      uid,
+      message: error?.message || String(error),
+      code: error?.code || "",
+    });
+    return [];
+  }
+}
+
+async function safeHasFirestoreFcmToken(companyId, uid) {
+  try {
+    const tokenSnap = await firestore
+      .collection(`companies/${companyId}/users/${uid}/fcm_tokens`)
+      .limit(1)
+      .get();
+
+    return !tokenSnap.empty;
+  } catch (error) {
+    logger.warn("Firestore target token check failed. Continuing with RTDB fallback.", {
+      companyId,
+      uid,
+      message: error?.message || String(error),
+      code: error?.code || "",
+    });
+    return false;
+  }
+}
+
 async function assertCompanyAdmin(companyId, callerUid) {
   let user = {};
 
+  // 1. Global owner harus dicek lebih awal agar owner bootstrap tetap bisa jalan
+  // walaupun Firestore sedang bermasalah.
+  const globalSnap = await admin.database().ref(`users/${callerUid}`).get();
+  if (globalSnap.exists() && globalSnap.val()) {
+    user = { ...user, ...globalSnap.val() };
+
+    if (isAllowedAdminLike(user)) {
+      return user;
+    }
+  }
+
+  // 2. Company user index.
   const companyUserSnap = await admin
     .database()
     .ref(`company_users/${companyId}/${callerUid}`)
@@ -2161,8 +2290,13 @@ async function assertCompanyAdmin(companyId, callerUid) {
 
   if (companyUserSnap.exists() && companyUserSnap.val()) {
     user = { ...user, ...companyUserSnap.val() };
+
+    if (isAllowedAdminLike(user)) {
+      return user;
+    }
   }
 
+  // 3. Company nested user.
   const rtdbCompanyUserSnap = await admin
     .database()
     .ref(`companies/${companyId}/users/${callerUid}`)
@@ -2170,35 +2304,25 @@ async function assertCompanyAdmin(companyId, callerUid) {
 
   if (rtdbCompanyUserSnap.exists() && rtdbCompanyUserSnap.val()) {
     user = { ...user, ...rtdbCompanyUserSnap.val() };
+
+    if (isAllowedAdminLike(user)) {
+      return user;
+    }
   }
 
-  const firestoreSnap = await firestore
-    .doc(`companies/${companyId}/users/${callerUid}`)
-    .get();
+  // 4. Firestore optional. Jangan biarkan Firestore error membunuh callable.
+  const firestoreUser = await safeGetFirestoreDoc(
+    `companies/${companyId}/users/${callerUid}`,
+    { companyId, callerUid, source: "assertCompanyAdmin" }
+  );
 
-  if (firestoreSnap.exists && firestoreSnap.data()) {
-    user = { ...user, ...firestoreSnap.data() };
+  if (firestoreUser) {
+    user = { ...user, ...firestoreUser };
+
+    if (isAllowedAdminLike(user)) {
+      return user;
+    }
   }
-
-  const globalSnap = await admin.database().ref(`users/${callerUid}`).get();
-  if (globalSnap.exists() && globalSnap.val()) {
-    user = { ...user, ...globalSnap.val() };
-  }
-
-  const role = String(user.role || user.user_role || user.level || "")
-    .trim()
-    .toLowerCase();
-
-  const allowed =
-    role === "owner" ||
-    role === "system_owner" ||
-    role === "admin" ||
-    role === "super_admin" ||
-    user.is_owner === true ||
-    user.is_system_owner === true ||
-    user.is_admin === true;
-
-  if (allowed) return user;
 
   const allowDebugBypass =
     process.env.ALLOW_NOTIFICATION_DEBUG_BYPASS === "true";
@@ -2213,7 +2337,13 @@ async function assertCompanyAdmin(companyId, callerUid) {
 
   throw new HttpsError(
     "permission-denied",
-    "Hanya owner/admin perusahaan yang boleh mengirim notifikasi."
+    "Hanya owner/admin perusahaan yang boleh mengirim notifikasi.",
+    {
+      company_id: companyId,
+      caller_uid: callerUid,
+      detected_role: normalizeAdminRole(user),
+      has_user_data: Object.keys(user).length > 0,
+    }
   );
 }
 
@@ -2230,34 +2360,19 @@ async function assertTargetUserInCompany(companyId, targetUid) {
     };
   }
 
-  const rtdbSnap = await admin.database().ref(`companies/${companyId}/users/${targetUid}`).get();
-  if (rtdbSnap.exists() && rtdbSnap.val()) {
-      return {
-          ...(rtdbSnap.val() || {}),
-          _validated_from: "companies_users_rtdb",
-      }
-  };
-
-  const firestoreSnap = await firestore.doc(`companies/${companyId}/users/${targetUid}`).get();
-  if (firestoreSnap.exists && firestoreSnap.data()) {
-      return {
-          ...(firestoreSnap.data() || {}),
-          _validated_from: "companies_users_firestore",
-      }
-  };
-
-  const tokenSnap = await firestore
-    .collection(`companies/${companyId}/users/${targetUid}/fcm_tokens`)
-    .limit(1)
+  const rtdbSnap = await admin
+    .database()
+    .ref(`companies/${companyId}/users/${targetUid}`)
     .get();
 
-  if (!tokenSnap.empty) {
+  if (rtdbSnap.exists() && rtdbSnap.val()) {
     return {
-      uid: targetUid,
-      _validated_from: "fcm_tokens_subcollection",
+      ...(rtdbSnap.val() || {}),
+      _validated_from: "companies_users_rtdb",
     };
   }
 
+  // RTDB token mirror dicek sebelum Firestore agar fallback lokal tetap jalan.
   const rtdbTokenSnap = await admin
     .database()
     .ref(`companies/${companyId}/users/${targetUid}/fcm_tokens`)
@@ -2271,9 +2386,41 @@ async function assertTargetUserInCompany(companyId, targetUid) {
     };
   }
 
+  const firestoreUser = await safeGetFirestoreDoc(
+    `companies/${companyId}/users/${targetUid}`,
+    { companyId, targetUid, source: "assertTargetUserInCompany" }
+  );
+
+  if (firestoreUser) {
+    return {
+      ...(firestoreUser || {}),
+      _validated_from: "companies_users_firestore",
+    };
+  }
+
+  const hasFirestoreToken = await safeHasFirestoreFcmToken(companyId, targetUid);
+
+  if (hasFirestoreToken) {
+    return {
+      uid: targetUid,
+      _validated_from: "fcm_tokens_subcollection",
+    };
+  }
+
   throw new HttpsError(
     "not-found",
-    `Target user ${targetUid} tidak ditemukan di company ${companyId}.`
+    `Target user ${targetUid} tidak ditemukan di company ${companyId}.`,
+    {
+      company_id: companyId,
+      target_uid: targetUid,
+      checked_paths: [
+        `company_users/${companyId}/${targetUid}`,
+        `companies/${companyId}/users/${targetUid}`,
+        `companies/${companyId}/users/${targetUid}/fcm_tokens`,
+        `Firestore companies/${companyId}/users/${targetUid}`,
+        `Firestore companies/${companyId}/users/${targetUid}/fcm_tokens`,
+      ],
+    }
   );
 }
 
@@ -2319,27 +2466,7 @@ function normalizeNotificationType(type, refType) {
 }
 
 async function getActiveFcmTokens(companyId, uid) {
-  const firestoreSnapshot = await firestore
-    .collection(`companies/${companyId}/users/${uid}/fcm_tokens`)
-    .where("active", "==", true)
-    .get();
-
-  const firestoreTokens = firestoreSnapshot.docs
-    .map((doc) => {
-      const data = doc.data() || {};
-      return {
-        id: doc.id,
-        token: String(data.token || "").trim(),
-        permission_status: data.permission_status || "",
-        statusbar_allowed: data.statusbar_allowed,
-        last_seen_at: data.last_seen_at || 0,
-        updated_at: data.updated_at || 0,
-        active: data.active,
-        source: "firestore",
-      };
-    })
-    .filter((item) => item.token.length > 0)
-    .filter((item) => item.active !== false);
+  const firestoreTokens = await safeGetFirestoreActiveFcmTokens(companyId, uid);
 
   if (firestoreTokens.length > 0) {
     return firestoreTokens;
