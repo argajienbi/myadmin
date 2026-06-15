@@ -1,9 +1,9 @@
 {
   "app_config": {
     "project_name": "MYPRESENSI",
-    "firebase_project_id": "inventory-410f4",
-    "database_url": "https://inventory-410f4-default-rtdb.asia-southeast1.firebasedatabase.app",
-    "storage_bucket": "inventory-410f4.firebasestorage.app",
+    "firebase_project_id": "mypresence-db",
+    "database_url": "https://mypresence-db-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "storage_bucket": "mypresence-db.firebasestorage.app",
     "active": true,
     "maintenance_mode": false,
     "current_schema_version": "1.0.0",

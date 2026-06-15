@@ -11,9 +11,9 @@ Web admin untuk sistem absensi MYPRESENSI berbasis Firebase.
 
 ## Firebase
 
-Project ID: inventory-410f4
-Database: https://inventory-410f4-default-rtdb.asia-southeast1.firebasedatabase.app
-Storage: inventory-410f4.firebasestorage.app
+Project ID: mypresence-db
+Database: https://mypresence-db-default-rtdb.asia-southeast1.firebasedatabase.app
+Storage: mypresence-db.firebasestorage.app
 
 **Catatan**: File `rtdb.rules.json` adalah draft. Uji di Firebase Rules Playground sebelum dipakai di production. Pastikan semua admin punya `/users/{uid}/company_id` dan role.
 

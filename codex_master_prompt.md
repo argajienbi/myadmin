@@ -14,11 +14,11 @@ Build a clean web admin from scratch. Do not reuse the old AI Studio implementat
 
 ## Firebase
 Use the same Firebase project as the Sketchware Android app:
-- Project ID: `inventory-410f4`
-- Project Number: `112547967654`
-- RTDB: `https://inventory-410f4-default-rtdb.asia-southeast1.firebasedatabase.app`
-- Storage: `inventory-410f4.firebasestorage.app`
-- Auth Domain: `inventory-410f4.firebaseapp.com`
+- Project ID: `mypresence-db`
+- Project Number: `911576285238`
+- RTDB: `https://mypresence-db-default-rtdb.asia-southeast1.firebasedatabase.app`
+- Storage: `mypresence-db.firebasestorage.app`
+- Auth Domain: `mypresence-db.firebaseapp.com`
 
 Use `.env`, not hardcoded config.
 

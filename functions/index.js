@@ -4,34 +4,73 @@ const { logger } = require("firebase-functions");
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const admin = require("firebase-admin");
 
+const EXPECTED_PROJECT_ID = "mypresence-db";
+const EXPECTED_DATABASE_URL =
+  "https://mypresence-db-default-rtdb.asia-southeast1.firebasedatabase.app";
+const EXPECTED_DATABASE_INSTANCE = "mypresence-db-default-rtdb";
+
 const firebaseConfigRaw = process.env.FIREBASE_CONFIG;
-let defaultDatabaseURL = "https://gen-lang-client-0022373400-default-rtdb.asia-southeast1.firebasedatabase.app";
-let defaultDatabaseInstance = "gen-lang-client-0022373400-default-rtdb";
+
+let defaultDatabaseURL = EXPECTED_DATABASE_URL;
+let defaultDatabaseInstance = EXPECTED_DATABASE_INSTANCE;
 
 if (firebaseConfigRaw) {
   try {
     const parsed = JSON.parse(firebaseConfigRaw);
+
+    if (parsed.projectId && parsed.projectId !== EXPECTED_PROJECT_ID) {
+      logger.warn("FIREBASE_CONFIG projectId berbeda dari project target.", {
+        expectedProjectId: EXPECTED_PROJECT_ID,
+        detectedProjectId: parsed.projectId,
+      });
+    }
+
     if (parsed.databaseURL) {
-      defaultDatabaseURL = parsed.databaseURL;
-      const match = parsed.databaseURL.match(/https:\/\/([^.]+)\./);
-      if (match && match[1]) {
-        defaultDatabaseInstance = match[1];
+      const parsedUrl = String(parsed.databaseURL);
+
+      if (parsedUrl.includes("mypresence-db-default-rtdb")) {
+        defaultDatabaseURL = parsedUrl;
+
+        const match = parsedUrl.match(/https:\/\/([^.]+)\./);
+        if (match && match[1]) {
+          defaultDatabaseInstance = match[1];
+        }
+      } else {
+        logger.warn("FIREBASE_CONFIG databaseURL bukan database target. Menggunakan database target.", {
+          expectedDatabaseURL: EXPECTED_DATABASE_URL,
+          detectedDatabaseURL: parsedUrl,
+        });
+
+        defaultDatabaseURL = EXPECTED_DATABASE_URL;
+        defaultDatabaseInstance = EXPECTED_DATABASE_INSTANCE;
       }
-    } else if (parsed.projectId) {
-      defaultDatabaseURL = `https://${parsed.projectId}-default-rtdb.asia-southeast1.firebasedatabase.app`;
-      defaultDatabaseInstance = `${parsed.projectId}-default-rtdb`;
+    } else if (parsed.projectId === EXPECTED_PROJECT_ID) {
+      defaultDatabaseURL = EXPECTED_DATABASE_URL;
+      defaultDatabaseInstance = EXPECTED_DATABASE_INSTANCE;
     }
   } catch (e) {
-    logger.warn("Gagal parse FIREBASE_CONFIG env:", e);
+    logger.warn("Gagal parse FIREBASE_CONFIG env. Menggunakan database target.", e);
+    defaultDatabaseURL = EXPECTED_DATABASE_URL;
+    defaultDatabaseInstance = EXPECTED_DATABASE_INSTANCE;
   }
-} else if (process.env.GCLOUD_PROJECT) {
-  const proj = process.env.GCLOUD_PROJECT;
-  defaultDatabaseURL = `https://${proj}-default-rtdb.asia-southeast1.firebasedatabase.app`;
-  defaultDatabaseInstance = `${proj}-default-rtdb`;
+} else if (process.env.GCLOUD_PROJECT && process.env.GCLOUD_PROJECT !== EXPECTED_PROJECT_ID) {
+  logger.warn("GCLOUD_PROJECT berbeda dari project target. Menggunakan database target.", {
+    expectedProjectId: EXPECTED_PROJECT_ID,
+    detectedProjectId: process.env.GCLOUD_PROJECT,
+  });
+
+  defaultDatabaseURL = EXPECTED_DATABASE_URL;
+  defaultDatabaseInstance = EXPECTED_DATABASE_INSTANCE;
 }
 
 admin.initializeApp({
   databaseURL: defaultDatabaseURL,
+});
+
+logger.info("Firebase Admin initialized.", {
+  projectId: EXPECTED_PROJECT_ID,
+  databaseURL: defaultDatabaseURL,
+  databaseInstance: defaultDatabaseInstance,
 });
 
 const MAX_RETRY_COUNT = 3;
