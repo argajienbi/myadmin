@@ -83,16 +83,29 @@ export async function createUserNotificationAndPush(options: NotificationDeliver
   } catch (error: any) {
     const code = error?.code || "";
     const message = error?.message || "";
+    const details = error?.details || {};
+
     const detailsMessage =
-      error?.details?.original_message ||
-      error?.details?.message ||
+      details?.original_message ||
+      details?.message ||
+      details?.reason ||
+      details?.error ||
       "";
 
-    const errorMsg = [code, detailsMessage || message]
+    const errorMsg = [
+      code,
+      detailsMessage || message || "Unknown callable error",
+    ]
       .filter(Boolean)
       .join(": ");
 
-    console.warn("Failed to create user notification and push queue via Callable:", error);
+    console.warn("Failed to create user notification and push queue via Callable:", {
+      code,
+      message,
+      details,
+      raw: error,
+    });
+
     throw new Error(`Failed to create notification and push: ${errorMsg}`);
   }
 }

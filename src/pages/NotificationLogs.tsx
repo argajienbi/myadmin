@@ -80,6 +80,8 @@ export const NotificationLogs: React.FC = () => {
     }
     
     const [targetCompanyId, setTargetCompanyId] = useState<string>("");
+    const [companyWarning, setCompanyWarning] = useState("");
+    const [lastCallableError, setLastCallableError] = useState("");
     
     // Core data lists
     const [queueLogs, setQueueLogs] = useState<any[]>([]);
@@ -140,12 +142,35 @@ export const NotificationLogs: React.FC = () => {
 
     useEffect(() => {
         if (!userData) return;
-        const compId = userData.role === "owner" ? localStorage.getItem("admin_selected_company") || userData.company_id : userData.company_id;
-        setTargetCompanyId(compId || "");
+        const selectedCompany = localStorage.getItem("admin_selected_company") || "";
+        const role = String(userData.role || "").toLowerCase();
+
+        const resolvedCompanyId =
+          role === "owner" || role === "system_owner"
+            ? selectedCompany || userData.company_id || ""
+            : userData.company_id || "";
+
+        setTargetCompanyId(resolvedCompanyId);
+
+        if (!resolvedCompanyId) {
+          setCompanyWarning(
+            "Company aktif belum dipilih. Pilih perusahaan terlebih dahulu sebelum membuka log, test push, atau reset dedupe."
+          );
+        } else {
+          setCompanyWarning("");
+        }
     }, [userData]);
 
     useEffect(() => {
-        if (!targetCompanyId) return;
+        if (!targetCompanyId) {
+            setQueueLogs([]);
+            setActionLogs([]);
+            setUsers([]);
+            setDeliveryLogs([]);
+            setSchedulerLogs([]);
+            setTokenHealthList([]);
+            return;
+        }
 
         // Queue
         const unsubQueue = onValue(ref(db, `companies/${targetCompanyId}/notification_queue`), snap => {
@@ -231,8 +256,11 @@ export const NotificationLogs: React.FC = () => {
             const promises = users.map(async (user) => {
                 const uid = user.uid;
                 const tokensSnap = await getDocs(collection(firestore, "companies", targetCompanyId, "users", uid, "fcm_tokens"));
-                
+                const rtdbTokensSnap = await get(ref(db, `companies/${targetCompanyId}/users/${uid}/fcm_tokens`));
+
                 const userTokens: any[] = [];
+                const firestoreTokenIds = new Set<string>();
+
                 tokensSnap.forEach((docSnap) => {
                     const data = docSnap.data();
                     // Setup basic fallback parsing
@@ -243,6 +271,7 @@ export const NotificationLogs: React.FC = () => {
                       
                     const permissionCheckedAt = data.permission_last_checked_at || data.updated_at || data.last_seen_at || 0;
                     
+                    firestoreTokenIds.add(docSnap.id);
                     userTokens.push({
                         ...data,
                         token_id: docSnap.id,
@@ -262,8 +291,46 @@ export const NotificationLogs: React.FC = () => {
                         app_source: data.app_source || "",
                         platform: data.platform || "",
                         device_name: data.device_name || "",
+                        source: "firestore",
+                        source_label: "Firestore",
                     });
                 });
+
+                if (rtdbTokensSnap.exists()) {
+                    const rtdbData = rtdbTokensSnap.val() || {};
+                    Object.entries(rtdbData).forEach(([tokenId, data]: [string, any]) => {
+                        if (data && typeof data === "object" && !firestoreTokenIds.has(tokenId)) {
+                            const permissionStatusRaw = String(data.permission_status || "").toLowerCase();
+                            const statusbarAllowed = data.statusbar_allowed !== undefined 
+                              ? data.statusbar_allowed 
+                              : (permissionStatusRaw === 'authorized' || permissionStatusRaw === 'provisional');
+                            const permissionCheckedAt = data.permission_last_checked_at || data.updated_at || data.last_seen_at || 0;
+
+                            userTokens.push({
+                                ...data,
+                                token_id: tokenId,
+                                uid,
+                                userName: user.nama_lengkap || user.name || "Karyawan Tanpa Nama",
+                                role: user.role || "staff",
+                                
+                                permission_status: data.permission_status || "",
+                                statusbar_allowed: statusbarAllowed,
+                                active: Boolean(data.active),
+                                permission_last_checked_at: permissionCheckedAt,
+                                last_seen_at: data.last_seen_at || 0,
+                                updated_at: data.updated_at || 0,
+                                invalidated_at: data.invalidated_at || 0,
+                                invalid_reason: data.invalid_reason || "",
+                                superseded_by: data.superseded_by || "",
+                                app_source: data.app_source || "",
+                                platform: data.platform || "",
+                                device_name: data.device_name || "",
+                                source: "rtdb_mirror",
+                                source_label: "RTDB Mirror",
+                            });
+                        }
+                    });
+                }
                 
                 // Add to total tokens
                 allTokens = allTokens.concat(userTokens);
@@ -352,7 +419,7 @@ export const NotificationLogs: React.FC = () => {
     // Reset dedupe for today (testing/debug)
     const handleResetDedupeToday = () => {
         if (!targetCompanyId) {
-            toast.error("Pilih perusahaan terlebih dahulu.");
+            toast.error("Company aktif belum dipilih. Pilih perusahaan terlebih dahulu.");
             return;
         }
         const dateKey = getJakartaDateKey();
@@ -368,6 +435,7 @@ export const NotificationLogs: React.FC = () => {
                 setResetDedupeResult(null);
                 setResetDedupeError("");
                 setResetDedupeLastRunAt(Date.now());
+                setLastCallableError("");
 
                 const toastId = "reset_dedupe_today";
                 toast.loading("Mereset dedupe reminder...", { id: toastId });
@@ -399,6 +467,7 @@ export const NotificationLogs: React.FC = () => {
                 } catch (err: any) {
                     const message = err?.message || String(err);
                     setResetDedupeError(message);
+                    setLastCallableError(message);
                     toast.error(
                         `Gagal reset dedupe: ${message}`,
                         { id: toastId }
@@ -436,6 +505,12 @@ export const NotificationLogs: React.FC = () => {
 
     // Centralised Test Event Triggering (PATCH-01 & PATCH-02)
     const handleSendTestEvent = async (eventType: string) => {
+        if (!targetCompanyId) {
+            toast.error("Company aktif belum dipilih. Pilih perusahaan terlebih dahulu.");
+            return;
+        }
+        setLastCallableError("");
+
         if (!testTargetUid) {
             toast.error("Silakan pilih target karyawan");
             return;
@@ -513,7 +588,9 @@ export const NotificationLogs: React.FC = () => {
                 toast(`Test dilewati: ${result.reason}`);
             }
         } catch (err: any) {
-            toast.error(`Kirim test gagal: ${err.message}`);
+            const message = err?.message || String(err);
+            setLastCallableError(message);
+            toast.error(`Kirim test gagal: ${message}`);
         } finally {
             setTestSending(false);
         }
@@ -610,6 +687,25 @@ export const NotificationLogs: React.FC = () => {
                    <p className="text-sm text-slate-500 mt-1">Lacak antrean delivery, uji coba push, monitor kesehatan token, dan amati scheduler pengingat secara real-time</p>
                 </div>
             </div>
+
+            {companyWarning && (
+              <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-amber-600 dark:text-amber-200">
+                {companyWarning}
+              </div>
+            )}
+
+            {targetCompanyId && (
+              <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/70 p-3 text-xs text-slate-700 dark:text-slate-300">
+                Company aktif: <span className="font-mono text-emerald-600 dark:text-emerald-300 font-bold">{targetCompanyId}</span>
+              </div>
+            )}
+
+            {lastCallableError && (
+              <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-600 dark:text-red-200">
+                <div className="font-semibold mb-1">Error Callable Terakhir</div>
+                <div className="break-words font-mono text-xs">{lastCallableError}</div>
+              </div>
+            )}
 
             {/* Navigation Tabs */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -1066,9 +1162,13 @@ export const NotificationLogs: React.FC = () => {
                                     </div>
 
                                     <button 
-                                        disabled={testSending} 
+                                        disabled={testSending || !targetCompanyId} 
                                         onClick={() => handleSendTestEvent("test_push")}
-                                        className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs rounded transition flex items-center justify-center gap-2"
+                                        className={`w-full py-2 font-medium text-xs rounded transition flex items-center justify-center gap-2 ${
+                                            (!targetCompanyId || testSending)
+                                                ? "bg-slate-200 text-slate-500 dark:bg-slate-800 dark:text-slate-400 cursor-not-allowed"
+                                                : "bg-blue-600 hover:bg-blue-700 text-white"
+                                        }`}
                                     >
                                         <Send className="w-3.5 h-3.5" /> Kirim Custom Test Push
                                     </button>
@@ -1088,9 +1188,13 @@ export const NotificationLogs: React.FC = () => {
                                     </div>
 
                                     <button 
-                                        disabled={testSending} 
+                                        disabled={testSending || !targetCompanyId} 
                                         onClick={() => handleSendTestEvent("schedule_update")}
-                                        className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs rounded transition flex items-center justify-center gap-2"
+                                        className={`w-full py-2 font-medium text-xs rounded transition flex items-center justify-center gap-2 ${
+                                            (!targetCompanyId || testSending)
+                                                ? "bg-slate-200 text-slate-500 dark:bg-slate-800 dark:text-slate-400 cursor-not-allowed"
+                                                : "bg-emerald-600 hover:bg-emerald-700 text-white"
+                                        }`}
                                     >
                                         <Send className="w-3.5 h-3.5" /> Kirim Test Jadwal
                                     </button>
@@ -1110,9 +1214,13 @@ export const NotificationLogs: React.FC = () => {
                                     </div>
 
                                     <button 
-                                        disabled={testSending} 
+                                        disabled={testSending || !targetCompanyId} 
                                         onClick={() => handleSendTestEvent("approval")}
-                                        className="w-full py-2 bg-amber-600 hover:bg-amber-700 text-white font-medium text-xs rounded transition flex items-center justify-center gap-2"
+                                        className={`w-full py-2 font-medium text-xs rounded transition flex items-center justify-center gap-2 ${
+                                            (!targetCompanyId || testSending)
+                                                ? "bg-slate-200 text-slate-500 dark:bg-slate-800 dark:text-slate-400 cursor-not-allowed"
+                                                : "bg-amber-600 hover:bg-amber-700 text-white"
+                                        }`}
                                     >
                                         <Send className="w-3.5 h-3.5" /> Kirim Test Approval
                                     </button>
@@ -1161,9 +1269,13 @@ export const NotificationLogs: React.FC = () => {
                                     </div>
 
                                     <button 
-                                        disabled={testSending} 
+                                        disabled={testSending || !targetCompanyId} 
                                         onClick={() => handleSendTestEvent("reminder")}
-                                        className="w-full py-2 bg-purple-600 hover:bg-purple-700 text-white font-medium text-xs rounded transition flex items-center justify-center gap-2"
+                                        className={`w-full py-2 font-medium text-xs rounded transition flex items-center justify-center gap-2 ${
+                                            (!targetCompanyId || testSending)
+                                                ? "bg-slate-200 text-slate-500 dark:bg-slate-800 dark:text-slate-400 cursor-not-allowed"
+                                                : "bg-purple-600 hover:bg-purple-700 text-white"
+                                        }`}
                                     >
                                         <Send className="w-3.5 h-3.5" /> Kirim Test Reminder
                                     </button>
@@ -1306,7 +1418,14 @@ export const NotificationLogs: React.FC = () => {
                                             <tr key={`${tok.token_id}_${tok.uid}`} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 text-xs">
                                                 <td className="px-4 py-3">
                                                     <div className="font-semibold text-slate-800 dark:text-slate-200">{getUserLabel(tok.uid)}</div>
-                                                    <div className="text-[10px] text-slate-400">Role: <span className="uppercase">{tok.role}</span></div>
+                                                    <div className="text-[10px] text-slate-400">
+                                                        Role: <span className="uppercase">{tok.role}</span>
+                                                        {tok.source_label && (
+                                                            <span className="ml-1.5 px-1 py-0.5 text-[9px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded uppercase">
+                                                                {tok.source_label}
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                     {showTechnicalIds && <div className="text-[10px] text-slate-400 font-mono mt-1">UID: {maskId(tok.uid, "UID")}</div>}
                                                 </td>
                                                 <td className="px-4 py-3">
@@ -1429,13 +1548,13 @@ export const NotificationLogs: React.FC = () => {
                             </div>
                             <button
                                 onClick={handleResetDedupeToday}
-                                disabled={resetDedupeLoading}
+                                disabled={resetDedupeLoading || !targetCompanyId}
                                 className={`px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1.5 border ${
-                                    resetDedupeLoading
-                                        ? "bg-slate-200 text-slate-500 dark:bg-slate-800 dark:text-slate-400 cursor-not-allowed border-slate-300 dark:border-slate-700"
+                                    (resetDedupeLoading || !targetCompanyId)
+                                        ? "bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500 cursor-not-allowed border-slate-250 dark:border-slate-700"
                                         : "bg-rose-100 hover:bg-rose-200 text-rose-700 dark:bg-rose-900/30 dark:hover:bg-rose-900/50 dark:text-rose-400 border-rose-200 dark:border-rose-800/50"
                                 }`}
-                                title="Bypass dedupe untuk keperluan testing hari ini"
+                                title={!targetCompanyId ? "Pilih perusahaan terlebih dahulu" : "Bypass dedupe untuk keperluan testing hari ini"}
                             >
                                 <ListRestart className={`w-3.5 h-3.5 ${resetDedupeLoading ? "animate-spin" : ""}`} />
                                 {resetDedupeLoading ? "Mereset..." : "Reset Dedupe Test Hari Ini"}

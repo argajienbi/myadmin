@@ -55,15 +55,19 @@ export const Login: React.FC = () => {
 
         if (!snapshot.exists()) {
           if (isOwner) {
-             const ownerData: UserIndex = {
+             const ownerData = {
                uid: user.uid,
                company_id: "",
                role: "owner",
                status_akun: "active",
                email: user.email || "",
                nama_lengkap: "System Owner",
-               created_at: Date.now()
-             };
+               created_at: Date.now(),
+               is_owner: true,
+               is_system_owner: true,
+               bootstrap_owner: true,
+               updated_at: Date.now(),
+             } as UserIndex & Record<string, any>;
              // bootstrap owner into rtdb
              const { set } = await import("firebase/database");
              await set(userRef, ownerData);
@@ -73,14 +77,25 @@ export const Login: React.FC = () => {
           throw new Error("Akun belum terdaftar di sistem.");
         }
 
-        const userData = snapshot.val() as UserIndex;
+        const userData = snapshot.val() as UserIndex & Record<string, any>;
 
         if (isOwner) {
-           if (userData.role !== "owner" || userData.status_akun !== "active") {
+           if (userData.role !== "owner" || userData.status_akun !== "active" || !userData.is_owner || !userData.is_system_owner) {
              userData.role = "owner";
              userData.status_akun = "active";
+             userData.is_owner = true;
+             userData.is_system_owner = true;
+             userData.bootstrap_owner = true;
+             userData.updated_at = Date.now();
              const { update } = await import("firebase/database");
-             await update(userRef, { role: "owner", status_akun: "active" });
+             await update(userRef, {
+               role: "owner",
+               status_akun: "active",
+               is_owner: true,
+               is_system_owner: true,
+               bootstrap_owner: true,
+               updated_at: Date.now(),
+             });
            }
         }
 

@@ -2041,7 +2041,12 @@ exports.resetAttendanceReminderDedupeCallable = onCall(
         throw error;
       }
 
-      throw new HttpsError("internal", message);
+      throw new HttpsError("internal", message, {
+        original_code: code,
+        original_message: message,
+        company_id: request.data?.companyId || "",
+        caller_uid: request.auth?.uid || "",
+      });
     }
   }
 );
@@ -2139,6 +2144,9 @@ exports.createUserNotificationAndPushCallable = onCall(
       throw new HttpsError("internal", message, {
         original_code: code,
         original_message: message,
+        company_id: request.data?.companyId || "",
+        target_uid: request.data?.uid || "",
+        caller_uid: request.auth?.uid || "",
       });
     }
   }
@@ -2177,18 +2185,23 @@ async function assertCompanyAdmin(companyId, callerUid) {
     user = { ...user, ...globalSnap.val() };
   }
 
-  const role = String(user.role || user.user_role || user.level || "").toLowerCase();
+  const role = String(user.role || user.user_role || user.level || "")
+    .trim()
+    .toLowerCase();
+
   const allowed =
     role === "owner" ||
+    role === "system_owner" ||
     role === "admin" ||
     role === "super_admin" ||
     user.is_owner === true ||
+    user.is_system_owner === true ||
     user.is_admin === true;
 
   if (allowed) return user;
 
   const allowDebugBypass =
-    process.env.ALLOW_NOTIFICATION_DEBUG_BYPASS === "true" || true;
+    process.env.ALLOW_NOTIFICATION_DEBUG_BYPASS === "true";
 
   if (allowDebugBypass && Object.keys(user).length === 0) {
     logger.warn("Bypassing admin validation for debug.", {
@@ -2242,6 +2255,19 @@ async function assertTargetUserInCompany(companyId, targetUid) {
     return {
       uid: targetUid,
       _validated_from: "fcm_tokens_subcollection",
+    };
+  }
+
+  const rtdbTokenSnap = await admin
+    .database()
+    .ref(`companies/${companyId}/users/${targetUid}/fcm_tokens`)
+    .limitToFirst(1)
+    .get();
+
+  if (rtdbTokenSnap.exists()) {
+    return {
+      uid: targetUid,
+      _validated_from: "fcm_tokens_rtdb_mirror",
     };
   }
 

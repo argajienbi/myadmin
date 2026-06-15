@@ -48,11 +48,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (snapshot.exists()) {
             const data = snapshot.val();
             if (isOwner) {
-              if (data.role !== "owner" || data.status_akun !== "active") {
+              if (data.role !== "owner" || data.status_akun !== "active" || !data.is_owner || !data.is_system_owner) {
                 data.role = "owner";
                 data.status_akun = "active";
+                data.is_owner = true;
+                data.is_system_owner = true;
+                data.bootstrap_owner = true;
+                data.updated_at = Date.now();
                 const { update } = await import("firebase/database");
-                await update(userRef, { role: "owner", status_akun: "active" });
+                await update(userRef, {
+                  role: "owner",
+                  status_akun: "active",
+                  is_owner: true,
+                  is_system_owner: true,
+                  bootstrap_owner: true,
+                  updated_at: Date.now(),
+                });
               }
             }
             setUserData(data);
@@ -83,15 +94,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
           } else {
             if (isOwner) {
-              const ownerData: UserIndex = {
+              const ownerData = {
                 uid: user.uid,
                 company_id: "",
                 role: "owner",
                 status_akun: "active",
                 email: user.email || "",
                 nama_lengkap: "System Owner",
-                created_at: Date.now()
-              };
+                created_at: Date.now(),
+                is_owner: true,
+                is_system_owner: true,
+                bootstrap_owner: true,
+                updated_at: Date.now(),
+              } as UserIndex & Record<string, any>;
               const { set } = await import("firebase/database");
               await set(userRef, ownerData);
               setUserData(ownerData);
