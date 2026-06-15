@@ -1,0 +1,3 @@
+# UI Guidelines
+Primary color: teal `#009688`.
+...

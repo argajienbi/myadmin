@@ -1,0 +1,738 @@
+{
+  "app_config": {
+    "project_name": "MYPRESENSI",
+    "firebase_project_id": "inventory-410f4",
+    "database_url": "https://inventory-410f4-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "storage_bucket": "inventory-410f4.firebasestorage.app",
+    "active": true,
+    "maintenance_mode": false,
+    "current_schema_version": "1.0.0",
+    "created_at": 1778694957579,
+    "updated_at": 1778694957579
+  },
+  "users": {
+    "6L6pTYo4Dgfn9TSbmiA7Np9Wkht2": {
+      "uid": "6L6pTYo4Dgfn9TSbmiA7Np9Wkht2",
+      "company_id": "",
+      "role": "owner",
+      "position": "OWNER",
+      "status_akun": "active",
+      "email": "armin.gandi21@gmail.com",
+      "nama_lengkap": "Armin Gandi",
+      "created_at": 1778694957579,
+      "updated_at": 1778694957579
+    },
+    "REPLACE_WITH_REAL_ADMIN_UID": {
+      "uid": "REPLACE_WITH_REAL_ADMIN_UID",
+      "company_id": "company_fmi",
+      "role": "admin",
+      "position": "ADMIN",
+      "status_akun": "active",
+      "email": "admin.fmi@example.com",
+      "nama_lengkap": "Admin FMI",
+      "created_at": 1778694957579,
+      "updated_at": 1778694957579
+    },
+    "REPLACE_WITH_REAL_USER_BUDI_UID": {
+      "uid": "REPLACE_WITH_REAL_USER_BUDI_UID",
+      "company_id": "company_fmi",
+      "role": "user",
+      "position": "CREW",
+      "status_akun": "active",
+      "email": "budi@example.com",
+      "nama_lengkap": "Budi Santoso",
+      "no_hp": "081111111111",
+      "created_at": 1778694957579,
+      "updated_at": 1778694957579
+    },
+    "REPLACE_WITH_REAL_USER_SITI_UID": {
+      "uid": "REPLACE_WITH_REAL_USER_SITI_UID",
+      "company_id": "company_fmi",
+      "role": "user",
+      "position": "LEADER",
+      "status_akun": "active",
+      "email": "siti@example.com",
+      "nama_lengkap": "Siti Rahma",
+      "no_hp": "082222222222",
+      "created_at": 1778694957579,
+      "updated_at": 1778694957579
+    },
+    "REPLACE_WITH_REAL_USER_AGUS_UID": {
+      "uid": "REPLACE_WITH_REAL_USER_AGUS_UID",
+      "company_id": "company_fmi",
+      "role": "user",
+      "position": "SPV",
+      "status_akun": "pending",
+      "email": "agus@example.com",
+      "nama_lengkap": "Agus Supriyadi",
+      "no_hp": "083333333333",
+      "created_at": 1778694957579,
+      "updated_at": 1778694957579
+    },
+    "REPLACE_WITH_REAL_USER_DEWI_UID": {
+      "uid": "REPLACE_WITH_REAL_USER_DEWI_UID",
+      "company_id": "company_fmi",
+      "role": "user",
+      "position": "CREW",
+      "status_akun": "inactive",
+      "email": "dewi@example.com",
+      "nama_lengkap": "Dewi Lestari",
+      "no_hp": "084444444444",
+      "created_at": 1778694957579,
+      "updated_at": 1778694957579
+    }
+  },
+  "companies": {
+    "company_fmi": {
+      "name": "PT FAJAR MEKAR INDAH",
+      "legal_name": "PT FAJAR MEKAR INDAH",
+      "code": "FMI",
+      "admin_uid": "REPLACE_WITH_REAL_ADMIN_UID",
+      "active": true,
+      "created_by": "6L6pTYo4Dgfn9TSbmiA7Np9Wkht2",
+      "created_at": 1778694957579,
+      "updated_at": 1778694957579,
+      "settings": {
+        "timezone": "Asia/Jakarta",
+        "date_format": "yyyy-MM-dd",
+        "time_format": "HH:mm:ss",
+        "allow_mobile_register": true,
+        "require_admin_activation": true,
+        "allow_qr_attendance": true,
+        "allow_selfie_attendance": true,
+        "allow_leave_request": true,
+        "allow_manual_correction": true
+      }
+    }
+  },
+  "company_invites": {
+    "FMI2026": {
+      "company_id": "company_fmi",
+      "company_name": "PT FAJAR MEKAR INDAH",
+      "active": true,
+      "created_by": "6L6pTYo4Dgfn9TSbmiA7Np9Wkht2",
+      "expired_at": 0,
+      "max_usage": 0,
+      "used_count": 0,
+      "created_at": 1778694957579,
+      "updated_at": 1778694957579
+    }
+  },
+  "company_users": {
+    "company_fmi": {
+      "REPLACE_WITH_REAL_ADMIN_UID": {
+        "uid": "REPLACE_WITH_REAL_ADMIN_UID",
+        "company_id": "company_fmi",
+        "nama_lengkap": "Admin FMI",
+        "email": "admin.fmi@example.com",
+        "nip": "ADM-001",
+        "no_hp": "080000000001",
+        "role": "admin",
+        "position": "ADMIN",
+        "status_akun": "active",
+        "area_id": "area_jakarta",
+        "office_id": "office_bank_indonesia",
+        "department_id": "dept_management",
+        "sub_department_id": "sub_management_admin",
+        "group_id": "grp_admin",
+        "profile_completed": true,
+        "created_at": 1778694957579,
+        "updated_at": 1778694957579
+      },
+      "REPLACE_WITH_REAL_USER_BUDI_UID": {
+        "uid": "REPLACE_WITH_REAL_USER_BUDI_UID",
+        "company_id": "company_fmi",
+        "nama_lengkap": "Budi Santoso",
+        "email": "budi@example.com",
+        "nip": "EMP-001",
+        "no_hp": "081111111111",
+        "role": "user",
+        "position": "CREW",
+        "status_akun": "active",
+        "area_id": "area_jakarta",
+        "office_id": "office_bank_indonesia",
+        "department_id": "dept_housekeeping",
+        "sub_department_id": "sub_hk_lobby",
+        "group_id": "grp_hk_pagi",
+        "profile_completed": true,
+        "photo_url": "",
+        "photo_path": "profile_photos/company_fmi/REPLACE_WITH_REAL_USER_BUDI_UID/profile.jpg",
+        "created_at": 1778694957579,
+        "updated_at": 1778694957579
+      },
+      "REPLACE_WITH_REAL_USER_SITI_UID": {
+        "uid": "REPLACE_WITH_REAL_USER_SITI_UID",
+        "company_id": "company_fmi",
+        "nama_lengkap": "Siti Rahma",
+        "email": "siti@example.com",
+        "nip": "EMP-002",
+        "no_hp": "082222222222",
+        "role": "user",
+        "position": "LEADER",
+        "status_akun": "active",
+        "area_id": "area_jakarta",
+        "office_id": "office_bank_indonesia",
+        "department_id": "dept_housekeeping",
+        "sub_department_id": "sub_hk_lobby",
+        "group_id": "grp_hk_siang",
+        "profile_completed": true,
+        "photo_url": "",
+        "photo_path": "profile_photos/company_fmi/REPLACE_WITH_REAL_USER_SITI_UID/profile.jpg",
+        "created_at": 1778694957579,
+        "updated_at": 1778694957579
+      },
+      "REPLACE_WITH_REAL_USER_AGUS_UID": {
+        "uid": "REPLACE_WITH_REAL_USER_AGUS_UID",
+        "company_id": "company_fmi",
+        "nama_lengkap": "Agus Supriyadi",
+        "email": "agus@example.com",
+        "nip": "EMP-003",
+        "no_hp": "083333333333",
+        "role": "user",
+        "position": "SPV",
+        "status_akun": "pending",
+        "area_id": "area_jakarta",
+        "office_id": "office_bank_indonesia",
+        "department_id": "dept_housekeeping",
+        "sub_department_id": "sub_hk_lobby",
+        "group_id": "grp_hk_pagi",
+        "profile_completed": false,
+        "photo_url": "",
+        "photo_path": "",
+        "created_at": 1778694957579,
+        "updated_at": 1778694957579
+      },
+      "REPLACE_WITH_REAL_USER_DEWI_UID": {
+        "uid": "REPLACE_WITH_REAL_USER_DEWI_UID",
+        "company_id": "company_fmi",
+        "nama_lengkap": "Dewi Lestari",
+        "email": "dewi@example.com",
+        "nip": "EMP-004",
+        "no_hp": "084444444444",
+        "role": "user",
+        "position": "CREW",
+        "status_akun": "inactive",
+        "area_id": "area_jakarta",
+        "office_id": "office_bank_indonesia",
+        "department_id": "dept_housekeeping",
+        "sub_department_id": "sub_hk_lobby",
+        "group_id": "grp_hk_pagi",
+        "profile_completed": true,
+        "photo_url": "",
+        "photo_path": "",
+        "created_at": 1778694957579,
+        "updated_at": 1778694957579
+      }
+    }
+  },
+  "areas": {
+    "company_fmi": {
+      "area_jakarta": {
+        "name": "Jakarta",
+        "active": true,
+        "created_at": 1778694957579,
+        "updated_at": 1778694957579
+      }
+    }
+  },
+  "offices": {
+    "company_fmi": {
+      "office_bank_indonesia": {
+        "name": "BANK INDONESIA",
+        "area_id": "area_jakarta",
+        "latitude": -6.18142435142701,
+        "longitude": 106.82099076217408,
+        "radius_meter": 300,
+        "map_provider": "leaflet_osm",
+        "geofence_source": "web_admin_leaflet",
+        "active": true,
+        "created_at": 1778694957579,
+        "updated_at": 1778694957579
+      },
+      "office_fmi_pusat": {
+        "name": "Kantor Pusat FMI",
+        "area_id": "area_jakarta",
+        "latitude": -6.2,
+        "longitude": 106.816666,
+        "radius_meter": 250,
+        "map_provider": "leaflet_osm",
+        "geofence_source": "web_admin_leaflet",
+        "active": true,
+        "created_at": 1778694957579,
+        "updated_at": 1778694957579
+      }
+    }
+  },
+  "departments": {
+    "company_fmi": {
+      "dept_management": {
+        "name": "Management",
+        "office_id": "office_bank_indonesia",
+        "active": true
+      },
+      "dept_housekeeping": {
+        "name": "House Keeping",
+        "office_id": "office_bank_indonesia",
+        "active": true
+      },
+      "dept_security": {
+        "name": "Security",
+        "office_id": "office_bank_indonesia",
+        "active": true,
+        "created_at": 1778694957579,
+        "updated_at": 1778694957579
+      }
+    }
+  },
+  "sub_departments": {
+    "company_fmi": {
+      "sub_management_admin": {
+        "name": "Admin Operasional",
+        "office_id": "office_bank_indonesia",
+        "department_id": "dept_management",
+        "active": true
+      },
+      "sub_hk_lobby": {
+        "name": "Lobby",
+        "office_id": "office_bank_indonesia",
+        "department_id": "dept_housekeeping",
+        "active": true
+      },
+      "sub_security_pos1": {
+        "name": "Pos 1",
+        "office_id": "office_bank_indonesia",
+        "department_id": "dept_security",
+        "active": true,
+        "created_at": 1778694957579,
+        "updated_at": 1778694957579
+      }
+    }
+  },
+  "employee_groups": {
+    "company_fmi": {
+      "grp_admin": {
+        "name": "Admin Operasional",
+        "office_id": "office_bank_indonesia",
+        "department_id": "dept_management",
+        "sub_department_id": "sub_management_admin",
+        "active": true
+      },
+      "grp_hk_pagi": {
+        "name": "HK Pagi",
+        "office_id": "office_bank_indonesia",
+        "department_id": "dept_housekeeping",
+        "sub_department_id": "sub_hk_lobby",
+        "active": true
+      },
+      "grp_hk_siang": {
+        "name": "HK Siang",
+        "office_id": "office_bank_indonesia",
+        "department_id": "dept_housekeeping",
+        "sub_department_id": "sub_hk_lobby",
+        "active": true,
+        "created_at": 1778694957579,
+        "updated_at": 1778694957579
+      },
+      "grp_security_malam": {
+        "name": "Security Malam",
+        "office_id": "office_bank_indonesia",
+        "department_id": "dept_security",
+        "sub_department_id": "sub_security_pos1",
+        "active": true,
+        "created_at": 1778694957579,
+        "updated_at": 1778694957579
+      }
+    }
+  },
+  "timetables": {
+    "company_fmi": {
+      "tt_pagi": {
+        "name": "Jam Kerja Pagi",
+        "work_start": "06:00",
+        "work_end": "14:00",
+        "check_in_start": "05:30",
+        "check_in_end": "08:00",
+        "check_out_start": "13:30",
+        "check_out_end": "15:30",
+        "late_tolerance_minute": 15,
+        "early_out_tolerance_minute": 0,
+        "break_start": "12:00",
+        "break_end": "13:00",
+        "crosses_midnight": false,
+        "active": true,
+        "created_by": "REPLACE_WITH_REAL_ADMIN_UID",
+        "created_at": 1778694957579,
+        "updated_at": 1778694957579
+      },
+      "tt_siang": {
+        "name": "Jam Kerja Siang",
+        "work_start": "14:00",
+        "work_end": "22:00",
+        "check_in_start": "13:30",
+        "check_in_end": "16:00",
+        "check_out_start": "21:30",
+        "check_out_end": "23:30",
+        "late_tolerance_minute": 15,
+        "early_out_tolerance_minute": 0,
+        "break_start": "18:00",
+        "break_end": "19:00",
+        "crosses_midnight": false,
+        "active": true,
+        "created_by": "REPLACE_WITH_REAL_ADMIN_UID",
+        "created_at": 1778694957579,
+        "updated_at": 1778694957579
+      },
+      "tt_malam": {
+        "name": "Jam Kerja Malam",
+        "work_start": "22:00",
+        "work_end": "06:00",
+        "check_in_start": "21:30",
+        "check_in_end": "00:00",
+        "check_out_start": "05:30",
+        "check_out_end": "07:30",
+        "late_tolerance_minute": 15,
+        "early_out_tolerance_minute": 0,
+        "break_start": "02:00",
+        "break_end": "03:00",
+        "crosses_midnight": true,
+        "active": true,
+        "created_by": "REPLACE_WITH_REAL_ADMIN_UID",
+        "created_at": 1778694957579,
+        "updated_at": 1778694957579
+      }
+    }
+  },
+  "shifts": {
+    "company_fmi": {
+      "shift_hk_pagi": {
+        "name": "Shift HK Pagi",
+        "active": true,
+        "days": {
+          "monday": { "active": true, "timetable_id": "tt_pagi" },
+          "tuesday": { "active": true, "timetable_id": "tt_pagi" },
+          "wednesday": { "active": true, "timetable_id": "tt_pagi" },
+          "thursday": { "active": true, "timetable_id": "tt_pagi" },
+          "friday": { "active": true, "timetable_id": "tt_pagi" },
+          "saturday": { "active": true, "timetable_id": "tt_pagi" },
+          "sunday": { "active": false, "timetable_id": "" }
+        }
+      },
+      "shift_hk_siang": {
+        "name": "Shift HK Siang",
+        "active": true,
+        "days": {
+          "monday": { "active": true, "timetable_id": "tt_siang" },
+          "tuesday": { "active": true, "timetable_id": "tt_siang" },
+          "wednesday": { "active": true, "timetable_id": "tt_siang" },
+          "thursday": { "active": true, "timetable_id": "tt_siang" },
+          "friday": { "active": true, "timetable_id": "tt_siang" },
+          "saturday": { "active": true, "timetable_id": "tt_siang" },
+          "sunday": { "active": false, "timetable_id": "" }
+        }
+      },
+      "shift_security_malam": {
+        "name": "Shift Security Malam",
+        "active": true,
+        "days": {
+          "monday": { "active": true, "timetable_id": "tt_malam" },
+          "tuesday": { "active": true, "timetable_id": "tt_malam" },
+          "wednesday": { "active": true, "timetable_id": "tt_malam" },
+          "thursday": { "active": true, "timetable_id": "tt_malam" },
+          "friday": { "active": true, "timetable_id": "tt_malam" },
+          "saturday": { "active": true, "timetable_id": "tt_malam" },
+          "sunday": { "active": true, "timetable_id": "tt_malam" }
+        }
+      }
+    }
+  },
+  "schedule_assignments": {
+    "company_fmi": {
+      "assign_grp_hk_pagi": {
+        "type": "group",
+        "target_id": "grp_hk_pagi",
+        "shift_id": "shift_hk_pagi",
+        "start_date": "2026-05-01",
+        "end_date": "",
+        "active": true,
+        "created_by": "REPLACE_WITH_REAL_ADMIN_UID",
+        "created_at": 1778694957579,
+        "updated_at": 1778694957579
+      },
+      "assign_grp_hk_siang": {
+        "type": "group",
+        "target_id": "grp_hk_siang",
+        "shift_id": "shift_hk_siang",
+        "start_date": "2026-05-01",
+        "end_date": "",
+        "active": true,
+        "created_by": "REPLACE_WITH_REAL_ADMIN_UID",
+        "created_at": 1778694957579,
+        "updated_at": 1778694957579
+      },
+      "assign_grp_security_malam": {
+        "type": "group",
+        "target_id": "grp_security_malam",
+        "shift_id": "shift_security_malam",
+        "start_date": "2026-05-01",
+        "end_date": "",
+        "active": true,
+        "created_by": "REPLACE_WITH_REAL_ADMIN_UID",
+        "created_at": 1778694957579,
+        "updated_at": 1778694957579
+      }
+    }
+  },
+  "holidays": {
+    "company_fmi": {
+      "2026-05-01": {
+        "title": "Hari Buruh",
+        "date": "2026-05-01",
+        "type": "holiday",
+        "paid": true,
+        "active": true,
+        "note": "Libur nasional",
+        "created_by": "REPLACE_WITH_REAL_ADMIN_UID",
+        "created_at": 1778694957579,
+        "updated_at": 1778694957579
+      }
+    }
+  },
+  "schedule_specials": {
+    "company_fmi": {
+      "special_hk_pagi_2026_05_25": {
+        "title": "Event Khusus - HK Pagi Masuk Siang",
+        "date": "2026-05-25",
+        "type": "group",
+        "target_id": "grp_hk_pagi",
+        "shift_id": "shift_hk_pagi",
+        "active": true,
+        "reason": "Event khusus",
+        "created_by": "6L6pTYo4Dgfn9TSbmiA7Np9Wkht2",
+        "created_at": 1778694957579,
+        "updated_at": 1778694957579
+      }
+    }
+  },
+  "schedule_change_logs": {
+    "company_fmi": {
+      "log_schedule_001": {
+        "admin_uid": "6L6pTYo4Dgfn9TSbmiA7Np9Wkht2",
+        "admin_name": "Admin FMI",
+        "action": "CREATE_TIMETABLE",
+        "target_type": "timetable",
+        "target_id": "tt_pagi",
+        "old_value": "",
+        "new_value": "Jam Kerja Pagi",
+        "created_at": 1778694957579
+      }
+    }
+  },
+  "attendance": {
+    "company_fmi": {
+      "REPLACE_WITH_REAL_USER_BUDI_UID": {
+        "2026-05-16": {
+          "masuk": {
+            "company_id": "company_fmi",
+            "uid": "REPLACE_WITH_REAL_USER_BUDI_UID",
+            "tanggal": "2026-05-16",
+            "waktu": "06:08:00",
+            "action_type": "masuk",
+            "method": "selfie",
+            "status": "success",
+            "attendance_status": "hadir",
+            "late_minute": 0,
+            "early_out_minute": 0,
+            "overtime_minute": 0,
+            "total_work_minute": 0,
+            "office_id": "office_bank_indonesia",
+            "department_id": "dept_housekeeping",
+            "sub_department_id": "sub_hk_lobby",
+            "group_id": "grp_hk_pagi",
+            "assignment_id": "assign_grp_hk_pagi",
+            "shift_id": "shift_hk_pagi",
+            "shift_name": "Shift HK Pagi",
+            "timetable_id": "tt_pagi",
+            "timetable_name": "Jam Kerja Pagi",
+            "schedule_source": "group_assignment",
+            "work_start": "06:00",
+            "work_end": "14:00",
+            "check_in_start": "05:30",
+            "check_in_end": "08:00",
+            "check_out_start": "13:30",
+            "check_out_end": "15:30",
+            "late_tolerance_minute": 15,
+            "latitude": -6.18142435142701,
+            "longitude": 106.82099076217408,
+            "accuracy": 12,
+            "distance_meter": 12,
+            "radius_meter": 300,
+            "foto_url": "",
+            "foto_path": "attendance_photos/company_fmi/REPLACE_WITH_REAL_USER_BUDI_UID/2026-05-16/masuk.jpg",
+            "created_at": 1778694957579,
+            "updated_at": 1778694957579
+          }
+        }
+      }
+    }
+  },
+  "leave_requests": {
+    "company_fmi": {
+      "LR_PENDING_001": {
+        "request_id": "LR_PENDING_001",
+        "company_id": "company_fmi",
+        "uid": "REPLACE_WITH_REAL_USER_BUDI_UID",
+        "nama_lengkap": "Budi Santoso",
+        "nip": "EMP-001",
+        "leave_type": "sakit",
+        "tanggal_mulai": "2026-05-20",
+        "tanggal_selesai": "2026-05-21",
+        "jumlah_hari": 2,
+        "alasan": "Sakit demam",
+        "attachment_url": "",
+        "attachment_path": "",
+        "status": "pending",
+        "admin_note": "",
+        "approved_by": "",
+        "approved_by_name": "",
+        "approved_at": 0,
+        "rejected_by": "",
+        "rejected_by_name": "",
+        "rejected_at": 0,
+        "created_at": 1778694957579,
+        "updated_at": 1778694957579
+      },
+      "LR_APPROVED_001": {
+        "request_id": "LR_APPROVED_001",
+        "company_id": "company_fmi",
+        "uid": "REPLACE_WITH_REAL_USER_SITI_UID",
+        "nama_lengkap": "Siti Rahma",
+        "nip": "EMP-002",
+        "leave_type": "cuti_tahunan",
+        "tanggal_mulai": "2026-06-01",
+        "tanggal_selesai": "2026-06-03",
+        "jumlah_hari": 3,
+        "alasan": "Cuti keluarga",
+        "attachment_url": "",
+        "attachment_path": "leave_attachments/company_fmi/REPLACE_WITH_REAL_USER_SITI_UID/LR_APPROVED_001/file.jpg",
+        "status": "approved",
+        "admin_note": "Disetujui",
+        "approved_by": "REPLACE_WITH_REAL_ADMIN_UID",
+        "approved_by_name": "Admin FMI",
+        "approved_at": 1778694957579,
+        "rejected_by": "",
+        "rejected_by_name": "",
+        "rejected_at": 0,
+        "created_at": 1778694957579,
+        "updated_at": 1778694957579
+      }
+    }
+  },
+  "qr_attendance_requests": {
+    "company_fmi": {
+      "QR_PENDING_001": {
+        "request_id": "QR_PENDING_001",
+        "company_id": "company_fmi",
+        "tanggal": "2026-05-16",
+        "waktu": "08:00:00",
+        "action_type": "masuk",
+        "method": "qr",
+        "helper_uid": "REPLACE_WITH_REAL_USER_SITI_UID",
+        "helper_name": "Siti Rahma",
+        "helper_email": "siti@example.com",
+        "target_uid": "REPLACE_WITH_REAL_USER_AGUS_UID",
+        "target_name": "Agus Supriyadi",
+        "target_email": "agus@example.com",
+        "office_id": "office_bank_indonesia",
+        "latitude": -6.18142435142701,
+        "longitude": 106.82099076217408,
+        "accuracy": 12,
+        "office_latitude": -6.18142435142701,
+        "office_longitude": 106.82099076217408,
+        "distance_meter": 12,
+        "radius_meter": 300,
+        "status": "pending_admin",
+        "admin_note": "",
+        "approved_by": "",
+        "approved_by_name": "",
+        "approved_at": 0,
+        "rejected_by": "",
+        "rejected_by_name": "",
+        "rejected_at": 0,
+        "created_at": 1778694957579,
+        "updated_at": 1778694957579
+      }
+    }
+  },
+  "attendance_corrections": {
+    "company_fmi": {
+      "CORR_TEST_001": {
+        "uid": "REPLACE_WITH_REAL_USER_BUDI_UID",
+        "tanggal": "2026-05-15",
+        "waktu_baru": "06:00:00",
+        "alasan": "Lupa absen",
+        "status": "pending",
+        "created_at": 1778694957579
+      }
+    }
+  },
+  "announcements": {
+    "company_fmi": {
+      "ANN_TEST_001": {
+        "title": "Company Meeting",
+        "content": "All hands meeting at 14:00",
+        "target_type": "company",
+        "target_id": "company_fmi",
+        "active": true,
+        "created_by": "REPLACE_WITH_REAL_ADMIN_UID",
+        "created_at": 1778694957579
+      }
+    }
+  },
+  "notifications": {
+    "REPLACE_WITH_REAL_ADMIN_UID": {
+      "NTF_ADMIN_001": {
+        "title": "New Leave Request",
+        "message": "Budi Santoso requested leave",
+        "type": "leave_request",
+        "is_read": false,
+        "created_at": 1778694957579
+      }
+    }
+  },
+  "audit_logs": {
+    "company_fmi": {
+      "AUDIT_001": {
+        "action": "CREATE_COMPANY",
+        "user_uid": "6L6pTYo4Dgfn9TSbmiA7Np9Wkht2",
+        "details": "Company PT FAJAR MEKAR INDAH created",
+        "created_at": 1778694957579
+      }
+    }
+  },
+  "report_cache": {
+    "company_fmi": {
+      "daily": {
+        "2026-05-16": {
+          "total_hadir": 20,
+          "total_terlambat": 5,
+          "updated_at": 1778694957579
+        }
+      }
+    }
+  },
+  "storage_index": {
+    "company_fmi": {
+      "attendance_photos": {
+        "REPLACE_WITH_REAL_USER_BUDI_UID": {
+          "2026-05-16": {
+            "masuk": {
+              "path": "attendance_photos/company_fmi/REPLACE_WITH_REAL_USER_BUDI_UID/2026-05-16/masuk.jpg",
+              "url": "",
+              "uploaded_at": 1778694957579
+            }
+          }
+        }
+      }
+    }
+  }
+}

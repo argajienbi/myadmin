@@ -1,0 +1,8 @@
+{
+  "name": "Remix: admin_web_mypresence",
+  "description": "Backend untuk aplikasi mupresence",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

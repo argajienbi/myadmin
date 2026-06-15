@@ -1,0 +1,5 @@
+- Rules testing terbuka hanya sementara.
+- Sebelum production gunakan auth + role/company.
+- Cloud Function callable tetap validasi role.
+- Frontend tidak boleh write bebas ke inbox/queue production.
+- Storage harus dibatasi per company/user path.

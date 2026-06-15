@@ -1,0 +1,76 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "app_config": {
+      ".read": true,
+      ".write": "auth != null && root.child('users').child(auth.uid).child('role').val() === 'owner'"
+    },
+
+    "users": {
+      "$uid": {
+        ".read": "auth != null && (auth.uid === $uid || root.child('users').child(auth.uid).child('role').val() === 'owner')",
+        ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'owner' || (auth.uid === $uid && ((!data.exists() && newData.child('uid').val() === auth.uid && newData.child('role').val() === 'user' && newData.child('status_akun').val() === 'pending') || (data.exists() && newData.child('uid').val() === auth.uid && newData.child('role').val() === data.child('role').val() && newData.child('company_id').val() === data.child('company_id').val() && newData.child('status_akun').val() === data.child('status_akun').val() && newData.child('position').val() === data.child('position').val()))))",
+        ".indexOn": ["company_id", "role", "position", "status_akun", "email"]
+      }
+    },
+
+    "companies": {
+      "$companyId": {
+        ".read": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'owner' || root.child('users').child(auth.uid).child('company_id').val() === $companyId)",
+        ".write": "auth != null && root.child('users').child(auth.uid).child('role').val() === 'owner'",
+        ".indexOn": ["active", "admin_uid", "code"]
+      }
+    },
+
+    "company_invites": {
+      "$inviteCode": {
+        ".read": true,
+        ".write": "auth != null && root.child('users').child(auth.uid).child('role').val() === 'owner'",
+        ".indexOn": ["company_id", "active", "expired_at"]
+      }
+    },
+
+    "company_users": {
+      "$companyId": {
+        ".read": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'owner' || root.child('users').child(auth.uid).child('company_id').val() === $companyId)",
+        ".indexOn": ["status_akun", "role", "position", "area_id", "office_id", "department_id", "sub_department_id", "group_id", "email", "nip"],
+        "$uid": {
+          ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'owner' || (root.child('users').child(auth.uid).child('role').val() === 'admin' && root.child('users').child(auth.uid).child('company_id').val() === $companyId) || (auth.uid === $uid && root.child('users').child(auth.uid).child('company_id').val() === $companyId && data.exists() && newData.child('uid').val() === auth.uid && newData.child('role').val() === data.child('role').val() && newData.child('status_akun').val() === data.child('status_akun').val() && newData.child('position').val() === data.child('position').val() && newData.child('area_id').val() === data.child('area_id').val() && newData.child('office_id').val() === data.child('office_id').val() && newData.child('department_id').val() === data.child('department_id').val() && newData.child('sub_department_id').val() === data.child('sub_department_id').val() && newData.child('group_id').val() === data.child('group_id').val()))"
+        }
+      }
+    },
+
+    "areas": { "$companyId": { ".read": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'owner' || root.child('users').child(auth.uid).child('company_id').val() === $companyId)", ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'owner' || (root.child('users').child(auth.uid).child('role').val() === 'admin' && root.child('users').child(auth.uid).child('company_id').val() === $companyId))", ".indexOn": ["active", "name"] } },
+    "offices": { "$companyId": { ".read": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'owner' || root.child('users').child(auth.uid).child('company_id').val() === $companyId)", ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'owner' || (root.child('users').child(auth.uid).child('role').val() === 'admin' && root.child('users').child(auth.uid).child('company_id').val() === $companyId))", ".indexOn": ["active", "area_id", "name"] } },
+    "departments": { "$companyId": { ".read": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'owner' || root.child('users').child(auth.uid).child('company_id').val() === $companyId)", ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'owner' || (root.child('users').child(auth.uid).child('role').val() === 'admin' && root.child('users').child(auth.uid).child('company_id').val() === $companyId))", ".indexOn": ["active", "office_id", "name"] } },
+    "sub_departments": { "$companyId": { ".read": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'owner' || root.child('users').child(auth.uid).child('company_id').val() === $companyId)", ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'owner' || (root.child('users').child(auth.uid).child('role').val() === 'admin' && root.child('users').child(auth.uid).child('company_id').val() === $companyId))", ".indexOn": ["active", "office_id", "department_id", "name"] } },
+    "employee_groups": { "$companyId": { ".read": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'owner' || root.child('users').child(auth.uid).child('company_id').val() === $companyId)", ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'owner' || (root.child('users').child(auth.uid).child('role').val() === 'admin' && root.child('users').child(auth.uid).child('company_id').val() === $companyId))", ".indexOn": ["active", "office_id", "department_id", "sub_department_id", "name"] } },
+
+    "timetables": { "$companyId": { ".read": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'owner' || root.child('users').child(auth.uid).child('company_id').val() === $companyId)", ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'owner' || (root.child('users').child(auth.uid).child('role').val() === 'admin' && root.child('users').child(auth.uid).child('company_id').val() === $companyId))", ".indexOn": ["active", "name"] } },
+    "shifts": { "$companyId": { ".read": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'owner' || root.child('users').child(auth.uid).child('company_id').val() === $companyId)", ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'owner' || (root.child('users').child(auth.uid).child('role').val() === 'admin' && root.child('users').child(auth.uid).child('company_id').val() === $companyId))", ".indexOn": ["active", "name"] } },
+    "schedule_assignments": { "$companyId": { ".read": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'owner' || root.child('users').child(auth.uid).child('company_id').val() === $companyId)", ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'owner' || (root.child('users').child(auth.uid).child('role').val() === 'admin' && root.child('users').child(auth.uid).child('company_id').val() === $companyId))", ".indexOn": ["active", "type", "target_id", "shift_id", "start_date", "end_date"] } },
+    "holidays": { "$companyId": { ".read": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'owner' || root.child('users').child(auth.uid).child('company_id').val() === $companyId)", ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'owner' || (root.child('users').child(auth.uid).child('role').val() === 'admin' && root.child('users').child(auth.uid).child('company_id').val() === $companyId))", ".indexOn": ["active", "date", "type"] } },
+    "schedule_specials": { "$companyId": { ".read": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'owner' || root.child('users').child(auth.uid).child('company_id').val() === $companyId)", ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'owner' || (root.child('users').child(auth.uid).child('role').val() === 'admin' && root.child('users').child(auth.uid).child('company_id').val() === $companyId))", ".indexOn": ["active", "date", "type", "target_id", "shift_id"] } },
+    "schedule_change_logs": { "$companyId": { ".read": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'owner' || root.child('users').child(auth.uid).child('company_id').val() === $companyId)", ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'owner' || (root.child('users').child(auth.uid).child('role').val() === 'admin' && root.child('users').child(auth.uid).child('company_id').val() === $companyId))", ".indexOn": ["created_at", "target_type", "target_id", "admin_uid"] } },
+
+    "attendance": {
+      "$companyId": {
+        ".read": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'owner' || root.child('users').child(auth.uid).child('company_id').val() === $companyId)",
+        ".indexOn": ["tanggal", "action_type", "attendance_status", "method", "created_at"],
+        "$uid": {
+          ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'owner' || (root.child('users').child(auth.uid).child('role').val() === 'admin' && root.child('users').child(auth.uid).child('company_id').val() === $companyId) || (auth.uid === $uid && root.child('users').child(auth.uid).child('company_id').val() === $companyId))"
+        }
+      }
+    },
+    "leave_requests": { "$companyId": { ".read": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'owner' || root.child('users').child(auth.uid).child('company_id').val() === $companyId)", ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'owner' || root.child('users').child(auth.uid).child('company_id').val() === $companyId)", ".indexOn": ["uid", "status", "leave_type", "tanggal_mulai", "tanggal_selesai", "created_at"] } },
+    "qr_attendance_requests": { "$companyId": { ".read": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'owner' || root.child('users').child(auth.uid).child('company_id').val() === $companyId)", ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'owner' || root.child('users').child(auth.uid).child('company_id').val() === $companyId)", ".indexOn": ["helper_uid", "target_uid", "status", "tanggal", "created_at"] } },
+    "attendance_corrections": { "$companyId": { ".read": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'owner' || root.child('users').child(auth.uid).child('company_id').val() === $companyId)", ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'owner' || (root.child('users').child(auth.uid).child('role').val() === 'admin' && root.child('users').child(auth.uid).child('company_id').val() === $companyId))", ".indexOn": ["uid", "tanggal", "status", "created_at"] } },
+    "announcements": { "$companyId": { ".read": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'owner' || root.child('users').child(auth.uid).child('company_id').val() === $companyId)", ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'owner' || (root.child('users').child(auth.uid).child('role').val() === 'admin' && root.child('users').child(auth.uid).child('company_id').val() === $companyId))", ".indexOn": ["active", "target_type", "target_id", "created_at"] } },
+    "audit_logs": { "$companyId": { ".read": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'owner' || root.child('users').child(auth.uid).child('company_id').val() === $companyId)", ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'owner' || (root.child('users').child(auth.uid).child('role').val() === 'admin' && root.child('users').child(auth.uid).child('company_id').val() === $companyId))", ".indexOn": ["created_at", "user_uid", "action"] } },
+    "notifications": { "$uid": { ".read": "auth != null && auth.uid === $uid", ".write": "auth != null", ".indexOn": ["company_id", "is_read", "created_at", "type"] } },
+    "report_cache": { "$companyId": { ".read": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'owner' || root.child('users').child(auth.uid).child('company_id').val() === $companyId)", ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'owner' || (root.child('users').child(auth.uid).child('role').val() === 'admin' && root.child('users').child(auth.uid).child('company_id').val() === $companyId))", ".indexOn": ["updated_at"] } },
+    "storage_index": { "$companyId": { ".read": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'owner' || root.child('users').child(auth.uid).child('company_id').val() === $companyId)", ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'owner' || root.child('users').child(auth.uid).child('company_id').val() === $companyId)", ".indexOn": ["uploaded_at"] } }
+  }
+}

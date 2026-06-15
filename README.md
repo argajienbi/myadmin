@@ -1,11 +1,35 @@
-<div align="center">
+# MYPRESENSI Web Admin
 
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+Web admin untuk sistem absensi MYPRESENSI berbasis Firebase.
 
-  <h1>Built with AI Studio</h2>
+## Stack
 
-  <p>The fastest path from prompt to production with Gemini.</p>
+- React + Vite + TypeScript
+- Firebase Auth
+- Firebase Realtime Database
+- Firebase Storage
 
-  <a href="https://aistudio.google.com/apps">Start building</a>
+## Firebase
 
-</div>
+Project ID: inventory-410f4
+Database: https://inventory-410f4-default-rtdb.asia-southeast1.firebasedatabase.app
+Storage: inventory-410f4.firebasestorage.app
+
+**Catatan**: File `rtdb.rules.json` adalah draft. Uji di Firebase Rules Playground sebelum dipakai di production. Pastikan semua admin punya `/users/{uid}/company_id` dan role.
+
+## Jalankan Lokal
+
+npm install
+cp .env.example .env
+npm run dev
+
+## Build
+
+npm run build
+
+## App Compatibility
+
+Setiap perubahan struktur data admin_web harus dicek terhadap Flutter app MYPRESENSI.
+
+Lihat:
+APP_ADMIN_INTEGRATION_CONTRACT.md
