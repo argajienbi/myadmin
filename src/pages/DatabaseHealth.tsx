@@ -6,6 +6,8 @@ import { paths } from "../services/paths";
 import { useAuth } from "../auth/AuthContext";
 import { getFileUrl } from "../services/storageService";
 import toast from "react-hot-toast";
+import DataGatePanel from "../components/DataGatePanel";
+import { manualGet } from "../services/rtdbDataGate";
 
 type CompanyOption = {
   id: string;
@@ -129,6 +131,7 @@ export const DatabaseHealth: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [confirmText, setConfirmText] = useState("");
   const [resetting, setResetting] = useState(false);
+  const [selectedScanKeys, setSelectedScanKeys] = useState<Record<string, boolean>>({});
   const [selectedResetKeys, setSelectedResetKeys] = useState<Record<string, boolean>>(
     resetOptions.reduce((acc, item) => ({ ...acc, [item.key]: item.defaultChecked }), {
       notifications: true,
@@ -161,15 +164,23 @@ export const DatabaseHealth: React.FC = () => {
 
   const loadHealth = async () => {
     if (!companyId) return;
+    const activeTargets = makeHealthTargets(companyId).filter(target => selectedScanKeys[target.label]);
+    if (activeTargets.length === 0) {
+      toast.error("Silakan pilih minimal satu jalur database untuk discan.");
+      return;
+    }
+
     setLoading(true);
     try {
       const nextRows: HealthRow[] = [];
       let nextDeepNodes = 0;
       const snapshotData: Record<string, any> = {};
 
-      for (const target of makeHealthTargets(companyId)) {
-        const snapshot = await get(ref(db, target.path));
-        const value = snapshot.exists() ? snapshot.val() : null;
+      for (const target of activeTargets) {
+        const value = await manualGet({
+          key: "database_health",
+          path: target.path,
+        });
         snapshotData[target.label] = value;
         nextRows.push({
           label: target.label,
@@ -374,10 +385,7 @@ export const DatabaseHealth: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    if (companyId) loadHealth();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [companyId]);
+
 
   const toggleResetKey = (key: string) => {
     setSelectedResetKeys(prev => ({ ...prev, [key]: !prev[key] }));
@@ -549,25 +557,72 @@ export const DatabaseHealth: React.FC = () => {
         </label>
       </div>
 
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5">
-        <label className="block text-sm font-semibold text-slate-600 dark:text-slate-300 mb-2 font-sans">Perusahaan</label>
-        <div className="flex gap-3">
-          <select
-            value={companyId}
-            onChange={e => setCompanyId(e.target.value)}
-            className="flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-2 text-sm focus:outline-none focus:border-blue-500 font-sans text-slate-800 dark:text-slate-200"
-          >
-            {companies.map(company => (
-              <option key={company.id} value={company.id}>{companyName(company)}</option>
+      <DataGatePanel />
+
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-4">
+        <div>
+          <label className="block text-sm font-semibold text-slate-600 dark:text-slate-300 mb-2 font-sans">Perusahaan</label>
+          <div className="flex gap-3">
+            <select
+              value={companyId}
+              onChange={e => setCompanyId(e.target.value)}
+              className="flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-2 text-sm focus:outline-none focus:border-blue-500 font-sans text-slate-800 dark:text-slate-200"
+            >
+              {companies.map(company => (
+                <option key={company.id} value={company.id}>{companyName(company)}</option>
+              ))}
+            </select>
+            <button
+              onClick={loadHealth}
+              disabled={loading}
+              className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm font-semibold transition-colors font-sans cursor-pointer"
+            >
+              {loading ? "Memuat..." : "Scan Database"}
+            </button>
+          </div>
+        </div>
+
+        <div className="pt-3 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">Pilih Jalur Database untuk Di-Scan</span>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  const allKeys = makeHealthTargets(companyId || "").reduce((acc, t) => ({ ...acc, [t.label]: true }), {});
+                  setSelectedScanKeys(allKeys);
+                }}
+                className="text-[10px] text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+              >
+                Pilih Semua
+              </button>
+              <span className="text-slate-300">|</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedScanKeys({});
+                }}
+                className="text-[10px] text-slate-500 dark:text-slate-400 hover:underline cursor-pointer"
+              >
+                Kosongkan Pilihan
+              </button>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2 font-sans text-xs">
+            {makeHealthTargets(companyId || "").map(target => (
+              <label key={target.label} className="flex items-center gap-2 rounded-lg border border-slate-100 dark:border-slate-850 p-2 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-950/20 select-none">
+                <input
+                  type="checkbox"
+                  checked={!!selectedScanKeys[target.label]}
+                  onChange={() => {
+                    setSelectedScanKeys(prev => ({ ...prev, [target.label]: !prev[target.label] }));
+                  }}
+                  className="rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
+                />
+                <span className="text-slate-700 dark:text-slate-200 truncate">{target.label}</span>
+              </label>
             ))}
-          </select>
-          <button
-            onClick={loadHealth}
-            disabled={loading}
-            className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm font-semibold transition-colors font-sans cursor-pointer"
-          >
-            {loading ? "Memuat..." : "Refresh"}
-          </button>
+          </div>
         </div>
       </div>
 
@@ -639,7 +694,11 @@ export const DatabaseHealth: React.FC = () => {
                     </tr>
                   ))}
                   {rows.length === 0 && (
-                    <tr><td colSpan={4} className="px-5 py-8 text-center text-slate-500">Belum ada data. Klik Refresh.</td></tr>
+                    <tr>
+                      <td colSpan={4} className="px-5 py-8 text-center text-slate-500">
+                        Jalur database tertutup. Silakan pilih jalur database di atas lalu klik &apos;Scan Database&apos;.
+                      </td>
+                    </tr>
                   )}
                 </tbody>
               </table>

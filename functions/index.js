@@ -86,6 +86,203 @@ const DATABASE_INSTANCE = defaultDatabaseInstance;
 const REGION = "asia-southeast1";
 const CHANNEL_ID = "mypresence_high_importance_channel_v2";
 
+const MAX_MANUAL_REBUILD_DAYS = 31;
+const MAX_LEAVE_INDEX_SPAN_DAYS = 60;
+const ATTENDANCE_REMINDER_TARGETS_PATH = "system_config/attendance_reminder_scheduler/target_companies";
+const ATTENDANCE_REMINDER_GLOBAL_CONFIG_PATH = "system_config/attendance_reminder_scheduler";
+
+function isValidDateKey(value) {
+  return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
+
+function dateKeyToLocalDate(dateKey) {
+  const [year, month, day] = String(dateKey).split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function localDateToDateKey(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function daysBetween(startDate, endDate) {
+  if (!isValidDateKey(startDate) || !isValidDateKey(endDate)) return 0;
+
+  const start = dateKeyToLocalDate(startDate);
+  const end = dateKeyToLocalDate(endDate);
+
+  return Math.floor((end.getTime() - start.getTime()) / 86400000) + 1;
+}
+
+function buildDateRange(startDate, endDate, maxDays = MAX_LEAVE_INDEX_SPAN_DAYS) {
+  const total = daysBetween(startDate, endDate);
+
+  if (total <= 0) return [];
+  if (total > maxDays) return [];
+
+  const start = dateKeyToLocalDate(startDate);
+  const result = [];
+
+  for (let i = 0; i < total; i++) {
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+    result.push(localDateToDateKey(d));
+  }
+
+  return result;
+}
+
+function sanitizeKey(value) {
+  return String(value || "")
+    .trim()
+    .replace(/[.#$/\[\]]/g, "_");
+}
+
+function normalizeStatus(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function isApprovedStatus(value) {
+  const status = normalizeStatus(value);
+  return status === "approved" || status === "approve" || status === "disetujui" || status === "accepted";
+}
+
+function getLeaveUid(leave, fallbackId = "") {
+  return String(
+    leave?.uid ||
+    leave?.user_uid ||
+    leave?.userId ||
+    leave?.user_id ||
+    leave?.employee_uid ||
+    leave?.employee_id ||
+    fallbackId ||
+    ""
+  ).trim();
+}
+
+function getLeaveStartDate(leave) {
+  return String(
+    leave?.start_date ||
+    leave?.startDate ||
+    leave?.tanggal_mulai ||
+    leave?.from_date ||
+    leave?.date_start ||
+    leave?.date ||
+    leave?.tanggal ||
+    ""
+  ).slice(0, 10);
+}
+
+function getLeaveEndDate(leave) {
+  return String(
+    leave?.end_date ||
+    leave?.endDate ||
+    leave?.tanggal_selesai ||
+    leave?.to_date ||
+    leave?.date_end ||
+    leave?.start_date ||
+    leave?.startDate ||
+    leave?.tanggal_mulai ||
+    leave?.date ||
+    leave?.tanggal ||
+    ""
+  ).slice(0, 10);
+}
+
+function buildApprovedLeaveIndexUpdates(companyId, requestId, beforeLeave, afterLeave) {
+  const updates = {};
+  const safeRequestId = sanitizeKey(requestId);
+
+  function removeOldIndex(leave) {
+    if (!leave || typeof leave !== "object") return;
+
+    const uid = getLeaveUid(leave, safeRequestId);
+    const startDate = getLeaveStartDate(leave);
+    const endDate = getLeaveEndDate(leave);
+
+    if (!uid || !isValidDateKey(startDate) || !isValidDateKey(endDate)) return;
+
+    const dates = buildDateRange(startDate, endDate, MAX_LEAVE_INDEX_SPAN_DAYS);
+    const safeUid = sanitizeKey(uid);
+
+    dates.forEach((date) => {
+      updates[`approved_leave_by_date/${companyId}/${date}/${safeUid}/${safeRequestId}`] = null;
+    });
+  }
+
+  function setNewIndex(leave) {
+    if (!leave || typeof leave !== "object") return;
+
+    if (!isApprovedStatus(leave.status || leave.approval_status || leave.state)) return;
+
+    const uid = getLeaveUid(leave, safeRequestId);
+    const startDate = getLeaveStartDate(leave);
+    const endDate = getLeaveEndDate(leave);
+
+    if (!uid || !isValidDateKey(startDate) || !isValidDateKey(endDate)) return;
+
+    const dates = buildDateRange(startDate, endDate, MAX_LEAVE_INDEX_SPAN_DAYS);
+    const safeUid = sanitizeKey(uid);
+
+    const payload = {
+      request_id: requestId,
+      company_id: companyId,
+      uid,
+      start_date: startDate,
+      end_date: endDate,
+      status: leave.status || leave.approval_status || "approved",
+      type: leave.type || leave.leave_type || leave.jenis || "",
+      reason: leave.reason || leave.alasan || "",
+      updated_at: Date.now(),
+    };
+
+    dates.forEach((date) => {
+      updates[`approved_leave_by_date/${companyId}/${date}/${safeUid}/${safeRequestId}`] = payload;
+    });
+  }
+
+  removeOldIndex(beforeLeave);
+  setNewIndex(afterLeave);
+
+  return updates;
+}
+
+function flattenApprovedLeaveByDate(data) {
+  const result = {};
+
+  if (!data || typeof data !== "object") return result;
+
+  for (const uid of Object.keys(data)) {
+    const requests = data[uid];
+
+    if (!requests || typeof requests !== "object") continue;
+
+    result[uid] = requests;
+  }
+
+  return result;
+}
+
+function isUserOnApprovedLeave(approvedLeaveMap, uid) {
+  const safeUid = sanitizeKey(uid);
+  const node = approvedLeaveMap?.[safeUid] || approvedLeaveMap?.[uid];
+
+  return Boolean(node && typeof node === "object" && Object.keys(node).length > 0);
+}
+
+async function loadApprovedLeaveMapForDate(companyId, dateStr) {
+  const snap = await admin
+    .database()
+    .ref(`approved_leave_by_date/${companyId}/${dateStr}`)
+    .get();
+
+  if (!snap.exists()) return {};
+
+  return flattenApprovedLeaveByDate(snap.val());
+}
+
 exports.processNotificationQueue = onValueWritten(
   {
     region: REGION,
@@ -911,23 +1108,57 @@ exports.scheduledAttendanceReminder = onSchedule(
     logger.info(`Waktu berjalan (Jakarta): Tanggal=${dateStr}, Waktu=${timeStr}, Minutes=${currentMinutes}`);
 
     try {
-      const companiesSnap = await admin.database().ref("companies").get();
+      const schedulerConfigSnap = await admin
+        .database()
+        .ref(ATTENDANCE_REMINDER_GLOBAL_CONFIG_PATH)
+        .get();
 
-      if (!companiesSnap.exists()) {
-        logger.info("Tidak ada perusahaan ditemukan.");
-        await admin.database().ref(`system_logs/attendance_reminder_scheduler_empty/${runId}`).set({
+      const schedulerConfig = schedulerConfigSnap.exists() ? schedulerConfigSnap.val() || {} : {};
+
+      if (schedulerConfig.enabled !== true) {
+        logger.info("scheduledAttendanceReminder dilewati: global scheduler disabled.");
+        await admin.database().ref(`system_logs/attendance_reminder_scheduler_disabled/${runId}`).set({
           run_id: runId,
           date: dateStr,
           time: timeStr,
           created_at: Date.now(),
-          status: "success",
-          notes: "Tidak ada perusahaan ditemukan.",
+          status: "skipped",
+          reason: "global_scheduler_disabled",
         });
         return null;
       }
 
-      const companiesList = companiesSnap.val();
-      const companyIds = Object.keys(companiesList);
+      const targetCompaniesSnap = await admin
+        .database()
+        .ref(ATTENDANCE_REMINDER_TARGETS_PATH)
+        .get();
+
+      if (!targetCompaniesSnap.exists()) {
+        logger.info("scheduledAttendanceReminder dilewati: target company kosong.");
+        await admin.database().ref(`system_logs/attendance_reminder_scheduler_no_targets/${runId}`).set({
+          run_id: runId,
+          date: dateStr,
+          time: timeStr,
+          created_at: Date.now(),
+          status: "skipped",
+          reason: "no_target_companies",
+        });
+        return null;
+      }
+
+      const targetCompanies = targetCompaniesSnap.val() || {};
+      const companyIds = Object.keys(targetCompanies).filter((companyId) => {
+        const item = targetCompanies[companyId];
+        if (item === true) return true;
+        if (item && typeof item === "object" && item.enabled === true) return true;
+        return false;
+      });
+
+      if (companyIds.length === 0) {
+        logger.info("scheduledAttendanceReminder dilewati: tidak ada company aktif di target.");
+        return null;
+      }
+
       const dayName = getDayNameFromDateStr(dateStr); // "monday", "tuesday", etc.
 
       for (const companyId of companyIds) {
@@ -972,6 +1203,17 @@ exports.scheduledAttendanceReminder = onSchedule(
             startedAt,
           });
 
+          const reminderSettings = await loadAttendanceReminderSettings(companyId);
+
+          if (reminderSettings.attendanceReminderEnabled !== true) {
+            logger.info("Company dilewati: attendance reminder disabled.", {
+              companyId,
+            });
+            continue;
+          }
+
+          const approvedLeaveMap = await loadApprovedLeaveMapForDate(companyId, dateStr);
+
           // Ambil data-data perusahaan dan setting notifikasi
           const [
             usersSnap,
@@ -979,9 +1221,7 @@ exports.scheduledAttendanceReminder = onSchedule(
             shiftsSnap,
             timetablesSnap,
             holidaysSnap,
-            specialsSnap,
-            leavesSnap,
-            settingsSnap
+            specialsSnap
           ] = await Promise.all([
             admin.database().ref(`company_users/${companyId}`).get(),
             admin.database().ref(`schedule_assignments/${companyId}`).get(),
@@ -989,8 +1229,6 @@ exports.scheduledAttendanceReminder = onSchedule(
             admin.database().ref(`timetables/${companyId}`).get(),
             admin.database().ref(`holidays/${companyId}`).get(),
             admin.database().ref(`schedule_specials/${companyId}`).get(),
-            admin.database().ref(`leave_requests/${companyId}`).get(),
-            admin.database().ref(`companies/${companyId}/notification_settings/main`).get(),
           ]);
 
           if (!usersSnap.exists()) {
@@ -1012,10 +1250,6 @@ exports.scheduledAttendanceReminder = onSchedule(
             expected_users: Object.keys(usersSnap.val() || {}).length,
             notes: "Data company berhasil dibaca. Scheduler memproses user.",
           });
-
-          const settings = settingsSnap.exists() ? settingsSnap.val() : {};
-
-          // 1. Cek settings.attendance_reminder_enabled (Global) -> Disabled by recent update, reminder is default on now
 
           // 2. Cek jika hari ini hari libur nasional perusahaan
           const holidays = holidaysSnap.val() || {};
@@ -1048,9 +1282,6 @@ exports.scheduledAttendanceReminder = onSchedule(
           const shifts = shiftsSnap.val() || {};
           const timetables = timetablesSnap.val() || {};
           const specials = specialsSnap.val() || {};
-          const leaves = leavesSnap.val() || {};
-
-        const reminderSettings = await loadAttendanceReminderSettings(companyId);
 
         for (const [uid, user] of Object.entries(companyUsers)) {
           processedUsers++;
@@ -1068,23 +1299,16 @@ exports.scheduledAttendanceReminder = onSchedule(
             continue;
           }
 
-          // Cek cuti/izin/sakit yang disetujui hari ini
-          const hasApprovedLeave = Object.values(leaves).some(req => {
-            if (req.uid !== uid || req.status !== "approved") return false;
-            const start = req.date_start || req.tanggal_mulai || req.date;
-            const end = req.date_end || req.tanggal_selesai || req.date;
-            if (!start) return false;
-            return dateStr >= start && (!end || dateStr <= end);
-          });
-
-          if (hasApprovedLeave) {
-            logger.debug(`User ${uid} memiliki cuti/izin/sakit disetujui hari ini. Reminder dilewati.`);
+          // Cek cuti/izin/sakit yang disetujui harian dari index baru
+          if (isUserOnApprovedLeave(approvedLeaveMap, uid)) {
             skippedCount++;
             skipReasons.approved_leave++;
             pushReminderDiagnostic(userDiagnostics, {
               uid,
               user_name: user.nama_lengkap || user.name || "",
               reason: "approved_leave",
+              reasonLabel: "User memiliki izin approved pada tanggal ini.",
+              day_key: dayName,
               current_time: timeStr,
             });
             continue;
@@ -2345,3 +2569,190 @@ async function createUserNotificationAndPushServer({
     in_app_sent: isInAppEnabled,
   };
 }
+
+exports.syncApprovedLeaveByDate = onValueWritten(
+  {
+    region: REGION,
+    instance: DATABASE_INSTANCE,
+    ref: "/leave_requests/{companyId}/{requestId}",
+    timeoutSeconds: 60,
+    memory: "256MiB",
+  },
+  async (event) => {
+    const companyId = event.params.companyId;
+    const requestId = event.params.requestId;
+
+    const beforeLeave = event.data.before.exists() ? event.data.before.val() : null;
+    const afterLeave = event.data.after.exists() ? event.data.after.val() : null;
+
+    const updates = buildApprovedLeaveIndexUpdates(companyId, requestId, beforeLeave, afterLeave);
+
+    if (Object.keys(updates).length === 0) {
+      logger.info("syncApprovedLeaveByDate: tidak ada update index.", {
+        companyId,
+        requestId,
+      });
+      return null;
+    }
+
+    await admin.database().ref().update(updates);
+
+    logger.info("syncApprovedLeaveByDate: index izin berhasil diperbarui.", {
+      companyId,
+      requestId,
+      updatePaths: Object.keys(updates).length,
+    });
+
+    return null;
+  }
+);
+
+exports.rebuildApprovedLeaveByDateCallable = onCall(
+  {
+    region: REGION,
+    timeoutSeconds: 120,
+    memory: "512MiB",
+  },
+  async (request) => {
+    const auth = request.auth;
+    const data = request.data || {};
+
+    if (!auth || !auth.uid) {
+      throw new HttpsError("unauthenticated", "Login diperlukan.");
+    }
+
+    const companyId = String(data.companyId || "").trim();
+    const startDate = String(data.startDate || "").slice(0, 10);
+    const endDate = String(data.endDate || "").slice(0, 10);
+    const dryRun = Boolean(data.dryRun);
+
+    if (!companyId) {
+      throw new HttpsError("invalid-argument", "companyId wajib diisi.");
+    }
+
+    if (!isValidDateKey(startDate) || !isValidDateKey(endDate)) {
+      throw new HttpsError("invalid-argument", "startDate dan endDate wajib format YYYY-MM-DD.");
+    }
+
+    const totalDays = daysBetween(startDate, endDate);
+
+    if (totalDays <= 0) {
+      throw new HttpsError("invalid-argument", "Range tanggal tidak valid.");
+    }
+
+    if (totalDays > MAX_MANUAL_REBUILD_DAYS) {
+      throw new HttpsError(
+        "invalid-argument",
+        `Range terlalu besar. Maksimal ${MAX_MANUAL_REBUILD_DAYS} hari.`
+      );
+    }
+
+    const token = auth.token || {};
+    const role = String(token.role || token.user_role || "").toLowerCase();
+    const isOwnerOrAdmin =
+      token.owner === true ||
+      token.admin === true ||
+      role === "owner" ||
+      role === "admin" ||
+      role === "super_admin";
+
+    if (!isOwnerOrAdmin) {
+      throw new HttpsError("permission-denied", "Hanya owner/admin yang boleh rebuild index izin.");
+    }
+
+    logger.warn("Manual rebuild approved_leave_by_date dimulai.", {
+      uid: auth.uid,
+      companyId,
+      startDate,
+      endDate,
+      dryRun,
+    });
+
+    const sourceSnap = await admin.database().ref(`leave_requests/${companyId}`).get();
+    const source = sourceSnap.exists() ? sourceSnap.val() : {};
+
+    const updates = {};
+    let scanned = 0;
+    let selected = 0;
+    let skipped = 0;
+
+    Object.entries(source || {}).forEach(([requestId, leave]) => {
+      scanned++;
+
+      if (!leave || typeof leave !== "object") {
+        skipped++;
+        return;
+      }
+
+      if (!isApprovedStatus(leave.status || leave.approval_status || leave.state)) {
+        skipped++;
+        return;
+      }
+
+      const leaveStart = getLeaveStartDate(leave);
+      const leaveEnd = getLeaveEndDate(leave);
+
+      if (!isValidDateKey(leaveStart) || !isValidDateKey(leaveEnd)) {
+        skipped++;
+        return;
+      }
+
+      if (leaveEnd < startDate || leaveStart > endDate) {
+        skipped++;
+        return;
+      }
+
+      const effectiveStart = leaveStart < startDate ? startDate : leaveStart;
+      const effectiveEnd = leaveEnd > endDate ? endDate : leaveEnd;
+
+      const safeRequestId = sanitizeKey(requestId);
+      const uid = getLeaveUid(leave, safeRequestId);
+      const safeUid = sanitizeKey(uid);
+
+      if (!safeUid) {
+        skipped++;
+        return;
+      }
+
+      const dates = buildDateRange(effectiveStart, effectiveEnd, MAX_MANUAL_REBUILD_DAYS);
+
+      dates.forEach((date) => {
+        updates[`approved_leave_by_date/${companyId}/${date}/${safeUid}/${safeRequestId}`] = {
+          request_id: requestId,
+          company_id: companyId,
+          uid,
+          start_date: leaveStart,
+          end_date: leaveEnd,
+          status: leave.status || leave.approval_status || "approved",
+          type: leave.type || leave.leave_type || leave.jenis || "",
+          reason: leave.reason || leave.alasan || "",
+          rebuilt_at: Date.now(),
+        };
+      });
+
+      selected++;
+    });
+
+    const updatePaths = Object.keys(updates);
+
+    if (!dryRun && updatePaths.length > 0) {
+      await admin.database().ref().update(updates);
+    }
+
+    return {
+      ok: true,
+      dryRun,
+      companyId,
+      startDate,
+      endDate,
+      scanned,
+      selected,
+      skipped,
+      updatePaths: updatePaths.length,
+      message: dryRun
+        ? "Dry run selesai. Tidak ada data ditulis."
+        : "Rebuild approved_leave_by_date selesai.",
+    };
+  }
+);
+

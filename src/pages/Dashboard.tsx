@@ -5,6 +5,8 @@ import { db } from "../firebase";
 import { paths } from "../services/paths";
 import { loadAttendanceByDateRange, loadRecentAttendance, loadDashboardSummary } from "../services/rtdbLeanService";
 import toast from "react-hot-toast";
+import DataGatePanel from "../components/DataGatePanel";
+import { manualGet } from "../services/rtdbDataGate";
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer 
 } from "recharts";
@@ -178,6 +180,8 @@ export const Dashboard: React.FC = () => {
     navigate(withCompanyQuery("/schedules", params));
   };
 
+  const [hasRunScan, setHasRunScan] = useState<boolean>(false);
+
   useEffect(() => {
     if (isOwner) {
       get(ref(db, paths.companies())).then((snapshot) => {
@@ -198,78 +202,100 @@ export const Dashboard: React.FC = () => {
     }
   }, [isOwner, userData]);
 
-  useEffect(() => {
+  const fetchDashboardData = async () => {
     if (!targetCompanyId) return;
-
-    // Load master data
-    get(ref(db, paths.companyUsers(targetCompanyId))).then(snap => {
-        setEmployees(snap.exists() ? Object.keys(snap.val()).map(k => ({...snap.val()[k], uid: k})) : []);
-    });
-    get(ref(db, paths.offices(targetCompanyId))).then(snap => {
-        setOffices(snap.exists() ? Object.keys(snap.val()).map(k => ({...snap.val()[k], id: k})) : []);
-    });
-    get(ref(db, paths.departments(targetCompanyId))).then(snap => {
-        setDepartments(snap.exists() ? Object.keys(snap.val()).map(k => ({...snap.val()[k], id: k})) : []);
-    });
-    get(ref(db, paths.employeeGroups(targetCompanyId))).then(snap => {
-        setGroups(snap.exists() ? Object.keys(snap.val()).map(k => ({...snap.val()[k], id: k})) : []);
-    });
-    get(ref(db, paths.holidays(targetCompanyId))).then(snap => {
-        setHolidays(snap.exists() ? Object.keys(snap.val()).map(k => ({...snap.val()[k], id: k})) : []);
-    });
-    get(ref(db, paths.scheduleSpecials(targetCompanyId))).then(snap => {
-        setSpecials(snap.exists() ? Object.keys(snap.val()).map(k => ({...snap.val()[k], id: k})) : []);
-    });
-
-  }, [targetCompanyId]);
-
-  const loadPendingApprovalSummary = async () => {
-    if (!targetCompanyId) return;
-
+    setDashboardSummaryLoading(true);
     setPendingApprovalLoading(true);
     setPendingApprovalMessage("");
-
     try {
-      const snap = await get(ref(db, paths.pendingApprovalSummary(targetCompanyId)));
+      const summaryPath = paths.dashboardSummary(targetCompanyId, selectedDate);
+      const approvalPath = paths.pendingApprovalSummary(targetCompanyId);
 
-      if (snap.exists()) {
-        const data = snap.val();
-        setPendingApprovalSummary(data);
-        setPendingApprovalsCount(Number(data.total || data.pending_total || 0));
+      const [summaryData, approvalData] = await Promise.all([
+        manualGet({ key: "dashboard_summary", path: summaryPath }),
+        manualGet({ key: "leave_requests", path: approvalPath })
+      ]);
+
+      setDashboardSummary(summaryData);
+      if (approvalData) {
+        setPendingApprovalSummary(approvalData);
+        setPendingApprovalsCount(Number(approvalData.total || approvalData.pending_total || 0));
       } else {
         setPendingApprovalSummary(null);
         setPendingApprovalsCount(0);
-        setPendingApprovalMessage(
-          "Ringkasan approval belum tersedia. Jalankan backfill atau pastikan writer membuat pending_approval_summary."
-        );
       }
+
+      // Load master data on demand
+      const [usersSnap, officesSnap, deptsSnap, groupsSnap, holidaysSnap, specialsSnap] = await Promise.all([
+        manualGet({ key: "company_users", path: paths.companyUsers(targetCompanyId) }),
+        manualGet({ key: "companies", path: paths.offices(targetCompanyId) }),
+        manualGet({ key: "companies", path: paths.departments(targetCompanyId) }),
+        manualGet({ key: "companies", path: paths.employeeGroups(targetCompanyId) }),
+        manualGet({ key: "holidays", path: paths.holidays(targetCompanyId) }),
+        manualGet({ key: "companies", path: paths.scheduleSpecials(targetCompanyId) }),
+      ]);
+
+      setEmployees(usersSnap ? Object.keys(usersSnap).map(k => ({ ...usersSnap[k], uid: k })) : []);
+      setOffices(officesSnap ? Object.keys(officesSnap).map(k => ({ ...officesSnap[k], id: k })) : []);
+      setDepartments(deptsSnap ? Object.keys(deptsSnap).map(k => ({ ...deptsSnap[k], id: k })) : []);
+      setGroups(groupsSnap ? Object.keys(groupsSnap).map(k => ({ ...groupsSnap[k], id: k })) : []);
+      setHolidays(holidaysSnap ? Object.keys(holidaysSnap).map(k => ({ ...holidaysSnap[k], id: k })) : []);
+      setSpecials(specialsSnap ? Object.keys(specialsSnap).map(k => ({ ...specialsSnap[k], id: k })) : []);
+
+      // Load recent logs too
+      const recent = await manualGet({ key: "attendance", path: paths.attendanceRecent(targetCompanyId) });
+      if (recent) {
+        const rows = Object.keys(recent).map((id) => ({
+          id,
+          ...recent[id],
+        }));
+        rows.sort((a, b) => Number(b.created_at || 0) - Number(a.created_at || 0));
+        setRecentLogs(rows.slice(0, 10));
+      } else {
+        setRecentLogs([]);
+      }
+
+      setHasRunScan(true);
+      toast.success("Ringkasan dashboard berhasil dimuat.");
     } catch (err: any) {
-      setPendingApprovalSummary(null);
-      setPendingApprovalsCount(0);
-      setPendingApprovalMessage(err.message || "Gagal memuat ringkasan approval.");
+      toast.error(err.message || "Gagal memuat ringkasan.");
     } finally {
+      setDashboardSummaryLoading(false);
       setPendingApprovalLoading(false);
     }
   };
 
-  useEffect(() => {
-    if (!targetCompanyId) return;
-    loadPendingApprovalSummary();
-  }, [targetCompanyId]);
-
-  // Load Lean recent
-  useEffect(() => {
-    if (!targetCompanyId) return;
-    loadRecentAttendance(targetCompanyId, 10).then(setRecentLogs).catch(() => setRecentLogs([]));
-  }, [targetCompanyId]);
-
-  // Load Lean Dashboard Summary
+  // Attempt auto-load of allowed paths
   useEffect(() => {
     if (!targetCompanyId || !selectedDate) return;
-    setDashboardSummaryLoading(true);
-    loadDashboardSummary(targetCompanyId, selectedDate).then(snap => {
-       setDashboardSummary(snap);
-    }).catch(() => setDashboardSummary(null)).finally(() => setDashboardSummaryLoading(false));
+    const tryAutoLoad = async () => {
+      try {
+        const summaryPath = paths.dashboardSummary(targetCompanyId, selectedDate);
+        const approvalPath = paths.pendingApprovalSummary(targetCompanyId);
+
+        const [summaryData, approvalData] = await Promise.all([
+          manualGet({ key: "dashboard_summary", path: summaryPath }),
+          manualGet({ key: "leave_requests", path: approvalPath })
+        ]);
+
+        if (summaryData || approvalData) {
+          setDashboardSummary(summaryData);
+          if (approvalData) {
+            setPendingApprovalSummary(approvalData);
+            setPendingApprovalsCount(Number(approvalData.total || approvalData.pending_total || 0));
+          }
+          setHasRunScan(true);
+        } else {
+          setDashboardSummary(null);
+          setPendingApprovalSummary(null);
+          setPendingApprovalsCount(0);
+          setHasRunScan(false);
+        }
+      } catch (e) {
+        setHasRunScan(false);
+      }
+    };
+    tryAutoLoad();
   }, [targetCompanyId, selectedDate]);
 
   // Derived filtered data
@@ -285,9 +311,9 @@ export const Dashboard: React.FC = () => {
 
   const activeEmployeeIds = new Set(filteredEmployees.map(e => e.uid));
 
-  // Load Lean Trend 30 Days
+  // Load Lean Trend 30 Days (Only if scan/manual run has loaded filteredEmployees list)
   useEffect(() => {
-    if (!targetCompanyId || !filteredEmployees.length) return;
+    if (!targetCompanyId || !filteredEmployees.length || !hasRunScan) return;
     const fetchTrend = async () => {
       const data = [];
       for(let i=29; i>=0; i--) {
@@ -317,7 +343,7 @@ export const Dashboard: React.FC = () => {
       setTrendSummaryData(data);
     };
     fetchTrend();
-  }, [targetCompanyId, filteredEmployees.length]);
+  }, [targetCompanyId, filteredEmployees.length, hasRunScan]);
 
   const handleAmbilDataTanggalIni = async () => {
      if (!targetCompanyId || !selectedDate) return;
@@ -482,6 +508,8 @@ export const Dashboard: React.FC = () => {
          )}
       </div>
 
+      <DataGatePanel />
+
       {!targetCompanyId ? (
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-12 rounded-xl text-center text-slate-500 shadow-sm flex flex-col items-center">
              <Briefcase className="w-12 h-12 text-slate-300 dark:text-slate-700 mb-4" />
@@ -491,7 +519,7 @@ export const Dashboard: React.FC = () => {
       ) : (
       <>
          {/* Filter Bar */}
-         <div className="flex flex-wrap gap-4 items-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-xl shadow-sm">
+         <div className="flex flex-wrap gap-4 items-end bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-xl shadow-sm">
             <div className="flex flex-col">
                <label className="text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wider">Tanggal</label>
                <input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded p-1.5 text-sm text-slate-800 dark:text-slate-200" />
@@ -517,10 +545,38 @@ export const Dashboard: React.FC = () => {
                   {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
                </select>
             </div>
+            <div className="flex flex-col">
+               <button
+                  type="button"
+                  onClick={fetchDashboardData}
+                  disabled={dashboardSummaryLoading || pendingApprovalLoading}
+                  className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-semibold text-sm px-4 py-2 rounded-lg transition-colors cursor-pointer animate-none"
+               >
+                  {dashboardSummaryLoading || pendingApprovalLoading ? "Memproses..." : hasRunScan ? "Refresh Ringkasan" : "Ambil Ringkasan"}
+               </button>
+            </div>
          </div>
 
-         {/* Summary Cards */}
-         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+         {!hasRunScan ? (
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-12 rounded-xl text-center text-slate-500 shadow-sm flex flex-col items-center justify-center space-y-4">
+               <FileText className="w-12 h-12 text-slate-300 dark:text-slate-700 animate-none" />
+               <h2 className="text-lg font-semibold text-slate-700 dark:text-slate-300">Ringkasan belum dimuat</h2>
+               <p className="text-sm max-w-md text-slate-500">
+                  Jalur database tertutup demi efisiensi bandwidth. Silakan klik &apos;Ambil Ringkasan&apos; untuk memproses dan membuka ringkasan data.
+               </p>
+               <button
+                  type="button"
+                  onClick={fetchDashboardData}
+                  disabled={dashboardSummaryLoading || pendingApprovalLoading}
+                  className="bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm px-6 py-2.5 rounded-lg shadow transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+               >
+                  {dashboardSummaryLoading || pendingApprovalLoading ? "Memproses..." : "Ambil Ringkasan"}
+               </button>
+            </div>
+         ) : (
+            <>
+               {/* Summary Cards */}
+               <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
             <SummaryCard 
                title="Hadir Hari Ini" 
                value={todayStats.hadir} 
@@ -762,6 +818,8 @@ export const Dashboard: React.FC = () => {
                </div>
             </div>
          </div>
+            </>
+         )}
       </>
       )}
     </div>
