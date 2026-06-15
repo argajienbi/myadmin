@@ -871,97 +871,6 @@ function serializeError(error) {
   };
 }
 
-const VALID_HTTPS_ERROR_CODES = new Set([
-  "cancelled",
-  "unknown",
-  "invalid-argument",
-  "deadline-exceeded",
-  "not-found",
-  "already-exists",
-  "permission-denied",
-  "resource-exhausted",
-  "failed-precondition",
-  "aborted",
-  "out-of-range",
-  "unimplemented",
-  "internal",
-  "unavailable",
-  "data-loss",
-  "unauthenticated",
-]);
-
-function normalizeHttpsErrorCode(code, fallback = "internal") {
-  const value = String(code || "").replace(/^functions\//, "").trim();
-  return VALID_HTTPS_ERROR_CODES.has(value) ? value : fallback;
-}
-
-function extractCallableErrorInfo(error, fallbackContext = {}) {
-  const rawCode = error?.code || error?.status || "internal";
-  const code = normalizeHttpsErrorCode(rawCode, "internal");
-  const message =
-    error?.message ||
-    error?.details?.original_message ||
-    error?.details?.message ||
-    String(error || "internal");
-
-  return {
-    code,
-    message,
-    original_code: rawCode || "",
-    original_message: message,
-    name: error?.name || "",
-    stack: String(error?.stack || "").slice(0, 4000),
-    details: {
-      ...(error?.details && typeof error.details === "object" ? error.details : {}),
-      ...fallbackContext,
-      original_code: rawCode || "",
-      original_message: message,
-    },
-  };
-}
-
-async function writeCallableErrorLog(functionName, errorInfo) {
-  try {
-    const ref = admin
-      .database()
-      .ref(`system_logs/callable_errors/${functionName}`)
-      .push();
-
-    await ref.set({
-      code: errorInfo.code || "internal",
-      message: errorInfo.message || "internal",
-      original_code: errorInfo.original_code || "",
-      original_message: errorInfo.original_message || "",
-      name: errorInfo.name || "",
-      stack: errorInfo.stack || "",
-      ...(errorInfo.details || {}),
-      diagnostic_id: ref.key,
-      created_at: Date.now(),
-    });
-
-    return ref.key;
-  } catch (logError) {
-    logger.warn(`Failed to write ${functionName} diagnostic log.`, {
-      message: logError?.message || String(logError),
-      code: logError?.code || "",
-    });
-    return "";
-  }
-}
-
-function throwCallableError(errorInfo, fallbackCode = "internal") {
-  const code = normalizeHttpsErrorCode(errorInfo?.code, fallbackCode);
-  const message = errorInfo?.message || "internal";
-
-  throw new HttpsError(code, message, {
-    ...(errorInfo?.details || {}),
-    diagnostic_id: errorInfo?.diagnostic_id || "",
-    original_code: errorInfo?.original_code || code,
-    original_message: errorInfo?.original_message || message,
-  });
-}
-
-
 function schedulerRunLogRef(companyId, runId) {
   return admin
     .database()
@@ -2117,36 +2026,41 @@ exports.resetAttendanceReminderDedupeCallable = onCall(
           : `Menghapus ${matched.length} queue reminder.`,
       };
     } catch (error) {
-      const info = extractCallableErrorInfo(error, {
-        company_id: request.data?.companyId || "",
-        caller_uid: request.auth?.uid || "",
-        function_name: "resetAttendanceReminderDedupeCallable",
-      });
+      const code = error?.code || "internal";
+      const message = error?.message || String(error);
 
       logger.error("resetAttendanceReminderDedupeCallable failed.", {
-        code: info.code,
-        message: info.message,
-        stack: info.stack,
+        code,
+        message,
+        stack: error?.stack || "",
         data: request.data || {},
         caller_uid: request.auth?.uid || "",
       });
 
-      const diagnosticId = await writeCallableErrorLog(
-        "resetAttendanceReminderDedupeCallable",
-        info,
-      );
+      if (error instanceof HttpsError) {
+        throw error;
+      }
 
-      throwCallableError(
-        {
-          ...info,
-          diagnostic_id: diagnosticId,
-          details: {
-            ...(info.details || {}),
-            diagnostic_id: diagnosticId,
-          },
-        },
-        "internal",
-      );
+      try {
+        await admin.database().ref(`system_logs/callable_errors/resetAttendanceReminderDedupeCallable`).push().set({
+          code,
+          message,
+          company_id: request.data?.companyId || "",
+          caller_uid: request.auth?.uid || "",
+          created_at: Date.now(),
+        });
+      } catch (logError) {
+        logger.warn("Failed to write resetAttendanceReminderDedupeCallable diagnostic log.", {
+          message: logError?.message || String(logError),
+        });
+      }
+
+      throw new HttpsError("internal", message, {
+        original_code: code,
+        original_message: message,
+        company_id: request.data?.companyId || "",
+        caller_uid: request.auth?.uid || "",
+      });
     }
   }
 );
@@ -2226,37 +2140,43 @@ exports.createUserNotificationAndPushCallable = onCall(
         callerUid: auth.uid,
       });
     } catch (error) {
-      const info = extractCallableErrorInfo(error, {
-        company_id: request.data?.companyId || "",
-        target_uid: request.data?.uid || "",
-        caller_uid: request.auth?.uid || "",
-        function_name: "createUserNotificationAndPushCallable",
-      });
+      const code = error?.code || "internal";
+      const message = error?.message || String(error);
 
       logger.error("createUserNotificationAndPushCallable failed.", {
-        code: info.code,
-        message: info.message,
-        stack: info.stack,
+        code,
+        message,
+        stack: error?.stack || "",
         data: request.data || {},
         caller_uid: request.auth?.uid || "",
       });
 
-      const diagnosticId = await writeCallableErrorLog(
-        "createUserNotificationAndPushCallable",
-        info,
-      );
+      if (error instanceof HttpsError) {
+        throw error;
+      }
 
-      throwCallableError(
-        {
-          ...info,
-          diagnostic_id: diagnosticId,
-          details: {
-            ...(info.details || {}),
-            diagnostic_id: diagnosticId,
-          },
-        },
-        "internal",
-      );
+      try {
+        await admin.database().ref(`system_logs/callable_errors/createUserNotificationAndPushCallable`).push().set({
+          code,
+          message,
+          company_id: request.data?.companyId || "",
+          target_uid: request.data?.uid || "",
+          caller_uid: request.auth?.uid || "",
+          created_at: Date.now(),
+        });
+      } catch (logError) {
+        logger.warn("Failed to write createUserNotificationAndPushCallable diagnostic log.", {
+          message: logError?.message || String(logError),
+        });
+      }
+
+      throw new HttpsError("internal", message, {
+        original_code: code,
+        original_message: message,
+        company_id: request.data?.companyId || "",
+        target_uid: request.data?.uid || "",
+        caller_uid: request.auth?.uid || "",
+      });
     }
   }
 );
