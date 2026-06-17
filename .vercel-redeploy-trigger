@@ -1,0 +1,3 @@
+Vercel redeploy trigger after environment variable update.
+Date: 2026-06-17
+Reason: Rebuild Vite app so VITE_FIREBASE_* variables are embedded during production build.
