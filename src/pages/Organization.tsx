@@ -9,6 +9,8 @@ import toast from "react-hot-toast";
 import { writeAuditLog } from "../services/auditService";
 
 import { ConfirmModal } from "../components/ConfirmModal";
+import { getEffectiveCompanyId, isOwnerLike } from "../utils/roleAccess";
+import { normalizeName, safeTrim } from "../utils/textNormalize";
 
 export const Organization: React.FC = () => {
   const { userData } = useAuth();
@@ -23,6 +25,10 @@ export const Organization: React.FC = () => {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [subDepartments, setSubDepartments] = useState<SubDepartment[]>([]);
   const [groups, setGroups] = useState<EmployeeGroup[]>([]);
+
+  const [employees, setEmployees] = useState<any[]>([]);
+  const [scheduleAssignments, setScheduleAssignments] = useState<any[]>([]);
+  const [scheduleSpecials, setScheduleSpecials] = useState<any[]>([]);
 
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState<any>({});
@@ -46,23 +52,39 @@ export const Organization: React.FC = () => {
     setConfirmModal({ isOpen: true, title, message, isDestructive, onConfirm });
   };
 
-  const isOwner = userData?.role === "owner";
+  const isOwner = isOwnerLike(userData);
 
   useEffect(() => {
+    if (!userData) return;
+
     if (isOwner) {
-      get(ref(db, paths.companies())).then((snapshot) => {
-        if (snapshot.exists()) {
-           const data = snapshot.val();
-           const compList = Object.keys(data).map(k => ({...data[k], id: k}));
-           setCompanies(compList);
-           if (compList.length > 0 && !targetCompanyId) {
-             setTargetCompanyId(compList[0].id);
-           }
-        }
-      });
-    } else if (userData?.company_id) {
-      setTargetCompanyId(userData.company_id);
+      get(ref(db, paths.companies()))
+        .then((snapshot) => {
+          const data = snapshot.exists() ? snapshot.val() : {};
+          const compList = Object.keys(data).map(k => ({ ...data[k], id: k }));
+          setCompanies(compList);
+
+          const savedCompanyId = localStorage.getItem("admin_selected_company") || "";
+          const resolvedCompanyId =
+            savedCompanyId && compList.some((item: any) => item.id === savedCompanyId)
+              ? savedCompanyId
+              : userData.company_id && compList.some((item: any) => item.id === userData.company_id)
+                ? userData.company_id
+                : compList[0]?.id || "";
+
+          setTargetCompanyId(resolvedCompanyId);
+
+          if (resolvedCompanyId) {
+            localStorage.setItem("admin_selected_company", resolvedCompanyId);
+          }
+        })
+        .finally(() => setLoading(false));
+
+      return;
     }
+
+    setTargetCompanyId(getEffectiveCompanyId(userData));
+    setLoading(false);
   }, [isOwner, userData]);
 
   useEffect(() => {
@@ -91,8 +113,38 @@ export const Organization: React.FC = () => {
         setLoading(false);
     }));
 
+    get(ref(db, paths.companyUsers(targetCompanyId))).then(snap => {
+      setEmployees(snap.exists() ? Object.keys(snap.val()).map(k => ({ ...snap.val()[k], uid: k })) : []);
+    });
+
+    get(ref(db, paths.scheduleAssignments(targetCompanyId))).then(snap => {
+      setScheduleAssignments(snap.exists() ? Object.keys(snap.val()).map(k => ({ ...snap.val()[k], id: k })) : []);
+    });
+
+    get(ref(db, paths.scheduleSpecials(targetCompanyId))).then(snap => {
+      setScheduleSpecials(snap.exists() ? Object.keys(snap.val()).map(k => ({ ...snap.val()[k], id: k })) : []);
+    });
+
     return () => unsubs.forEach(u => u());
   }, [targetCompanyId]);
+
+  const buildBaseMasterPayload = (raw: any, existing?: any) => {
+    const now = Date.now();
+    const name = safeTrim(raw.name);
+
+    return {
+      ...raw,
+      name,
+      normalized_name: normalizeName(name),
+      company_id: targetCompanyId,
+      status: raw.status || (raw.active === false ? "inactive" : "active"),
+      active: raw.active !== false,
+      created_at: existing?.created_at || raw.created_at || now,
+      created_by: existing?.created_by || raw.created_by || userData?.uid || "",
+      updated_at: now,
+      updated_by: userData?.uid || "",
+    };
+  };
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -101,7 +153,7 @@ export const Organization: React.FC = () => {
     const createRequest = async () => {
       let targetPath = "";
       let listPath = "";
-      let newData: any = { ...formData, active: true, created_at: Date.now(), updated_at: Date.now() };
+      let rawData: any = { ...formData };
       let labelBisnis = "";
 
       if (activeTab === "area") {
@@ -120,11 +172,11 @@ export const Organization: React.FC = () => {
           throw new Error("Radius wajib lebih dari 0 meter.");
         }
         
-        newData.latitude = Number(formData.latitude);
-        newData.longitude = Number(formData.longitude);
-        newData.radius_meter = Number(formData.radius_meter);
-        newData.map_provider = "leaflet_osm";
-        newData.geofence_source = "web_admin_leaflet";
+        rawData.latitude = Number(formData.latitude);
+        rawData.longitude = Number(formData.longitude);
+        rawData.radius_meter = Number(formData.radius_meter);
+        rawData.map_provider = "leaflet_osm";
+        rawData.geofence_source = "web_admin_leaflet";
       } else if (activeTab === "department") {
         listPath = paths.departments(targetCompanyId);
         targetPath = paths.department(targetCompanyId, editingId || "");
@@ -135,29 +187,32 @@ export const Organization: React.FC = () => {
         labelBisnis = "Grup Karyawan";
       }
 
+      let finalPayload: any;
       if (editingId) {
-        await update(ref(db, targetPath), {
-          ...newData,
-          updated_at: Date.now()
-        });
+        const existingSnap = await get(ref(db, targetPath));
+        const existingData = existingSnap.exists() ? existingSnap.val() : {};
+        finalPayload = buildBaseMasterPayload(rawData, existingData);
+        await update(ref(db, targetPath), finalPayload);
         await writeAuditLog(targetCompanyId, {
           action: "UPDATE_MASTER_DATA",
-          details: `Mengubah data ${labelBisnis} (${newData.name || editingId})`,
+          details: `Mengubah data ${labelBisnis} (${finalPayload.name || editingId})`,
           user_uid: userData?.uid || "",
           user_name: userData?.nama_lengkap || "Unknown",
           target_path: targetPath,
-          new_value: newData,
+          new_value: finalPayload,
         });
       } else {
         const newRef = push(ref(db, listPath));
-        await set(newRef, newData);
+        finalPayload = buildBaseMasterPayload(rawData);
+        finalPayload.id = newRef.key;
+        await set(newRef, finalPayload);
         await writeAuditLog(targetCompanyId, {
           action: "CREATE_MASTER_DATA",
-          details: `Membuat data ${labelBisnis} (${newData.name || 'Baru'})`,
+          details: `Membuat data ${labelBisnis} (${finalPayload.name || 'Baru'})`,
           user_uid: userData?.uid || "",
           user_name: userData?.nama_lengkap || "Unknown",
           target_path: `${listPath}/${newRef.key}`,
-          new_value: newData,
+          new_value: finalPayload,
         });
       }
       return "Berhasil menyimpan data";
@@ -175,6 +230,76 @@ export const Organization: React.FC = () => {
     });
   };
 
+  const isActiveRecord = (item: any) => item?.active !== false && item?.status !== "inactive";
+
+  const getDependencyUsage = (type: "area" | "office" | "department" | "group", id: string) => {
+    const usages: string[] = [];
+
+    if (type === "area") {
+      const officeCount = offices.filter((item: any) => item.area_id === id && isActiveRecord(item)).length;
+      const deptCount = departments.filter((item: any) => item.area_id === id && isActiveRecord(item)).length;
+      const groupCount = groups.filter((item: any) => item.area_id === id && isActiveRecord(item)).length;
+      if (officeCount > 0) usages.push(`${officeCount} kantor`);
+      if (deptCount > 0) usages.push(`${deptCount} departemen`);
+      if (groupCount > 0) usages.push(`${groupCount} grup karyawan`);
+    }
+
+    if (type === "office") {
+      const deptCount = departments.filter((item: any) => item.office_id === id && isActiveRecord(item)).length;
+      const groupCount = groups.filter((item: any) => item.office_id === id && isActiveRecord(item)).length;
+      const employeeCount = employees.filter((item: any) => item.office_id === id && isActiveRecord(item)).length;
+      if (deptCount > 0) usages.push(`${deptCount} departemen`);
+      if (groupCount > 0) usages.push(`${groupCount} grup karyawan`);
+      if (employeeCount > 0) usages.push(`${employeeCount} karyawan`);
+    }
+
+    if (type === "department") {
+      const subDeptCount = subDepartments.filter((item: any) => item.department_id === id && isActiveRecord(item)).length;
+      const groupCount = groups.filter((item: any) => item.department_id === id && isActiveRecord(item)).length;
+      const employeeCount = employees.filter((item: any) => item.department_id === id && isActiveRecord(item)).length;
+      if (subDeptCount > 0) usages.push(`${subDeptCount} sub departemen`);
+      if (groupCount > 0) usages.push(`${groupCount} grup karyawan`);
+      if (employeeCount > 0) usages.push(`${employeeCount} karyawan`);
+    }
+
+    if (type === "group") {
+      const employeeCount = employees.filter((item: any) => item.group_id === id && isActiveRecord(item)).length;
+      const assignmentCount = scheduleAssignments.filter((item: any) => {
+        const targetType = String(item.type || item.target_type || "").toLowerCase();
+        return targetType === "group" && item.target_id === id && isActiveRecord(item);
+      }).length;
+      const specialCount = scheduleSpecials.filter((item: any) => {
+        const targetType = String(item.type || item.target_type || "").toLowerCase();
+        return targetType === "group" && item.target_id === id && isActiveRecord(item);
+      }).length;
+
+      if (employeeCount > 0) usages.push(`${employeeCount} karyawan`);
+      if (assignmentCount > 0) usages.push(`${assignmentCount} penerapan jadwal`);
+      if (specialCount > 0) usages.push(`${specialCount} jadwal khusus`);
+    }
+
+    return usages;
+  };
+
+  const activeTabToDependencyType = () => {
+    if (activeTab === "area") return "area";
+    if (activeTab === "office") return "office";
+    if (activeTab === "department") return "department";
+    if (activeTab === "group") return "group";
+    return null;
+  };
+
+  const ensureNoDependencyBeforeDisableOrDelete = (id: string, label: string) => {
+    const type = activeTabToDependencyType();
+    if (!type) return true;
+
+    const usages = getDependencyUsage(type, id);
+    if (usages.length === 0) return true;
+
+    toast.error(`${label} masih dipakai oleh ${usages.join(", ")}. Pindahkan/nonaktifkan data terkait terlebih dahulu.`);
+    return false;
+  };
+
   const handleToggle = async (id: string, currentActive: boolean) => {
     if (!targetCompanyId || !userData) return;
     
@@ -184,6 +309,10 @@ export const Organization: React.FC = () => {
     else if (activeTab === "office") { itemPath = paths.office(targetCompanyId, id); labelBisnis = "Kantor"; }
     else if (activeTab === "department") { itemPath = paths.department(targetCompanyId, id); labelBisnis = "Departemen"; }
     else if (activeTab === "group") { itemPath = paths.employeeGroup(targetCompanyId, id); labelBisnis = "Grup Karyawan"; }
+
+    if (currentActive) {
+      if (!ensureNoDependencyBeforeDisableOrDelete(id, labelBisnis || "Data")) return;
+    }
 
     if(itemPath) {
       requestConfirm(
@@ -238,6 +367,8 @@ export const Organization: React.FC = () => {
     else if (activeTab === "department") { itemPath = paths.department(targetCompanyId, id); labelBisnis = "Departemen"; }
     else if (activeTab === "group") { itemPath = paths.employeeGroup(targetCompanyId, id); labelBisnis = "Grup Karyawan"; }
 
+    if (!ensureNoDependencyBeforeDisableOrDelete(id, labelBisnis || "Data")) return;
+
     if(itemPath) {
       requestConfirm(
         `Hapus ${labelBisnis}`,
@@ -257,6 +388,14 @@ export const Organization: React.FC = () => {
         }
       );
     }
+  };
+
+  const createOrganizationLabel = () => {
+    if (activeTab === "area") return "Area";
+    if (activeTab === "office") return "Kantor";
+    if (activeTab === "department") return "Departemen";
+    if (activeTab === "group") return "Grup Karyawan";
+    return "Data";
   };
 
   return (
@@ -291,7 +430,7 @@ export const Organization: React.FC = () => {
             }}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded text-sm font-medium"
           >
-            + Tambah {activeTab}
+            + Tambah {createOrganizationLabel()}
           </button>
         )}
       </div>
@@ -301,7 +440,10 @@ export const Organization: React.FC = () => {
           <label className="text-sm font-medium text-slate-600 dark:text-slate-400">Pilih Perusahaan:</label>
           <select 
             value={targetCompanyId} 
-            onChange={(e) => setTargetCompanyId(e.target.value)}
+            onChange={(e) => {
+              setTargetCompanyId(e.target.value);
+              localStorage.setItem("admin_selected_company", e.target.value);
+            }}
             className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 rounded p-2 text-sm focus:outline-none focus:border-blue-500 min-w-[200px]"
           >
             <option value="" disabled>-- Pilih Perusahaan --</option>
@@ -309,6 +451,20 @@ export const Organization: React.FC = () => {
               <option key={c.id} value={c.id}>{c.name}</option>
             ))}
           </select>
+        </div>
+      )}
+
+      {targetCompanyId && (
+        <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3 text-xs text-slate-600 dark:text-slate-300">
+          Perusahaan aktif: <span className="font-semibold text-blue-600 dark:text-blue-400">
+            {companies.find(c => c.id === targetCompanyId)?.name || targetCompanyId}
+          </span>
+        </div>
+      )}
+
+      {!targetCompanyId && !isOwner && (
+        <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 text-amber-700 dark:text-amber-300 p-4 rounded-lg text-sm">
+          Akun ini belum terhubung ke perusahaan. Hubungi owner untuk memperbaiki akses.
         </div>
       )}
 
@@ -323,9 +479,9 @@ export const Organization: React.FC = () => {
           <div className="flex gap-4 border-b border-slate-200 dark:border-slate-800 pb-2">
             {[
               { id: "area", label: "Area" },
-              { id: "office", label: "Office" },
-              { id: "department", label: "Department" },
-              { id: "group", label: "Employee Group" }
+              { id: "office", label: "Kantor" },
+              { id: "department", label: "Departemen" },
+              { id: "group", label: "Grup Karyawan" }
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -364,7 +520,7 @@ export const Organization: React.FC = () => {
             {activeTab === "office" && (
                 offices.length === 0 ? <div className="p-8 text-center text-slate-500">Belum ada data...</div> : (
                 <table className="w-full text-sm text-left">
-                  <thead className="bg-slate-100 dark:bg-slate-800/50 text-slate-600 dark:text-slate-400"><tr><th className="px-6 py-3 font-medium">Nama Office & Area</th><th className="px-6 py-3 font-medium">Geofence (Lat, Lng, Rad)</th><th className="px-6 py-3 font-medium text-right">Aksi</th></tr></thead>
+                  <thead className="bg-slate-100 dark:bg-slate-800/50 text-slate-600 dark:text-slate-400"><tr><th className="px-6 py-3 font-medium">Nama Kantor & Area</th><th className="px-6 py-3 font-medium">Radius Presensi</th><th className="px-6 py-3 font-medium text-right">Aksi</th></tr></thead>
                   <tbody className="divide-y divide-slate-800">
                     {offices.map(o => (
                       <tr key={o.id} className="hover:bg-slate-100 dark:bg-slate-800/30 text-slate-700 dark:text-slate-300">
@@ -398,7 +554,7 @@ export const Organization: React.FC = () => {
             {activeTab === "department" && (
                 departments.length === 0 ? <div className="p-8 text-center text-slate-500">Belum ada data...</div> : (
                 <table className="w-full text-sm text-left">
-                  <thead className="bg-slate-100 dark:bg-slate-800/50 text-slate-600 dark:text-slate-400"><tr><th className="px-6 py-3 font-medium">Nama Dept</th><th className="px-6 py-3 font-medium">Office</th><th className="px-6 py-3 font-medium text-right">Aksi</th></tr></thead>
+                  <thead className="bg-slate-100 dark:bg-slate-800/50 text-slate-600 dark:text-slate-400"><tr><th className="px-6 py-3 font-medium">Nama Departemen</th><th className="px-6 py-3 font-medium">Kantor</th><th className="px-6 py-3 font-medium text-right">Aksi</th></tr></thead>
                   <tbody className="divide-y divide-slate-800">
                     {departments.map(d => (
                       <tr key={d.id} className="hover:bg-slate-100 dark:bg-slate-800/30 text-slate-700 dark:text-slate-300">
@@ -419,7 +575,7 @@ export const Organization: React.FC = () => {
             {activeTab === "group" && (
                 groups.length === 0 ? <div className="p-8 text-center text-slate-500">Belum ada data...</div> : (
                 <table className="w-full text-sm text-left">
-                  <thead className="bg-slate-100 dark:bg-slate-800/50 text-slate-600 dark:text-slate-400"><tr><th className="px-6 py-3 font-medium">Nama Group</th><th className="px-6 py-3 font-medium">Struktur</th><th className="px-6 py-3 font-medium text-right">Aksi</th></tr></thead>
+                  <thead className="bg-slate-100 dark:bg-slate-800/50 text-slate-600 dark:text-slate-400"><tr><th className="px-6 py-3 font-medium">Nama Grup</th><th className="px-6 py-3 font-medium">Struktur</th><th className="px-6 py-3 font-medium text-right">Aksi</th></tr></thead>
                   <tbody className="divide-y divide-slate-800">
                     {groups.map(g => (
                       <tr key={g.id} className="hover:bg-slate-100 dark:bg-slate-800/30 text-slate-700 dark:text-slate-300">
@@ -446,7 +602,7 @@ export const Organization: React.FC = () => {
         <div className="fixed inset-0 bg-slate-50 dark:bg-slate-950/80 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg shadow-xl w-full max-w-4xl overflow-hidden max-h-[90vh] flex flex-col">
             <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center shrink-0">
-              <h3 className="font-bold text-lg text-slate-800 dark:text-slate-200">{editingId ? "Edit" : "Tambah"} {activeTab}</h3>
+              <h3 className="font-bold text-lg text-slate-800 dark:text-slate-200">{editingId ? "Edit" : "Tambah"} {createOrganizationLabel()}</h3>
               <button onClick={() => setShowModal(false)} className="text-slate-500 hover:text-slate-700 dark:text-slate-300">✕</button>
             </div>
             <div className="flex-1 overflow-y-auto">
@@ -464,7 +620,7 @@ export const Organization: React.FC = () => {
 
               {(activeTab === "office" || activeTab === "department" || activeTab === "group") && (
                   <div>
-                    <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">Area Access</label>
+                    <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">Area</label>
                     <select required value={formData.area_id || ""} onChange={e => setFormData({...formData, area_id: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded p-2 text-slate-800 dark:text-slate-200">
                       <option value="" disabled>Pilih Area...</option>
                       {areas.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
@@ -474,7 +630,7 @@ export const Organization: React.FC = () => {
 
               {activeTab === "office" && (
                 <div className="my-4">
-                  <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">Lokasi & Radius Geofence</label>
+                  <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">Lokasi & Radius Presensi</label>
                   <RadiusMapPicker
                     value={{
                       latitude: Number(formData.latitude || -6.18142435142701),
@@ -495,9 +651,9 @@ export const Organization: React.FC = () => {
 
               {(activeTab === "department" || activeTab === "group") && (
                   <div>
-                    <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">Office</label>
+                    <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">Kantor</label>
                     <select required value={formData.office_id || ""} onChange={e => setFormData({...formData, office_id: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded p-2 text-slate-800 dark:text-slate-200">
-                      <option value="" disabled>Pilih Office...</option>
+                      <option value="" disabled>Pilih Kantor...</option>
                       {offices.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
                     </select>
                   </div>
@@ -505,9 +661,9 @@ export const Organization: React.FC = () => {
 
               {activeTab === "group" && (
                   <div>
-                    <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">Department</label>
+                    <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">Departemen</label>
                     <select required value={formData.department_id || ""} onChange={e => setFormData({...formData, department_id: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded p-2 text-slate-800 dark:text-slate-200">
-                      <option value="" disabled>Pilih Dept...</option>
+                      <option value="" disabled>Pilih Departemen...</option>
                       {departments.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
                     </select>
                   </div>

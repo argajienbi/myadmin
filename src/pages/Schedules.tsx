@@ -11,6 +11,7 @@ import { createNotification } from "../services/notificationService";
 import { getGoogleCalendarAccessToken } from "../auth/workspaceAuth";
 import { companyDisplayName, employeeDisplayName, groupDisplayName, shiftDisplayName, timetableDisplayName } from "../utils/safeDisplay";
 import { AlertCircle, ExternalLink, Copy, Check, X } from "lucide-react";
+import { getEffectiveCompanyId, isOwnerLike } from "../utils/roleAccess";
 
 const SHIFT_DAY_KEYS = [
   "monday",
@@ -375,6 +376,7 @@ export const Schedules: React.FC = () => {
   const [diagnosticResult, setDiagnosticResult] = useState<any>(null);
   const [isDiagnosticLoading, setIsDiagnosticLoading] = useState(false);
   const [isSyncingCalendar, setIsSyncingCalendar] = useState(false);
+  const [syncCalendarAllCompanies, setSyncCalendarAllCompanies] = useState(false);
   const [searchParams] = useSearchParams();
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
@@ -413,7 +415,7 @@ export const Schedules: React.FC = () => {
     setConfirmModal({ isOpen: true, title, message, isDestructive, onConfirm });
   };
 
-  const isOwner = userData?.role === "owner";
+  const isOwner = isOwnerLike(userData);
 
   const runDiagnostic = async () => {
       if (!targetCompanyId || !diagnosticUid || !diagnosticDate) {
@@ -436,7 +438,9 @@ export const Schedules: React.FC = () => {
 
     requestConfirm(
       "Sinkronisasi Kalender Indonesia",
-      "Apakah Anda yakin ingin menyinkronkan daftar hari libur nasional dari Google Calendar? Jadwal libur akan ditambahkan ke sistem ini.",
+      `Apakah Anda yakin ingin menyinkronkan daftar hari libur nasional?
+Target: ${isOwner && syncCalendarAllCompanies ? "semua perusahaan" : "perusahaan aktif"}.
+Jadwal libur akan ditambahkan ke sistem ini.`,
       false,
       async () => {
         setIsSyncingCalendar(true);
@@ -480,7 +484,10 @@ export const Schedules: React.FC = () => {
             return;
           }
 
-          const targetCompanyIds = isOwner ? companies.map(c => c.id) : [targetCompanyId];
+          const targetCompanyIds =
+            isOwner && syncCalendarAllCompanies
+              ? companies.map((c: any) => c.id).filter(Boolean)
+              : [targetCompanyId].filter(Boolean);
 
           const syncUpdates: any = {};
           let addedCount = 0;
@@ -581,28 +588,43 @@ export const Schedules: React.FC = () => {
   }, [searchParams]);
 
   useEffect(() => {
+    if (!userData) {
+      setLoading(false);
+      return;
+    }
+
     if (isOwner) {
       get(ref(db, paths.companies())).then((snapshot) => {
-        if (snapshot.exists()) {
-           const data = snapshot.val();
-           const compList = Object.keys(data).map(k => ({...data[k], id: k}));
-           setCompanies(compList);
-           
-           const queryCompanyId = searchParams.get("companyId") || "";
-           if (queryCompanyId && compList.some(c => c.id === queryCompanyId)) {
-             setTargetCompanyId(queryCompanyId);
-           } else if (compList.length > 0 && !targetCompanyId) {
-             setTargetCompanyId(compList[0].id);
-           }
+        const data = snapshot.exists() ? snapshot.val() : {};
+        const compList = Object.keys(data).map(k => ({ ...data[k], id: k }));
+        setCompanies(compList);
+
+        const queryCompanyId = searchParams.get("companyId") || "";
+        const savedCompanyId = localStorage.getItem("admin_selected_company") || "";
+
+        const resolvedCompanyId =
+          queryCompanyId && compList.some((c: any) => c.id === queryCompanyId)
+            ? queryCompanyId
+            : savedCompanyId && compList.some((c: any) => c.id === savedCompanyId)
+              ? savedCompanyId
+              : userData.company_id && compList.some((c: any) => c.id === userData.company_id)
+                ? userData.company_id
+                : compList[0]?.id || "";
+
+        setTargetCompanyId(resolvedCompanyId);
+
+        if (resolvedCompanyId) {
+          localStorage.setItem("admin_selected_company", resolvedCompanyId);
         }
+
         setLoading(false);
       });
-    } else if (userData?.company_id) {
-      setTargetCompanyId(userData.company_id);
-      setLoading(false);
-    } else {
-      setLoading(false);
+
+      return;
     }
+
+    setTargetCompanyId(getEffectiveCompanyId(userData));
+    setLoading(false);
   }, [isOwner, userData, searchParams]);
 
   useEffect(() => {
@@ -685,6 +707,78 @@ export const Schedules: React.FC = () => {
     }
 
     return conflicts;
+  };
+
+  const renderImpactPreview = () => {
+    const targetType = formData.type || "individual";
+    const targetId = formData.target_id;
+    if (!targetId) return null;
+
+    const uids = resolveTargetUids(targetType === "user" ? "individual" : targetType, targetId);
+    if (uids.length === 0) {
+      return (
+        <div className="p-3 bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 rounded-lg text-xs text-slate-500 font-mono">
+          ℹ️ Tidak ada karyawan yang masuk dalam target penjadwalan saat ini.
+        </div>
+      );
+    }
+
+    return (
+      <div className="p-3 bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/50 rounded-lg text-xs space-y-2">
+        <div className="font-semibold text-blue-800 dark:text-blue-300 flex items-center gap-1.5">
+          <AlertCircle className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+          <span>Dampak Penjadwalan: {uids.length} Karyawan Terpengaruh</span>
+        </div>
+        <div className="max-h-24 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/50 font-mono text-slate-600 dark:text-slate-400">
+          {uids.map((uid) => {
+            const emp = employees.find((e) => e.uid === uid);
+            return (
+              <div key={uid} className="py-1 flex justify-between">
+                <span>{emp?.nama_lengkap || "Karyawan"}</span>
+                <span className="text-slate-400 text-[10px]">{emp?.nip || "-"}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  const renderShiftOrTimetableImpactPreview = () => {
+    if (!formData.id) return null;
+
+    let uids: string[] = [];
+    let label = "";
+
+    if (activeTab === "shift") {
+      uids = resolveUsersImpactedByShift(formData.id);
+      label = "Pola Shift";
+    } else if (activeTab === "timetable") {
+      uids = resolveUsersImpactedByTimetable(formData.id);
+      label = "Jam Kerja";
+    }
+
+    if (uids.length === 0) return null;
+
+    return (
+      <div className="p-3 bg-amber-50/50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/50 rounded-lg text-xs space-y-2 animate-pulse">
+        <div className="font-semibold text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
+          <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+          <span>Peringatan Dampak: Mengedit {label} ini akan memengaruhi jadwal aktif {uids.length} karyawan!</span>
+        </div>
+        <div className="max-h-24 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/50 font-mono text-slate-600 dark:text-slate-400">
+          {uids.map((uid) => {
+            const emp = employees.find((e) => e.uid === uid);
+            return (
+              <div key={uid} className="py-1 flex justify-between">
+                <span>{emp?.nama_lengkap || "Karyawan"}</span>
+                <span className="text-slate-400 text-[10px]">{emp?.nip || "-"}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
   };
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -1550,13 +1644,24 @@ export const Schedules: React.FC = () => {
         {targetCompanyId && (activeTab === "timetable" || activeTab === "shift" || activeTab === "assignment" || activeTab === "holiday" || activeTab === "special" || activeTab === "overtime") && (
           <div className="flex items-center gap-3">
             {activeTab === "holiday" && isOwner && (
+              <div className="flex items-center gap-3 border border-slate-200 dark:border-slate-800 rounded-lg p-1.5 px-3 bg-slate-50 dark:bg-slate-950/50">
+                <label className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={syncCalendarAllCompanies}
+                    onChange={(e) => setSyncCalendarAllCompanies(e.target.checked)}
+                    className="rounded text-blue-600 focus:ring-blue-500 h-3.5 w-3.5"
+                  />
+                  <span>Semua Perusahaan</span>
+                </label>
                 <button
                   onClick={handleSyncGoogleCalendar}
                   disabled={isSyncingCalendar}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-400 text-white rounded text-sm font-medium flex items-center gap-2"
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-400 text-white rounded text-sm font-medium flex items-center gap-2 whitespace-nowrap transition-colors"
                 >
                   {isSyncingCalendar ? "Menyinkronkan..." : "Sync Kalender Indonesia"}
                 </button>
+              </div>
             )}
             <button
               onClick={() => { setFormData({}); setShowModal(true); }}
@@ -2189,6 +2294,7 @@ export const Schedules: React.FC = () => {
                         Jadwal melewati tengah malam (Crosses Midnight)
                     </label>
                   </div>
+                  {renderShiftOrTimetableImpactPreview()}
                 </>
               )}
 
@@ -2240,6 +2346,7 @@ export const Schedules: React.FC = () => {
                         )}
                       </div>
                   ))}
+                  {renderShiftOrTimetableImpactPreview()}
                 </>
               )}
 
@@ -2306,6 +2413,9 @@ export const Schedules: React.FC = () => {
                         <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">End Date (Opsional)</label>
                         <input type="date" value={formData.end_date || ""} onChange={e => setFormData({...formData, end_date: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded p-2 text-slate-800 dark:text-slate-200 text-sm" />
                     </div>
+                  </div>
+                  <div className="mt-4">
+                    {renderImpactPreview()}
                   </div>
                 </>
               )}
@@ -2516,6 +2626,9 @@ export const Schedules: React.FC = () => {
                         <option value="" disabled>-- Pilih Shift --</option>
                         {shifts.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                     </select>
+                  </div>
+                  <div className="mt-4">
+                    {renderImpactPreview()}
                   </div>
                 </>
               )}
