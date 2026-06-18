@@ -634,17 +634,13 @@ export const Companies: React.FC = () => {
             {isOwner ? "Kelola semua entitas perusahaan" : "Kelola profil, branding, undangan, dan pengaturan perusahaan Anda"}
           </p>
         </div>
-        {isOwner ? (
+        {isOwner && (
           <button
             onClick={() => setShowModal(true)}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded text-sm font-medium"
           >
             + Tambah Perusahaan
           </button>
-        ) : (
-          <div className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs text-slate-500">
-            Mode Admin Perusahaan: hanya mengelola perusahaan sendiri.
-          </div>
         )}
       </div>
 
