@@ -52,7 +52,7 @@ const AppContent = () => {
           <Route index element={<Dashboard />} />
           <Route path="setup" element={<SetupWizard />} />
           <Route path="buku-petunjuk" element={<AdminGuide />} />
-          <Route path="companies" element={<ProtectedRoute allowedRoles={['owner']}><Companies /></ProtectedRoute>} />
+          <Route path="companies" element={<ProtectedRoute allowedRoles={['owner', 'system_owner', 'admin']}><Companies /></ProtectedRoute>} />
           <Route path="company-admins" element={<ProtectedRoute allowedRoles={['owner']}><CompanyAdmins /></ProtectedRoute>} />
           <Route path="organization" element={<Organization />} />
           <Route path="employees" element={<Employees />} />

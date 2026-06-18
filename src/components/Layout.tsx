@@ -5,6 +5,7 @@ import { LogOut, Home, Building2, Users, Calendar, CheckSquare, BarChart2, Menu,
 import clsx from "clsx";
 import { useTheme } from "../hooks/useTheme";
 import { ConfirmModal } from "./ConfirmModal";
+import { isOwnerLike } from "../utils/roleAccess";
 
 export const Layout: React.FC = () => {
   const { userData, logout } = useAuth();
@@ -47,7 +48,9 @@ export const Layout: React.FC = () => {
     navigate("/login");
   };
 
-  const isOwner = userData?.role === "owner";
+  const isOwner = isOwnerLike(userData);
+  const isCompanyAdmin = String(userData?.role || "").toLowerCase() === "admin" && !!userData?.company_id;
+  const canAccessCompaniesMenu = isOwner || isCompanyAdmin;
 
   return (
     <div className="flex h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 font-sans">
@@ -124,33 +127,38 @@ export const Layout: React.FC = () => {
               Buku Petunjuk
             </NavLink>
 
+            {canAccessCompaniesMenu && (
+              <NavLink
+                to="/companies"
+                className={({ isActive }) =>
+                  clsx(
+                    "flex items-center px-6 py-3 text-sm",
+                    isActive
+                      ? "bg-slate-100 dark:bg-slate-800 text-blue-600 dark:text-blue-400 border-r-2 border-blue-500"
+                      : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:bg-slate-800/50"
+                  )
+                }
+              >
+                <Building2 className="mr-3 h-5 w-5" />
+                Perusahaan
+              </NavLink>
+            )}
+
             {isOwner && (
-              <>
-                <NavLink
-                  to="/companies"
-                  className={({ isActive }) =>
-                    clsx(
-                      "flex items-center px-6 py-3 text-sm",
-                      isActive ? "bg-slate-100 dark:bg-slate-800 text-blue-600 dark:text-blue-400 border-r-2 border-blue-500" : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:bg-slate-800/50"
-                    )
-                  }
-                >
-                  <Building2 className="mr-3 h-5 w-5" />
-                  Perusahaan
-                </NavLink>
-                <NavLink
-                  to="/company-admins"
-                  className={({ isActive }) =>
-                    clsx(
-                      "flex items-center px-6 py-3 text-sm",
-                      isActive ? "bg-slate-100 dark:bg-slate-800 text-blue-600 dark:text-blue-400 border-r-2 border-blue-500" : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:bg-slate-800/50"
-                    )
-                  }
-                >
-                  <Users className="mr-3 h-5 w-5" />
-                  Admin PT
-                </NavLink>
-              </>
+              <NavLink
+                to="/company-admins"
+                className={({ isActive }) =>
+                  clsx(
+                    "flex items-center px-6 py-3 text-sm",
+                    isActive
+                      ? "bg-slate-100 dark:bg-slate-800 text-blue-600 dark:text-blue-400 border-r-2 border-blue-500"
+                      : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:bg-slate-800/50"
+                  )
+                }
+              >
+                <Users className="mr-3 h-5 w-5" />
+                Admin PT
+              </NavLink>
             )}
 
             <NavLink

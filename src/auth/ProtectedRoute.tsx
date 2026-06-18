@@ -1,6 +1,7 @@
 import React from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "./AuthContext";
+import { isOwnerLike, normalizeRole } from "../utils/roleAccess";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -87,8 +88,16 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     );
   }
 
-  if (allowedRoles && !allowedRoles.includes(userData.role)) {
-    return <Navigate to="/" replace />;
+  if (allowedRoles) {
+    const role = normalizeRole(userData.role);
+    const ownerAllowed = allowedRoles.includes("owner") || allowedRoles.includes("system_owner");
+    const allowed =
+      allowedRoles.includes(role) ||
+      (ownerAllowed && isOwnerLike(userData));
+
+    if (!allowed) {
+      return <Navigate to="/" replace />;
+    }
   }
 
   return <>{children}</>;

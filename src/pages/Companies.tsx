@@ -19,9 +19,32 @@ import {
   validateCompanyLogoFile,
 } from "../utils/companyBranding";
 import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
+import { isOwnerLike } from "../utils/roleAccess";
 
 export const Companies: React.FC = () => {
   const { userData } = useAuth();
+  const isOwner = isOwnerLike(userData);
+  const isCompanyAdmin = String(userData?.role || "").toLowerCase() === "admin" && !!userData?.company_id;
+  const adminCompanyId = userData?.company_id || "";
+
+  const canManageCompany = (companyId?: string) => {
+    if (!companyId) return false;
+    if (isOwner) return true;
+    return isCompanyAdmin && adminCompanyId === companyId;
+  };
+
+  const ensureCompanyAccess = (companyId?: string) => {
+    if (canManageCompany(companyId)) return true;
+    toast.error("Anda tidak memiliki akses ke perusahaan ini.");
+    return false;
+  };
+
+  const ensureOwnerOnly = (message = "Aksi ini hanya dapat dilakukan oleh owner.") => {
+    if (isOwner) return true;
+    toast.error(message);
+    return false;
+  };
+
   const [companies, setCompanies] = useState<Company[]>([]);
   const [invites, setInvites] = useState<CompanyInvite[]>([]);
   const [loading, setLoading] = useState(true);
@@ -63,48 +86,85 @@ export const Companies: React.FC = () => {
   };
 
   useEffect(() => {
-    if (!userData || userData.role !== "owner") return;
+    if (!userData) return;
 
-    const companiesRef = ref(db, paths.companies());
-    const invitesRef = ref(db, paths.companyInvites());
+    setLoading(true);
+    setError("");
 
-    const unsubscribeCompanies = onValue(companiesRef, (snapshot) => {
-      if (snapshot.exists()) {
-        const data = snapshot.val();
-        const compList = Object.keys(data).map(key => ({
-          ...data[key],
-          id: key
-        }));
-        setCompanies(compList);
-      } else {
-        setCompanies([]);
-      }
-      setLoading(false);
-    }, (err) => {
-      setError(err.message);
-      setLoading(false);
-    });
+    if (isOwner) {
+      const companiesRef = ref(db, paths.companies());
+      const invitesRef = ref(db, paths.companyInvites());
 
-    const unsubscribeInvites = onValue(invitesRef, (snapshot) => {
-      if (snapshot.exists()) {
-        const data = snapshot.val();
-        const invList = Object.keys(data).map(key => ({
-          ...data[key],
-          code: key
-        }));
-        setInvites(invList as any);
-      } else {
+      const unsubscribeCompanies = onValue(companiesRef, (snapshot) => {
+        if (snapshot.exists()) {
+          const data = snapshot.val();
+          const compList = Object.keys(data).map(key => ({
+            ...data[key],
+            id: key
+          }));
+          setCompanies(compList);
+        } else {
+          setCompanies([]);
+        }
+        setLoading(false);
+      }, (err) => {
+        setError(err.message);
+        setLoading(false);
+      });
+
+      const unsubscribeInvites = onValue(invitesRef, (snapshot) => {
+        if (snapshot.exists()) {
+          const data = snapshot.val();
+          const invList = Object.keys(data).map(key => ({
+            ...data[key],
+            code: key
+          }));
+          setInvites(invList as any);
+        } else {
+          setInvites([]);
+        }
+      });
+
+      return () => {
+        unsubscribeCompanies();
+        unsubscribeInvites();
+      };
+    }
+
+    if (isCompanyAdmin && adminCompanyId) {
+      const companyRef = ref(db, paths.company(adminCompanyId));
+
+      const unsubscribeCompany = onValue(companyRef, (snapshot) => {
+        if (snapshot.exists()) {
+          setCompanies([{ ...snapshot.val(), id: adminCompanyId }]);
+          setError("");
+        } else {
+          setCompanies([]);
+          setError("Data perusahaan Anda tidak ditemukan. Hubungi owner.");
+        }
+
         setInvites([]);
-      }
-    });
+        setLoading(false);
+      }, (err) => {
+        setCompanies([]);
+        setInvites([]);
+        setError(err.message);
+        setLoading(false);
+      });
 
-    return () => {
-      unsubscribeCompanies();
-      unsubscribeInvites();
-    };
-  }, [userData]);
+      return () => {
+        unsubscribeCompany();
+      };
+    }
+
+    setCompanies([]);
+    setInvites([]);
+    setLoading(false);
+    setError("Akun ini belum memiliki akses perusahaan.");
+  }, [userData, isOwner, isCompanyAdmin, adminCompanyId]);
 
   const openWebsiteModal = (company: Company) => {
+    if (!ensureCompanyAccess(company.id)) return;
     setWebsiteModalCompany(company);
     setWebsiteEnabled(company.company_website_enabled === true || String((company as any).company_website_enabled) === "true");
     setWebsiteTitle(company.company_website_title || "Website Perusahaan");
@@ -124,6 +184,7 @@ export const Companies: React.FC = () => {
   const handleSaveWebsiteConfig = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!websiteModalCompany?.id) return;
+    if (!ensureCompanyAccess(websiteModalCompany.id)) return;
 
     setSavingWebsite(true);
 
@@ -184,6 +245,7 @@ export const Companies: React.FC = () => {
   };
 
   const openBrandingModal = (company: Company) => {
+    if (!ensureCompanyAccess(company.id)) return;
     setBrandingCompany(company);
     setBrandingLogoEnabled(company.company_logo_enabled !== false);
     setBrandingLogoFile(null);
@@ -213,6 +275,7 @@ export const Companies: React.FC = () => {
   const handleSaveBranding = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!brandingCompany?.id) return;
+    if (!ensureCompanyAccess(brandingCompany.id)) return;
 
     setSavingBranding(true);
 
@@ -280,6 +343,7 @@ export const Companies: React.FC = () => {
 
   const handleDeleteCompanyLogo = () => {
     if (!brandingCompany?.id) return;
+    if (!ensureCompanyAccess(brandingCompany.id)) return;
 
     requestConfirm(
       "Hapus Logo Perusahaan",
@@ -335,6 +399,15 @@ export const Companies: React.FC = () => {
     e.preventDefault();
     if (!newCompanyName.trim()) return;
 
+    if (!isOwner && !editingCompanyId) {
+      toast.error("Hanya owner yang dapat menambah perusahaan.");
+      return;
+    }
+
+    if (editingCompanyId && !ensureCompanyAccess(editingCompanyId)) {
+      return;
+    }
+
     const createRequest = async () => {
       if (editingCompanyId) {
         await update(ref(db, paths.company(editingCompanyId)), {
@@ -389,6 +462,8 @@ export const Companies: React.FC = () => {
   };
 
   const handleToggleActive = async (companyId: string, currentActive: boolean) => {
+    if (!ensureOwnerOnly("Hanya owner yang dapat menonaktifkan atau memulihkan perusahaan.")) return;
+
     requestConfirm(
       currentActive ? "Nonaktifkan Perusahaan" : "Pulihkan Perusahaan",
       currentActive ? "Nonaktifkan perusahaan ini? Data tidak akan dihapus permanen." : "Pulihkan perusahaan ini?",
@@ -428,6 +503,8 @@ export const Companies: React.FC = () => {
   };
 
   const handleDeleteCompany = async (companyId: string) => {
+    if (!ensureOwnerOnly("Hanya owner yang dapat menghapus perusahaan.")) return;
+
     requestConfirm(
       "Hapus Perusahaan",
       "Hapus permanen perusahaan ini? Tindakan ini tidak dapat dibatalkan, dan semua data perusahaan akan hilang.",
@@ -449,6 +526,7 @@ export const Companies: React.FC = () => {
 
   const generateInviteCode = async (company: Company) => {
     if (!company.id) return;
+    if (!ensureCompanyAccess(company.id)) return;
     
     // Generate a random 6 char alphanumeric code
     const code = Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -483,6 +561,8 @@ export const Companies: React.FC = () => {
   };
 
   const handleToggleInviteActive = async (inviteCode: string, companyId: string, currentActive: boolean) => {
+    if (!ensureOwnerOnly("Hanya owner yang dapat menonaktifkan atau memulihkan kode undangan.")) return;
+
     requestConfirm(
       currentActive ? "Nonaktifkan Kode" : "Pulihkan Kode",
       currentActive ? "Nonaktifkan kode undangan ini?" : "Pulihkan kode undangan ini?",
@@ -550,15 +630,29 @@ export const Companies: React.FC = () => {
       <div className="flex justify-between items-end">
         <div>
           <h1 className="text-xl font-bold text-slate-800 dark:text-slate-200">Perusahaan</h1>
-          <p className="text-sm text-slate-500">Kelola semua entitas perusahaan</p>
+          <p className="text-sm text-slate-500">
+            {isOwner ? "Kelola semua entitas perusahaan" : "Kelola profil, branding, undangan, dan pengaturan perusahaan Anda"}
+          </p>
         </div>
-        <button
-          onClick={() => setShowModal(true)}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded text-sm font-medium"
-        >
-          + Tambah Perusahaan
-        </button>
+        {isOwner ? (
+          <button
+            onClick={() => setShowModal(true)}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded text-sm font-medium"
+          >
+            + Tambah Perusahaan
+          </button>
+        ) : (
+          <div className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs text-slate-500">
+            Mode Admin Perusahaan: hanya mengelola perusahaan sendiri.
+          </div>
+        )}
       </div>
+
+      {!isOwner && !adminCompanyId && (
+        <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 text-amber-700 dark:text-amber-300 p-4 rounded-lg text-sm">
+          Akun admin ini belum terhubung ke perusahaan. Hubungi owner untuk assign admin ke perusahaan.
+        </div>
+      )}
 
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden">
         {companies.length === 0 ? (
@@ -636,19 +730,26 @@ export const Companies: React.FC = () => {
                   </td>
                   <td className="px-6 py-4 text-right space-x-3">
                     <button
-                      onClick={() => openBrandingModal(company)}
+                      onClick={() => {
+                        if (!ensureCompanyAccess(company.id)) return;
+                        openBrandingModal(company);
+                      }}
                       className="text-cyan-600 dark:text-cyan-400 hover:text-cyan-300 text-xs font-medium"
                     >
                       Branding
                     </button>
                     <button
-                      onClick={() => openWebsiteModal(company)}
+                      onClick={() => {
+                        if (!ensureCompanyAccess(company.id)) return;
+                        openWebsiteModal(company);
+                      }}
                       className="text-cyan-600 dark:text-cyan-400 hover:text-cyan-300 text-xs font-medium"
                     >
                       Website
                     </button>
                     <button 
                       onClick={() => {
+                        if (!ensureCompanyAccess(company.id)) return;
                         setEditingCompanyId(company.id!);
                         setNewCompanyName(company.name);
                         setShowModal(true);
@@ -658,23 +759,30 @@ export const Companies: React.FC = () => {
                       Edit 
                     </button>
                     <button 
-                      onClick={() => generateInviteCode(company)}
+                      onClick={() => {
+                        if (!ensureCompanyAccess(company.id)) return;
+                        generateInviteCode(company);
+                      }}
                       className="text-blue-600 dark:text-blue-400 hover:text-blue-300 text-xs font-medium"
                     >
                       Gen Invite
                     </button>
-                    <button 
-                      onClick={() => handleToggleActive(company.id!, company.active)}
-                      className="text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:text-slate-200 text-xs font-medium"
-                    >
-                      {company.active ? "Nonaktifkan" : "Pulihkan"}
-                    </button>
-                    <button 
-                      onClick={() => handleDeleteCompany(company.id!)}
-                      className="text-red-600 dark:text-red-400 hover:text-red-300 text-xs font-medium"
-                    >
-                      Hapus
-                    </button>
+                    {isOwner && (
+                      <>
+                        <button 
+                          onClick={() => handleToggleActive(company.id!, company.active)}
+                          className="text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:text-slate-200 text-xs font-medium"
+                        >
+                          {company.active ? "Nonaktifkan" : "Pulihkan"}
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteCompany(company.id!)}
+                          className="text-red-600 dark:text-red-400 hover:text-red-300 text-xs font-medium"
+                        >
+                          Hapus
+                        </button>
+                      </>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -683,7 +791,7 @@ export const Companies: React.FC = () => {
         )}
       </div>
 
-      {invites.length > 0 && (
+      {isOwner && invites.length > 0 && (
         <div className="mt-4">
           <h2 className="text-lg font-bold text-slate-800 dark:text-slate-200 mb-4">Invite Codes Aktif</h2>
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden">
@@ -718,11 +826,15 @@ export const Companies: React.FC = () => {
         </div>
       )}
 
-      {showModal && (
+      {showModal && (isOwner || editingCompanyId) && (
         <div className="fixed inset-0 bg-slate-50 dark:bg-slate-950/80 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg shadow-2xl w-full max-w-md overflow-hidden">
             <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">
-              <h3 className="font-bold text-lg text-slate-800 dark:text-slate-200">{editingCompanyId ? "Edit Perusahaan" : "Tambah Perusahaan"}</h3>
+              <h3 className="font-bold text-lg text-slate-800 dark:text-slate-200">
+                {editingCompanyId 
+                  ? (isOwner ? "Edit Perusahaan" : "Edit Perusahaan Saya") 
+                  : "Tambah Perusahaan"}
+              </h3>
               <button onClick={() => { setShowModal(false); setEditingCompanyId(null); setNewCompanyName(""); }} className="text-slate-500 hover:text-slate-700 dark:text-slate-300">✕</button>
             </div>
             <form onSubmit={handleCreateCompany} className="p-6">
