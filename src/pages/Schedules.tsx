@@ -10,6 +10,7 @@ import { ConfirmModal } from "../components/ConfirmModal";
 import { createNotification } from "../services/notificationService";
 import { getGoogleCalendarAccessToken } from "../auth/workspaceAuth";
 import { companyDisplayName, employeeDisplayName, groupDisplayName, shiftDisplayName, timetableDisplayName } from "../utils/safeDisplay";
+import { AlertCircle, ExternalLink, Copy, Check, X } from "lucide-react";
 
 const SHIFT_DAY_KEYS = [
   "monday",
@@ -389,6 +390,25 @@ export const Schedules: React.FC = () => {
     onConfirm: () => {}
   });
 
+  const [firebaseErrorHelpModal, setFirebaseErrorHelpModal] = useState<{
+    isOpen: boolean;
+    errorType: "unauthorized_domain" | "operation_not_allowed" | "calendar_api_disabled" | "other";
+    rawMessage: string;
+  }>({
+    isOpen: false,
+    errorType: "other",
+    rawMessage: ""
+  });
+
+  const [copiedText, setCopiedText] = useState<string | null>(null);
+  const handleCopyText = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedText(text);
+    setTimeout(() => {
+      setCopiedText(null);
+    }, 2000);
+  };
+
   const requestConfirm = (title: string, message: string, isDestructive: boolean, onConfirm: () => void) => {
     setConfirmModal({ isOpen: true, title, message, isDestructive, onConfirm });
   };
@@ -440,7 +460,18 @@ export const Schedules: React.FC = () => {
           );
           
           if (!response.ok) {
-            throw new Error(`Google Calendar API error: ${response.statusText}`);
+            let errorText = "";
+            try {
+              const errData = await response.json();
+              errorText = errData?.error?.message || JSON.stringify(errData);
+            } catch (e) {
+              try {
+                errorText = await response.text();
+              } catch (textErr) {
+                errorText = response.statusText || `HTTP Status ${response.status}`;
+              }
+            }
+            throw new Error(`Google Calendar API error: ${errorText}`);
           }
           
           const data = await response.json();
@@ -499,7 +530,25 @@ export const Schedules: React.FC = () => {
           }
         } catch (error: any) {
           console.error("Gagal sinkron kalender:", error);
-          toast.error(error.message || "Gagal menyinkronkan kalender. Mohon coba lagi.");
+          const msg = error?.message || "";
+          let errorType: "unauthorized_domain" | "operation_not_allowed" | "calendar_api_disabled" | "other" = "other";
+          if (msg.includes("auth/unauthorized-domain") || msg.includes("unauthorized-domain")) {
+            errorType = "unauthorized_domain";
+          } else if (msg.includes("auth/operation-not-allowed") || msg.includes("operation-not-allowed")) {
+            errorType = "operation_not_allowed";
+          } else if (msg.includes("Google Calendar API") || msg.includes("calendar-json.googleapis.com") || msg.includes("accessNotConfigured") || msg.includes("disabled")) {
+            errorType = "calendar_api_disabled";
+          }
+          
+          if (errorType !== "other") {
+            setFirebaseErrorHelpModal({
+              isOpen: true,
+              errorType,
+              rawMessage: msg
+            });
+          } else {
+            toast.error(error.message || "Gagal menyinkronkan kalender. Mohon coba lagi.");
+          }
         } finally {
           setIsSyncingCalendar(false);
         }
@@ -1306,6 +1355,193 @@ export const Schedules: React.FC = () => {
         onConfirm={confirmModal.onConfirm}
         onCancel={() => setConfirmModal({ ...confirmModal, isOpen: false })}
       />
+      {firebaseErrorHelpModal.isOpen && (() => {
+        const getGcpEnableUrl = (msg: string) => {
+          const match = msg.match(/https:\/\/console\.[^\s"']+/i);
+          return match ? match[0].replace(/[.,;:()'"\s]+$/, "") : null;
+        };
+        const gcpEnableUrl = getGcpEnableUrl(firebaseErrorHelpModal.rawMessage);
+        
+        return (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[9999]">
+            <div className="bg-white dark:bg-slate-900 max-w-2xl w-full rounded-2xl shadow-xl overflow-hidden border border-slate-200 dark:border-slate-800 animate-in fade-in zoom-in duration-200 text-slate-800 dark:text-slate-200">
+              <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-950">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-950/40 flex items-center justify-center text-amber-600">
+                    <AlertCircle className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-lg text-slate-900 dark:text-white leading-tight">
+                      {firebaseErrorHelpModal.errorType === "operation_not_allowed" 
+                        ? "Google Sign-In Belum Aktif di Firebase" 
+                        : firebaseErrorHelpModal.errorType === "calendar_api_disabled"
+                        ? "Google Calendar API Belum Aktif"
+                        : "Domain Belum Diotorisasi di Firebase"}
+                    </h3>
+                    <p className="text-xs text-slate-500 font-sans mt-0.5">Konfigurasi Tambahan Diperlukan</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setFirebaseErrorHelpModal({ ...firebaseErrorHelpModal, isOpen: false })}
+                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto font-sans">
+                {firebaseErrorHelpModal.errorType === "operation_not_allowed" ? (
+                  <>
+                    <p className="text-sm leading-relaxed">
+                      Sinkronisasi Google Calendar membutuhkan token otorisasi yang aman. Saat ini, metode login Google belum diaktifkan pada proyek Firebase (Authentication) milik Anda.
+                    </p>
+                    
+                    <div className="bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-200 dark:border-slate-800 space-y-3 font-sans">
+                      <h4 className="font-semibold text-sm text-slate-800 dark:text-slate-200">Langkah Penyelesaian:</h4>
+                      <ol className="list-decimal list-inside space-y-2.5 text-xs text-slate-600 dark:text-slate-400">
+                        <li>
+                          Buka <a href="https://console.firebase.google.com/" target="_blank" rel="noreferrer" className="text-blue-600 dark:text-blue-400 font-semibold inline-flex items-center gap-0.5 hover:underline font-sans">Firebase Console <ExternalLink className="w-3 h-3" /></a> dan pilih proyek Anda.
+                        </li>
+                        <li>
+                          Pergi ke menu <span className="font-bold">Authentication</span> pada navigasi kiri, kemudian klik tab <span className="font-bold">Sign-in method</span>.
+                        </li>
+                        <li>
+                          Klik tombol <span className="font-bold">Add new provider</span> (Tambah penyedia baru) dan pilih <span className="font-bold text-blue-600">Google</span>.
+                        </li>
+                        <li>
+                          Aktifkan tombol toggle <span className="font-bold">Enable</span>, pilih <span className="font-bold">Project support email</span> Anda, lalu klik <span className="font-bold bg-blue-50 dark:bg-blue-950 text-blue-600 px-1 py-0.5 rounded">Save / Simpan</span>.
+                        </li>
+                        <li>
+                          Kembali ke halaman ini dan coba klik kembali tombol <span className="font-bold text-emerald-600">Sync Kalender Indonesia</span>.
+                        </li>
+                      </ol>
+                    </div>
+                  </>
+                ) : firebaseErrorHelpModal.errorType === "calendar_api_disabled" ? (
+                  <>
+                    <p className="text-sm leading-relaxed">
+                      Fitur sinkronisasi kalender membutuhkan layanan <span className="font-bold">Google Calendar API</span> diaktifkan pada konsol Google Cloud Platform (GCP) milik Anda agar aplikasi diperbolehkan menarik data hari libur nasional.
+                    </p>
+                    
+                    <div className="bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-200 dark:border-slate-800 space-y-3 font-sans">
+                      <h4 className="font-semibold text-sm text-slate-800 dark:text-slate-200">Langkah Penyelesaian:</h4>
+                      <ol className="list-decimal list-inside space-y-2.5 text-xs text-slate-600 dark:text-slate-400">
+                        {gcpEnableUrl ? (
+                          <li>
+                            Klik tombol biru <span className="font-bold">Aktifkan API Sekarang</span> di kanan bawah, atau klik tautan aktivasi langsung dari Google berikut:
+                            <div className="mt-2 pl-4">
+                              <a 
+                                href={gcpEnableUrl} 
+                                target="_blank" 
+                                rel="noreferrer" 
+                                className="text-blue-600 dark:text-blue-400 font-semibold inline-flex items-center gap-1 hover:underline break-all"
+                              >
+                                {gcpEnableUrl} <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                              </a>
+                            </div>
+                          </li>
+                        ) : (
+                          <>
+                            <li>
+                              Buku <a href="https://console.cloud.google.com/" target="_blank" rel="noreferrer" className="text-blue-600 dark:text-blue-400 font-semibold inline-flex items-center gap-0.5 hover:underline font-sans">Google Cloud Console <ExternalLink className="w-3 h-3" /></a> dan pastikan Anda memilih proyek yang sesuai.
+                            </li>
+                            <li>
+                              Buka menu utama di kiri atas, pilih <span className="font-bold">APIs & Services</span>, lalu klik <span className="font-bold">Library</span>.
+                            </li>
+                            <li>
+                              Cari <span className="font-bold">"Google Calendar API"</span> di kotak pencarian, klik layanannya, lalu klik tombol <span className="font-bold text-emerald-600 font-sans">Enable / Aktifkan</span>.
+                            </li>
+                          </>
+                        )}
+                        <li>
+                          Tunggu sekitar 30 detik hingga 1 menit agar perubahan diaplikasikan oleh sistem Google, kemudian kembali ke halaman ini dan ulangi proses sinkronisasi kalender Anda.
+                        </li>
+                      </ol>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm leading-relaxed">
+                      Domain aplikasi ini belum dimasukkan ke daftar domain yang diizinkan (Authorized Domains) di menu Firebase Authentication proyek Anda. Firebase memblokir proses masuk demi keamanan.
+                    </p>
+                    
+                    <div className="bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-200 dark:border-slate-800 space-y-3 font-sans">
+                      <h4 className="font-semibold text-sm text-slate-800 dark:text-slate-200">Langkah Penyelesaian:</h4>
+                      <ol className="list-decimal list-inside space-y-2.5 text-xs text-slate-600 dark:text-slate-400">
+                        <li>
+                          Buka <a href="https://console.firebase.google.com/" target="_blank" rel="noreferrer" className="text-blue-600 dark:text-blue-400 font-semibold inline-flex items-center gap-0.5 hover:underline font-sans">Firebase Console <ExternalLink className="w-3 h-3" /></a> dan pilih proyek Anda.
+                        </li>
+                        <li>
+                          Masuk ke menu <span className="font-bold">Authentication</span>, klik tab <span className="font-bold">Settings</span> di bagian kanan atas, lalu pilih menu <span className="font-bold text-amber-600">Authorized domains</span>.
+                        </li>
+                        <li className="space-y-1.5">
+                          <span>Klik tombol <span className="font-bold">Add domain</span> dan masukkan domain aplikasi berikut satu per satu:</span>
+                          <div className="space-y-2 my-2 pl-4">
+                            {[
+                              window.location.hostname,
+                              "ais-dev-qldee2cedor5ds3ifue6o5-203816477998.asia-southeast1.run.app",
+                              "ais-pre-qldee2cedor5ds3ifue6o5-203816477998.asia-southeast1.run.app"
+                            ].filter(Boolean).map((domain, idx) => (
+                              <div key={idx} className="flex items-center gap-2 justify-between max-w-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded px-2.5 py-1 text-[11px] font-mono select-all">
+                                <span className="truncate">{domain}</span>
+                                <button
+                                  onClick={() => handleCopyText(domain)}
+                                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 shrink-0"
+                                  title="Salin Domain"
+                                >
+                                  {copiedText === domain ? (
+                                    <Check className="w-3.5 h-3.5 text-emerald-600 animate-bounce" />
+                                  ) : (
+                                    <Copy className="w-3.5 h-3.5" />
+                                  )}
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </li>
+                        <li>
+                          Klik <span className="font-bold bg-blue-50 dark:bg-blue-950 text-blue-600 px-1 py-0.5 rounded">Add / Tambahkan</span> untuk menyimpan setiap domain tersebut.
+                        </li>
+                        <li>
+                          Tunggu sekitar 10 detik, lalu muat ulang halaman ini dan ulangi proses sinkronisasi kalender.
+                        </li>
+                      </ol>
+                    </div>
+                  </>
+                )}
+                
+                <div className="text-[11px] text-slate-400 font-mono mt-4 truncate max-w-full">
+                  Sistem internal detail error: {firebaseErrorHelpModal.rawMessage}
+                </div>
+              </div>
+              
+              <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 flex justify-end gap-3">
+                <button
+                  onClick={() => setFirebaseErrorHelpModal({ ...firebaseErrorHelpModal, isOpen: false })}
+                  className="px-4 py-2 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 rounded text-sm font-medium transition"
+                >
+                  Tutup Panduan
+                </button>
+                <a
+                  href={
+                    firebaseErrorHelpModal.errorType === "calendar_api_disabled"
+                      ? (gcpEnableUrl || "https://console.cloud.google.com/apis/library/calendar-json.googleapis.com")
+                      : "https://console.firebase.google.com/"
+                  }
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded text-sm font-medium transition inline-flex items-center gap-1.5"
+                >
+                  {firebaseErrorHelpModal.errorType === "calendar_api_disabled" 
+                    ? "Aktifkan API Sekarang" 
+                    : "Buka Firebase Console"}
+                  <ExternalLink className="w-4 h-4" />
+                </a>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
       <div className="flex justify-between items-end">
         <div>
           <h1 className="text-xl font-bold text-slate-800 dark:text-slate-200">Jam Kerja & Penjadwalan</h1>
