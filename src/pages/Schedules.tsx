@@ -402,7 +402,7 @@ export const Schedules: React.FC = () => {
     rawMessage: ""
   });
 
-  const [copiedText, setCopiedText] = useState<string | null>(null);
+   const [copiedText, setCopiedText] = useState<string | null>(null);
   const handleCopyText = (text: string) => {
     navigator.clipboard.writeText(text);
     setCopiedText(text);
@@ -410,6 +410,22 @@ export const Schedules: React.FC = () => {
       setCopiedText(null);
     }, 2000);
   };
+
+  const [savePreview, setSavePreview] = useState<{
+    isOpen: boolean;
+    title: string;
+    summary: string;
+    impactedUids: string[];
+    notificationWillBeSent: boolean;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: "",
+    summary: "",
+    impactedUids: [],
+    notificationWillBeSent: false,
+    onConfirm: () => {},
+  });
 
   const requestConfirm = (title: string, message: string, isDestructive: boolean, onConfirm: () => void) => {
     setConfirmModal({ isOpen: true, title, message, isDestructive, onConfirm });
@@ -781,13 +797,109 @@ Jadwal libur akan ditambahkan ke sistem ini.`,
     );
   };
 
+  const getCurrentScheduleItem = () => {
+    if (!formData?.id) return null;
+
+    if (activeTab === "timetable") {
+      return timetables.find((item: any) => item.id === formData.id) || null;
+    }
+
+    if (activeTab === "shift") {
+      return shifts.find((item: any) => item.id === formData.id) || null;
+    }
+
+    if (activeTab === "assignment") {
+      return assignments.find((item: any) => item.id === formData.id) || null;
+    }
+
+    if (activeTab === "holiday") {
+      return holidays.find((item: any) => item.id === formData.id || item.date === formData.id) || null;
+    }
+
+    if (activeTab === "special") {
+      return specials.find((item: any) => item.id === formData.id) || null;
+    }
+
+    if (activeTab === "overtime") {
+      return overtimeSchedules.find((item: any) => item.id === formData.id || item.schedule_id === formData.id) || null;
+    }
+
+    return null;
+  };
+
+  const applyScheduleMetadata = (payload: any, existing?: any) => {
+    const now = Date.now();
+
+    return {
+      ...payload,
+      company_id: targetCompanyId,
+      created_at: existing?.created_at || payload.created_at || now,
+      created_by: existing?.created_by || payload.created_by || userData?.uid || "",
+      created_by_name: existing?.created_by_name || payload.created_by_name || userData?.nama_lengkap || "",
+      updated_at: now,
+      updated_by: userData?.uid || "",
+      updated_by_name: userData?.nama_lengkap || "",
+    };
+  };
+
+  const getImpactedPreviewForCurrentForm = () => {
+    let impactedUids: string[] = [];
+    let title = `Simpan ${createLabel()}`;
+    let summary = `Data ${createLabel().toLowerCase()} akan disimpan.`;
+    let notificationWillBeSent = false;
+
+    if (activeTab === "assignment") {
+      impactedUids = resolveTargetUids(formData.type || "individual", formData.target_id || "");
+      summary = `Penerapan jadwal akan berdampak ke ${impactedUids.length} karyawan.`;
+      notificationWillBeSent = impactedUids.length > 0;
+    }
+
+    if (activeTab === "special") {
+      impactedUids = resolveTargetUids(formData.type || "individual", formData.target_id || "");
+      summary = `Jadwal khusus tanggal ${formData.date || "-"} akan berdampak ke ${impactedUids.length} karyawan.`;
+      notificationWillBeSent = impactedUids.length > 0;
+    }
+
+    if (activeTab === "overtime") {
+      impactedUids = employees
+        .map((employee: any) => employee.uid)
+        .filter((uid: string) => formData[`target_${uid}`]);
+
+      const selectedDates = sortDateKeys(formData.dates || {});
+      summary = `Jadwal lembur untuk ${selectedDates.length} tanggal akan berdampak ke ${impactedUids.length} karyawan.`;
+      notificationWillBeSent = impactedUids.length > 0;
+    }
+
+    return {
+      title,
+      summary,
+      impactedUids,
+      notificationWillBeSent,
+    };
+  };
+
+  const previewEmployeeLines = (uids: string[]) => {
+    if (uids.length === 0) return "- Tidak ada karyawan terdampak";
+
+    const lines = uids.slice(0, 10).map((uid) => {
+      return `- ${getEmployeeName(uid)} (${uid})`;
+    });
+
+    if (uids.length > 10) {
+      lines.push(`+${uids.length - 10} karyawan lainnya`);
+    }
+
+    return lines.join("\n");
+  };
+
   const handleCreate = async (e: React.FormEvent) => {
       e.preventDefault();
       if (!targetCompanyId) return;
 
       const createRequest = async () => {
           let listPath = "";
-          let newData: any = { ...formData, active: true, created_at: Date.now(), updated_at: Date.now() };
+          const existingScheduleItem = getCurrentScheduleItem();
+          let newData: any = { ...formData, active: formData.active !== false };
 
           if (activeTab === "timetable") {
               if (!newData.name || !newData.work_start || !newData.work_end) throw new Error("Data jam kerja belum lengkap.");
@@ -956,6 +1068,8 @@ Jadwal libur akan ditambahkan ke sistem ini.`,
                   updated_at: Date.now()
               };
           }
+
+          newData = applyScheduleMetadata(newData, existingScheduleItem);
 
           if (activeTab === "holiday") {
               if (formData.id && formData.id !== newData.date) {
@@ -1127,7 +1241,8 @@ Jadwal libur akan ditambahkan ke sistem ini.`,
           return "Berhasil menyimpan data";
       };
 
-      toast.promise(createRequest(), {
+      const runCreateRequest = () => {
+        toast.promise(createRequest(), {
           loading: 'Menyimpan...',
           success: (msg) => {
               setFormData({});
@@ -1135,7 +1250,25 @@ Jadwal libur akan ditambahkan ke sistem ini.`,
               return msg;
           },
           error: (err) => `Gagal menyimpan: ${err.message}`
-      });
+        });
+      };
+
+      if (["assignment", "special", "overtime"].includes(activeTab)) {
+        const preview = getImpactedPreviewForCurrentForm();
+
+        setSavePreview({
+          isOpen: true,
+          ...preview,
+          onConfirm: () => {
+            setSavePreview(prev => ({ ...prev, isOpen: false }));
+            runCreateRequest();
+          },
+        });
+
+        return;
+      }
+
+      runCreateRequest();
   };
 
   const handleToggle = async (id: string, currentActive: boolean) => {
@@ -1449,6 +1582,20 @@ Jadwal libur akan ditambahkan ke sistem ini.`,
         onConfirm={confirmModal.onConfirm}
         onCancel={() => setConfirmModal({ ...confirmModal, isOpen: false })}
       />
+      <ConfirmModal
+        isOpen={savePreview.isOpen}
+        title={savePreview.title}
+        message={`${savePreview.summary}
+
+Jumlah target: ${savePreview.impactedUids.length} karyawan.
+Notifikasi: ${savePreview.notificationWillBeSent ? "akan dikirim" : "tidak dikirim"}.
+
+Target terdampak:
+${previewEmployeeLines(savePreview.impactedUids)}`}
+        isDestructive={false}
+        onConfirm={savePreview.onConfirm}
+        onCancel={() => setSavePreview(prev => ({ ...prev, isOpen: false }))}
+      />
       {firebaseErrorHelpModal.isOpen && (() => {
         const getGcpEnableUrl = (msg: string) => {
           const match = msg.match(/https:\/\/console\.[^\s"']+/i);
@@ -1652,7 +1799,7 @@ Jadwal libur akan ditambahkan ke sistem ini.`,
                     onChange={(e) => setSyncCalendarAllCompanies(e.target.checked)}
                     className="rounded text-blue-600 focus:ring-blue-500 h-3.5 w-3.5"
                   />
-                  <span>Semua Perusahaan</span>
+                  <span>Terapkan ke semua perusahaan</span>
                 </label>
                 <button
                   onClick={handleSyncGoogleCalendar}
@@ -1678,7 +1825,10 @@ Jadwal libur akan ditambahkan ke sistem ini.`,
           <label className="text-sm font-medium text-slate-600 dark:text-slate-400">Pilih Perusahaan:</label>
           <select 
             value={targetCompanyId} 
-            onChange={(e) => setTargetCompanyId(e.target.value)}
+            onChange={(e) => {
+              setTargetCompanyId(e.target.value);
+              localStorage.setItem("admin_selected_company", e.target.value);
+            }}
             className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 rounded p-2 text-sm focus:outline-none focus:border-blue-500 min-w-[200px]"
           >
             <option value="" disabled>-- Pilih Perusahaan --</option>
@@ -1686,6 +1836,17 @@ Jadwal libur akan ditambahkan ke sistem ini.`,
               <option key={c.id} value={c.id}>{companyDisplayName(c, `Perusahaan ${index + 1}`)}</option>
             ))}
           </select>
+        </div>
+      )}
+
+      {targetCompanyId && (
+        <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3 text-xs text-slate-600 dark:text-slate-300">
+          Perusahaan aktif:{" "}
+          <span className="font-semibold text-blue-600 dark:text-blue-400">
+            {companies.find((c: any) => c.id === targetCompanyId)
+              ? companyDisplayName(companies.find((c: any) => c.id === targetCompanyId), targetCompanyId)
+              : targetCompanyId}
+          </span>
         </div>
       )}
 
