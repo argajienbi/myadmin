@@ -677,7 +677,6 @@ const filteredEmployees = employees.filter(emp => emp.status_akun === activeTab)
                            <div className="text-xs text-slate-600 dark:text-slate-400 space-y-0.5">
                               <div><span className="opacity-50">Kantor:</span> {offices.find(o => o.id === emp.office_id)?.name || "Kantor tidak ditemukan"}</div>
                               {emp.department_id && <div><span className="opacity-50">Dept:</span> {departments.find(d => d.id === emp.department_id)?.name || "Departemen tidak ditemukan"}</div>}
-                              {emp.sub_department_id && <div><span className="opacity-50">Sub-Dept:</span> {subDepartments.find(s => s.id === emp.sub_department_id)?.name || "Sub-Departemen tidak ditemukan"}</div>}
                               {emp.group_id && <div><span className="opacity-50">Grup Karyawan:</span> {groups.find(g => g.id === emp.group_id)?.name || "Grup tidak ditemukan"}</div>}
                            </div>
                         ) : (
@@ -867,23 +866,7 @@ const filteredEmployees = employees.filter(emp => emp.status_akun === activeTab)
                 </select>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">
-                  Sub Department
-                </label>
-                <select
-                  value={formData.sub_department_id || ""}
-                  onChange={(e) => setFormData({ ...formData, sub_department_id: e.target.value })}
-                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded p-2 text-slate-800 dark:text-slate-200 text-sm"
-                >
-                  <option value="">-- Kosong --</option>
-                  {subDepartments.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+
 
               <div>
                 <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">Employee Group</label>
@@ -957,25 +940,7 @@ const filteredEmployees = employees.filter(emp => emp.status_akun === activeTab)
                   {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                 </select>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">
-                  Sub Department
-                </label>
-                <select
-                  value={addFormData.sub_department_id || ""}
-                  onChange={(e) =>
-                    setAddFormData({ ...addFormData, sub_department_id: e.target.value })
-                  }
-                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded p-2 text-slate-800 dark:text-slate-200 text-sm"
-                >
-                  <option value="">-- Kosong --</option>
-                  {subDepartments.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+
               <div>
                 <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">Employee Group</label>
                 <select value={addFormData.group_id || ""} onChange={e => setAddFormData({...addFormData, group_id: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded p-2 text-slate-800 dark:text-slate-200 text-sm">

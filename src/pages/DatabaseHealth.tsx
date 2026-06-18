@@ -6,7 +6,7 @@ import { paths } from "../services/paths";
 import { useAuth } from "../auth/AuthContext";
 import { getFileUrl } from "../services/storageService";
 import toast from "react-hot-toast";
-import DataGatePanel from "../components/DataGatePanel";
+
 import { manualGet } from "../services/rtdbDataGate";
 
 type CompanyOption = {
@@ -557,7 +557,7 @@ export const DatabaseHealth: React.FC = () => {
         </label>
       </div>
 
-      <DataGatePanel />
+
 
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-4">
         <div>

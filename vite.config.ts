@@ -16,9 +16,9 @@ export default defineConfig(({mode}) => {
           maximumFileSizeToCacheInBytes: 10000000,
         },
         manifest: {
-          name: 'MyPresensi Admin',
-          short_name: 'MyPresensi',
-          description: 'Aplikasi Admin MyPresensi',
+          name: 'MyPresence Admin',
+          short_name: 'MyPresence',
+          description: 'Aplikasi Admin MyPresence',
           theme_color: '#F4F0EB',
           background_color: '#F4F0EB',
           display: 'standalone',

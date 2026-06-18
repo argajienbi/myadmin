@@ -151,7 +151,7 @@ export const Login: React.FC = () => {
       <div className="md:w-1/2 lg:w-3/5 bg-blue-600 dark:bg-slate-900 p-8 md:p-12 lg:p-16 flex flex-col justify-between text-white border-r border-slate-200 dark:border-slate-800">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center font-bold text-blue-600 text-xl shadow-sm">M</div>
-          <h1 className="text-2xl font-bold tracking-tight">MYPRESENSI</h1>
+          <h1 className="text-2xl font-bold tracking-tight">MYPRESENCE</h1>
         </div>
         
         <div className="my-12 md:my-auto max-w-xl">
@@ -165,7 +165,7 @@ export const Login: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div className="bg-blue-700/30 dark:bg-slate-800/50 p-5 rounded-2xl border border-blue-500/30 dark:border-slate-700/50 backdrop-blur-sm">
               <div className="font-semibold text-lg mb-2">Manajemen Terpusat</div>
-              <div className="text-sm text-blue-200 dark:text-slate-400 leading-relaxed">Kelola struktur organisasi, area, cabang, jadwal, dan data karyawan dengan lebih efisien.</div>
+              <div className="text-sm text-blue-200 dark:text-slate-400 leading-relaxed">Kelola struktur organisasi, area, cabang, jadwal, and data karyawan dengan lebih efisien.</div>
             </div>
             <div className="bg-blue-700/30 dark:bg-slate-800/50 p-5 rounded-2xl border border-blue-500/30 dark:border-slate-700/50 backdrop-blur-sm">
               <div className="font-semibold text-lg mb-2">Monitoring & Laporan</div>
@@ -175,7 +175,7 @@ export const Login: React.FC = () => {
         </div>
         
         <div className="text-sm text-blue-300 dark:text-slate-500">
-          &copy; {new Date().getFullYear()} MyPresensi. All rights reserved.
+          &copy; {new Date().getFullYear()} MyPresence. All rights reserved.
         </div>
       </div>
 

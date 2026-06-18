@@ -291,10 +291,6 @@ export const Attendance: React.FC = () => {
         </div>
       </div>
 
-      <div className="p-4 bg-teal-50 dark:bg-teal-900/20 border border-teal-200 dark:border-teal-800 rounded-xl shadow-sm text-sm text-teal-800 dark:text-teal-200">
-         <span className="font-semibold">Mode hemat bandwidth aktif.</span> Data besar tidak disinkron otomatis. Pilih filter tanggal lalu klik <b>Ambil Data</b>.
-      </div>
-
       {isOwner && (
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-lg flex items-center gap-4">
           <label className="text-sm font-medium text-slate-600 dark:text-slate-400">Pilih Perusahaan:</label>
@@ -367,10 +363,6 @@ export const Attendance: React.FC = () => {
               <select value={filterDepartment} onChange={e => setFilterDepartment(e.target.value)} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded px-3 py-2 text-slate-800 dark:text-slate-200 text-sm focus:border-blue-500">
                   <option value="">Semua Department</option>
                   {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-              </select>
-              <select value={filterSubDepartment} onChange={e => setFilterSubDepartment(e.target.value)} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded px-3 py-2 text-slate-800 dark:text-slate-200 text-sm focus:border-blue-500">
-                  <option value="">Semua Sub Dept</option>
-                  {subDepartments.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
               <select value={filterGroup} onChange={e => setFilterGroup(e.target.value)} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded px-3 py-2 text-slate-800 dark:text-slate-200 text-sm focus:border-blue-500">
                   <option value="">Semua Group</option>

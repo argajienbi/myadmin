@@ -75,7 +75,7 @@ export const Layout: React.FC = () => {
       )}>
         <div className="p-4 flex items-center h-16 border-b border-slate-200 dark:border-slate-800 justify-between md:justify-center">
           <div className="font-bold text-lg text-slate-900 dark:text-white">
-            MYPRESENSI
+            MYPRESENCE
           </div>
           <button 
             className="md:hidden text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:text-white"

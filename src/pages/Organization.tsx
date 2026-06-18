@@ -16,7 +16,7 @@ export const Organization: React.FC = () => {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   
-  const [activeTab, setActiveTab] = useState<"area" | "office" | "department" | "subdepartment" | "group">("area");
+  const [activeTab, setActiveTab] = useState<"area" | "office" | "department" | "group">("area");
 
   const [areas, setAreas] = useState<Area[]>([]);
   const [offices, setOffices] = useState<Office[]>([]);
@@ -129,10 +129,6 @@ export const Organization: React.FC = () => {
         listPath = paths.departments(targetCompanyId);
         targetPath = paths.department(targetCompanyId, editingId || "");
         labelBisnis = "Departemen";
-      } else if (activeTab === "subdepartment") {
-        listPath = paths.subDepartments(targetCompanyId);
-        targetPath = paths.subDepartment(targetCompanyId, editingId || "");
-        labelBisnis = "Sub Departemen";
       } else if (activeTab === "group") {
         listPath = paths.employeeGroups(targetCompanyId);
         targetPath = paths.employeeGroup(targetCompanyId, editingId || "");
@@ -187,7 +183,6 @@ export const Organization: React.FC = () => {
     if (activeTab === "area") { itemPath = paths.area(targetCompanyId, id); labelBisnis = "Area"; }
     else if (activeTab === "office") { itemPath = paths.office(targetCompanyId, id); labelBisnis = "Kantor"; }
     else if (activeTab === "department") { itemPath = paths.department(targetCompanyId, id); labelBisnis = "Departemen"; }
-    else if (activeTab === "subdepartment") { itemPath = paths.subDepartment(targetCompanyId, id); labelBisnis = "Sub Departemen"; }
     else if (activeTab === "group") { itemPath = paths.employeeGroup(targetCompanyId, id); labelBisnis = "Grup Karyawan"; }
 
     if(itemPath) {
@@ -241,7 +236,6 @@ export const Organization: React.FC = () => {
     if (activeTab === "area") { itemPath = paths.area(targetCompanyId, id); labelBisnis = "Area"; }
     else if (activeTab === "office") { itemPath = paths.office(targetCompanyId, id); labelBisnis = "Kantor"; }
     else if (activeTab === "department") { itemPath = paths.department(targetCompanyId, id); labelBisnis = "Departemen"; }
-    else if (activeTab === "subdepartment") { itemPath = paths.subDepartment(targetCompanyId, id); labelBisnis = "Sub Departemen"; }
     else if (activeTab === "group") { itemPath = paths.employeeGroup(targetCompanyId, id); labelBisnis = "Grup Karyawan"; }
 
     if(itemPath) {
@@ -297,7 +291,7 @@ export const Organization: React.FC = () => {
             }}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded text-sm font-medium"
           >
-            + Tambah {activeTab === "subdepartment" ? "Sub Department" : activeTab}
+            + Tambah {activeTab}
           </button>
         )}
       </div>
@@ -331,7 +325,6 @@ export const Organization: React.FC = () => {
               { id: "area", label: "Area" },
               { id: "office", label: "Office" },
               { id: "department", label: "Department" },
-              { id: "subdepartment", label: "Sub Department" },
               { id: "group", label: "Employee Group" }
             ].map((tab) => (
               <button
@@ -422,26 +415,7 @@ export const Organization: React.FC = () => {
                 </table>
               )
             )}
-            {activeTab === "subdepartment" && (
-                subDepartments.length === 0 ? <div className="p-8 text-center text-slate-500">Belum ada data...</div> : (
-                <table className="w-full text-sm text-left">
-                  <thead className="bg-slate-100 dark:bg-slate-800/50 text-slate-600 dark:text-slate-400"><tr><th className="px-6 py-3 font-medium">Nama Sub Dept</th><th className="px-6 py-3 font-medium">Department</th><th className="px-6 py-3 font-medium text-right">Aksi</th></tr></thead>
-                  <tbody className="divide-y divide-slate-800">
-                    {subDepartments.map(s => (
-                      <tr key={s.id} className="hover:bg-slate-100 dark:bg-slate-800/30 text-slate-700 dark:text-slate-300">
-                        <td className="px-6 py-4">{s.name}</td>
-                        <td className="px-6 py-4 text-xs text-slate-500">{departments.find(d => d.id === s.department_id)?.name}</td>
-                        <td className="px-6 py-4 text-right space-x-2">
-                          <button onClick={() => { setEditingId(s.id!); setFormData(s); setShowModal(true); }} className="text-blue-600 dark:text-blue-400 hover:text-blue-300 text-xs font-medium">Edit</button>
-                          <button onClick={() => handleToggle(s.id!, s.active)} className="text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:text-slate-200 text-xs font-medium">{s.active ? "Nonaktifkan" : "Pulihkan"}</button>
-                          <button onClick={() => handleDelete(s.id!)} className="text-red-600 dark:text-red-400 hover:text-red-300 text-xs font-medium">Hapus</button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )
-            )}
+
             {activeTab === "group" && (
                 groups.length === 0 ? <div className="p-8 text-center text-slate-500">Belum ada data...</div> : (
                 <table className="w-full text-sm text-left">
@@ -488,7 +462,7 @@ export const Organization: React.FC = () => {
                 />
               </div>
 
-              {(activeTab === "office" || activeTab === "department" || activeTab === "subdepartment" || activeTab === "group") && (
+              {(activeTab === "office" || activeTab === "department" || activeTab === "group") && (
                   <div>
                     <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">Area Access</label>
                     <select required value={formData.area_id || ""} onChange={e => setFormData({...formData, area_id: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded p-2 text-slate-800 dark:text-slate-200">
@@ -519,7 +493,7 @@ export const Organization: React.FC = () => {
                 </div>
               )}
 
-              {(activeTab === "department" || activeTab === "subdepartment" || activeTab === "group") && (
+              {(activeTab === "department" || activeTab === "group") && (
                   <div>
                     <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">Office</label>
                     <select required value={formData.office_id || ""} onChange={e => setFormData({...formData, office_id: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded p-2 text-slate-800 dark:text-slate-200">
@@ -529,22 +503,12 @@ export const Organization: React.FC = () => {
                   </div>
               )}
 
-              {(activeTab === "subdepartment" || activeTab === "group") && (
+              {activeTab === "group" && (
                   <div>
                     <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">Department</label>
                     <select required value={formData.department_id || ""} onChange={e => setFormData({...formData, department_id: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded p-2 text-slate-800 dark:text-slate-200">
                       <option value="" disabled>Pilih Dept...</option>
                       {departments.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
-                    </select>
-                  </div>
-              )}
-
-              {activeTab === "group" && (
-                 <div>
-                    <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">Sub Department (Optional)</label>
-                    <select value={formData.sub_department_id || ""} onChange={e => setFormData({...formData, sub_department_id: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded p-2 text-slate-800 dark:text-slate-200">
-                      <option value="">-- Kosongkan jika tidak ada --</option>
-                      {subDepartments.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
                     </select>
                   </div>
               )}

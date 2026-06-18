@@ -5,7 +5,7 @@ import { db } from "../firebase";
 import { paths } from "../services/paths";
 import { loadAttendanceByDateRange, loadRecentAttendance, loadDashboardSummary } from "../services/rtdbLeanService";
 import toast from "react-hot-toast";
-import DataGatePanel from "../components/DataGatePanel";
+
 import { manualGet } from "../services/rtdbDataGate";
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer 
@@ -508,7 +508,7 @@ export const Dashboard: React.FC = () => {
          )}
       </div>
 
-      <DataGatePanel />
+
 
       {!targetCompanyId ? (
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-12 rounded-xl text-center text-slate-500 shadow-sm flex flex-col items-center">

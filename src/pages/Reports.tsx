@@ -580,7 +580,7 @@ export const Reports: React.FC = () => {
                      {Object.keys(metadata.departments).map(k => <option key={k} value={k}>{metadata.departments[k].name}</option>)}
                  </select>
 
-                 <select value={filterSub} onChange={e => setFilterSub(e.target.value)} className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded px-3 py-2 text-slate-800 dark:text-slate-200 text-sm focus:border-blue-500">
+                 <select value={filterSub} onChange={e => setFilterSub(e.target.value)} className="hidden">
                      <option value="">Semua Sub Department</option>
                      {Object.keys(metadata.subDepartments).map(k => <option key={k} value={k}>{metadata.subDepartments[k].name}</option>)}
                  </select>

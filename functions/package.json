@@ -1,5 +1,5 @@
 {
-  "name": "mypresensi-notification-functions",
+  "name": "mypresence-notification-functions",
   "private": true,
   "main": "index.js",
   "engines": {

@@ -315,7 +315,7 @@ exports.processNotificationQueue = onValueWritten(
     }
 
     const uid = String(queue.uid || "").trim();
-    const title = String(queue.title || "MYPRESENSI").trim();
+    const title = String(queue.title || "MYPRESENCE").trim();
     const body = String(
       queue.body || queue.message || "Ada notifikasi baru.",
     ).trim();

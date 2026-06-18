@@ -115,7 +115,6 @@ export const SetupWizard: React.FC = () => {
     stats.hasOffice,
     stats.hasArea,
     stats.hasDept,
-    stats.hasSubDept,
     stats.hasGroup,
     stats.hasTimetable,
     stats.hasShift,
@@ -230,17 +229,7 @@ export const SetupWizard: React.FC = () => {
             </div>
           </div>
 
-          <div className={`flex items-start gap-4 p-4 rounded-lg border ${stats.hasSubDept ? 'bg-emerald-50/50 border-emerald-100 dark:bg-emerald-900/10 dark:border-emerald-800/30' : 'bg-white dark:bg-slate-800/50 border-slate-200 dark:border-slate-700'}`}>
-            <div className="pt-1"><StepIcon done={stats.hasSubDept} /></div>
-            <div className="flex-1">
-              <h3 className="font-bold text-slate-800 dark:text-slate-200">Sub Departemen</h3>
-              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Tambahkan divisi atau bagian kecil di bawah departemen utama jika diperlukan.</p>
-              <div className="mt-3 flex items-center justify-between">
-                <span className="text-xs font-medium px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded">Status: {stats.hasSubDept ? 'Selesai' : 'Belum Lengkap'}</span>
-                <button onClick={() => navigate('/organization')} className="text-sm text-blue-600 dark:text-blue-400 font-medium hover:underline">Kelola Sub Departemen →</button>
-              </div>
-            </div>
-          </div>
+
 
           <div className={`flex items-start gap-4 p-4 rounded-lg border ${stats.hasGroup ? 'bg-emerald-50/50 border-emerald-100 dark:bg-emerald-900/10 dark:border-emerald-800/30' : 'bg-white dark:bg-slate-800/50 border-slate-200 dark:border-slate-700'}`}>
             <div className="pt-1"><StepIcon done={stats.hasGroup} /></div>
