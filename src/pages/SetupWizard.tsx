@@ -5,10 +5,13 @@ import { db } from '../firebase';
 import { ref, get } from 'firebase/database';
 import { paths } from '../services/paths';
 import { CheckCircle2, Circle } from 'lucide-react';
+import { isOwnerLike } from "../utils/roleAccess";
 
 export const SetupWizard: React.FC = () => {
   const navigate = useNavigate();
   const { userData } = useAuth();
+  const isOwner = isOwnerLike(userData);
+  const isCompanyAdmin = String(userData?.role || "").toLowerCase() === "admin" && !!userData?.company_id;
   const [companies, setCompanies] = useState<any[]>([]);
   const [targetCompanyId, setTargetCompanyId] = useState<string>("");
   const [stats, setStats] = useState({
@@ -16,7 +19,6 @@ export const SetupWizard: React.FC = () => {
     hasOffice: false,
     hasArea: false,
     hasDept: false,
-    hasSubDept: false,
     hasGroup: false,
     hasTimetable: false,
     hasShift: false,
@@ -25,40 +27,52 @@ export const SetupWizard: React.FC = () => {
   });
   const [loading, setLoading] = useState(true);
 
+  const activeCompany = companies.find((company: any) => company.id === targetCompanyId);
+  const activeCompanyName = activeCompany?.name || targetCompanyId || "Tidak ada perusahaan";
+
   useEffect(() => {
     if (!userData) return;
 
     const loadCompanies = async () => {
-      if (userData.role === 'owner') {
+      if (isOwner) {
         const comps = await get(ref(db, paths.companies()));
-        const list = comps.exists() ? Object.keys(comps.val()).map(id => ({ id, ...comps.val()[id] })) : [];
+        const list = comps.exists()
+          ? Object.keys(comps.val()).map(id => ({ id, ...comps.val()[id] }))
+          : [];
+
         setCompanies(list);
 
-        const savedCompany = localStorage.getItem('admin_selected_company') || "";
-        const initialCompany = savedCompany || list[0]?.id || "";
-        
+        const savedCompany = localStorage.getItem("admin_selected_company") || "";
+        const savedIsValid = savedCompany && list.some((company: any) => company.id === savedCompany);
+        const userCompanyIsValid = userData.company_id && list.some((company: any) => company.id === userData.company_id);
+
+        const initialCompany = savedIsValid
+          ? savedCompany
+          : userCompanyIsValid
+            ? userData.company_id
+            : list[0]?.id || "";
+
         setTargetCompanyId(initialCompany);
+
         if (initialCompany) {
-          localStorage.setItem('admin_selected_company', initialCompany);
+          localStorage.setItem("admin_selected_company", initialCompany);
         }
-      } else {
-        setTargetCompanyId(userData.company_id || "");
+
+        return;
       }
+
+      setCompanies([]);
+      setTargetCompanyId(userData.company_id || "");
     };
-    
-    // Only load companies list initially or if not set for owner
-    if (userData.role === 'owner' && companies.length === 0) {
-        loadCompanies();
-    } else if (userData.role !== 'owner' && !targetCompanyId) {
-        setTargetCompanyId(userData.company_id || "");
-    }
-  }, [userData]);
+
+    loadCompanies();
+  }, [userData, isOwner]);
 
 
   useEffect(() => {
     if (!userData) return;
-    if (userData.role !== "owner" && !userData.company_id) return;
-    if (userData.role === "owner" && !targetCompanyId) {
+    if (!isOwner && !userData.company_id) return;
+    if (isOwner && !targetCompanyId) {
        setLoading(false);
        return;
     }
@@ -66,19 +80,13 @@ export const SetupWizard: React.FC = () => {
     const checkStats = async () => {
       setLoading(true);
       try {
-        let hasComp = false;
-        if (userData.role === 'owner') {
-          hasComp = true; // Assuming selected means it has company
-        } else {
-          hasComp = !!userData.company_id;
-        }
+        const hasComp = isOwner ? !!targetCompanyId : !!userData.company_id;
 
         if (targetCompanyId) {
-          const [offices, areas, depts, subDepts, groups, timetables, shifts, assignments, employees] = await Promise.all([
+          const [offices, areas, depts, groups, timetables, shifts, assignments, employees] = await Promise.all([
             get(ref(db, paths.offices(targetCompanyId))),
             get(ref(db, paths.areas(targetCompanyId))),
             get(ref(db, paths.departments(targetCompanyId))),
-            get(ref(db, paths.subDepartments(targetCompanyId))),
             get(ref(db, paths.employeeGroups(targetCompanyId))),
             get(ref(db, paths.timetables(targetCompanyId))),
             get(ref(db, paths.shifts(targetCompanyId))),
@@ -93,7 +101,6 @@ export const SetupWizard: React.FC = () => {
             hasOffice: getActiveCount(offices) > 0,
             hasArea: getActiveCount(areas) > 0,
             hasDept: getActiveCount(depts) > 0,
-            hasSubDept: getActiveCount(subDepts) > 0,
             hasGroup: getActiveCount(groups) > 0,
             hasTimetable: getActiveCount(timetables) > 0,
             hasShift: getActiveCount(shifts) > 0,
@@ -108,7 +115,7 @@ export const SetupWizard: React.FC = () => {
     };
 
     checkStats();
-  }, [userData, targetCompanyId]);
+  }, [userData, isOwner, targetCompanyId]);
 
   const steps = [
     stats.hasCompany,
@@ -134,7 +141,7 @@ export const SetupWizard: React.FC = () => {
         <p className="text-sm text-slate-500">Panduan implementasi sistem presensi</p>
       </div>
 
-      {userData?.role === 'owner' ? (
+      {isOwner ? (
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-lg">
           <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">
             Pilih Perusahaan
@@ -143,27 +150,44 @@ export const SetupWizard: React.FC = () => {
             value={targetCompanyId}
             onChange={(e) => {
               setTargetCompanyId(e.target.value);
-              localStorage.setItem('admin_selected_company', e.target.value);
+              localStorage.setItem("admin_selected_company", e.target.value);
             }}
             className="w-full md:w-80 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 rounded p-2 text-sm"
           >
             <option value="" disabled>-- Pilih Perusahaan --</option>
             {companies.map((company) => (
               <option key={company.id} value={company.id}>
-                {company.name}
+                {company.name || company.id}
               </option>
             ))}
           </select>
         </div>
       ) : (
-        <div className="text-sm text-slate-500">
-          Perusahaan: <span className="font-medium text-slate-800 dark:text-slate-200">{userData?.company_id || "Tidak ada perusahaan"}</span>
+        <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 text-sm">
+          <div className="text-xs uppercase tracking-wide text-slate-500 mb-1">Mode Admin Perusahaan</div>
+          <div className="text-slate-700 dark:text-slate-300">
+            Perusahaan aktif:{" "}
+            <span className="font-semibold text-blue-600 dark:text-blue-400">
+              {activeCompanyName}
+            </span>
+          </div>
+          <div className="text-xs text-slate-500 mt-1">
+            Anda hanya melihat progress setup untuk perusahaan yang terhubung dengan akun admin ini.
+          </div>
+        </div>
+      )}
+
+      {!isOwner && !userData?.company_id && (
+        <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 text-amber-700 dark:text-amber-300 p-4 rounded-lg text-sm">
+          Akun admin ini belum terhubung ke perusahaan. Hubungi owner untuk assign admin ke perusahaan.
         </div>
       )}
 
       {!targetCompanyId ? (
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-8 rounded-lg text-center text-slate-500">
-          Pilih perusahaan terlebih dahulu untuk melihat progress setup.
+          {isOwner
+            ? "Pilih perusahaan terlebih dahulu untuk melihat progress setup."
+            : "Akun admin ini belum memiliki perusahaan aktif."}
         </div>
       ) : (
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-6">
@@ -184,12 +208,20 @@ export const SetupWizard: React.FC = () => {
         
         <div className="space-y-4">
           
-          <div className={`flex items-start gap-4 p-4 rounded-lg border ${stats.hasCompany ? 'bg-emerald-50/50 border-emerald-100 dark:bg-emerald-900/10 dark:border-emerald-800/30' : 'bg-white dark:bg-slate-800/50 border-slate-200 dark:border-slate-700'}`}>
+          <div className={`flex items-start gap-4 p-4 rounded-lg border ${stats.hasCompany ? 'bg-emerald-50/50 border-emerald-100 dark:bg-emerald-990/10 dark:border-emerald-800/30' : 'bg-white dark:bg-slate-800/50 border-slate-200 dark:border-slate-700'}`}>
             <div className="pt-1"><StepIcon done={stats.hasCompany} /></div>
             <div className="flex-1">
-              <h3 className="font-bold text-slate-800 dark:text-slate-200">Lengkapi Data Perusahaan</h3>
-              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Pastikan perusahaan sudah terdaftar untuk memulai pengaturan.</p>
-              <button onClick={() => navigate('/companies')} className="mt-3 text-sm text-blue-600 dark:text-blue-400 font-medium hover:underline">Kelola Perusahaan →</button>
+              <h3 className="font-bold text-slate-800 dark:text-slate-200">
+                {isOwner ? "Kelola Data Perusahaan" : "Lengkapi Profil Perusahaan"}
+              </h3>
+              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                {isOwner
+                  ? "Buat perusahaan, atur admin PT, lalu pilih perusahaan aktif sebelum mengisi setup operasional."
+                  : "Periksa nama perusahaan, branding/logo, website, dan kode undangan untuk perusahaan Anda."}
+              </p>
+              <button onClick={() => navigate("/companies")} className="mt-3 text-sm text-blue-600 dark:text-blue-400 font-medium hover:underline">
+                {isOwner ? "Kelola Perusahaan →" : "Kelola Profil Perusahaan →"}
+              </button>
             </div>
           </div>
 

@@ -16,6 +16,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
+import { isOwnerLike } from "../utils/roleAccess";
 import clsx from "clsx";
 
 type GuideVisibilityRole = "owner" | "admin";
@@ -44,14 +45,35 @@ const guideSections: GuideSection[] = [
     icon: HomeIcon,
     summary: "Urutan dasar sebelum admin mulai mengelola presensi.",
     steps: [
-      { title: "Cek mode akun", description: "Owner bisa memilih perusahaan, admin hanya mengelola company terkait." },
+      { title: "Cek mode akun", description: "Owner bisa memilih perusahaan aktif. Admin PT hanya mengelola perusahaan yang terhubung dengan akunnya." },
       { title: "Buka Setup Awal", description: "Pastikan data dasar siap." },
       { title: "Lengkapi master data", description: "Organisasi, kantor, radius, karyawan, jadwal kerja." },
-      { title: "Uji aplikasi karyawan", description: "Login Flutter, cek radius, cek jadwal, test presensi." },
+      { title: "Uji aplikasi karyawan", description: "Login aplikasi karyawan, cek radius, cek jadwal, dan uji presensi." },
     ],
     notes: [
       "Jika dashboard kosong, cek perusahaan aktif/company_id.",
       "Penyebab absen gagal paling umum: kantor/radius belum lengkap, karyawan belum punya grup, atau jadwal belum diterapkan.",
+    ]
+  },
+  {
+    id: "perusahaan-admin",
+    title: "Profil Perusahaan",
+    menu: "Perusahaan",
+    icon: Building2,
+    summary: "Pengelolaan profil perusahaan dari sudut pandang Admin PT.",
+    visibleFor: ["admin"],
+    steps: [
+      { title: "Buka menu Perusahaan", description: "Admin PT hanya melihat perusahaan yang terhubung dengan akunnya." },
+      { title: "Edit nama perusahaan", description: "Perbarui nama perusahaan jika ada koreksi penulisan atau perubahan identitas." },
+      { title: "Atur branding/logo", description: "Upload atau ganti logo perusahaan untuk tampilan ID Card dan identitas aplikasi." },
+      { title: "Atur website", description: "Isi URL website perusahaan dan domain yang diizinkan." },
+      { title: "Buat kode undangan", description: "Generate kode undangan untuk pendaftaran karyawan ke perusahaan Anda." }
+    ],
+    notes: [
+      "Admin PT tidak bisa menambah perusahaan baru.",
+      "Admin PT tidak bisa melihat perusahaan lain.",
+      "Admin PT tidak bisa menonaktifkan, memulihkan, atau menghapus perusahaan.",
+      "Jika data perusahaan tidak tampil, pastikan akun admin sudah memiliki company_id."
     ]
   },
   {
@@ -64,12 +86,11 @@ const guideSections: GuideSection[] = [
       { title: "Buat Area", description: "Tentukan area operasional perusahaan." },
       { title: "Buat Kantor", description: "Isi latitude, longitude, radius meter, pakai map picker." },
       { title: "Buat Departemen", description: "Kelompokkan karyawan berdasarkan departemen." },
-      { title: "Buat Sub Departemen", description: "Buat struktur lebih spesifik jika diperlukan." },
       { title: "Buat Grup Karyawan", description: "Untuk penerapan jadwal massal yang lebih mudah." },
     ],
     notes: [
-      "Radius kantor memengaruhi validasi presensi Flutter.",
-      "Di luar radius, app menolak presensi meskipun jadwal benar.",
+      "Radius kantor memengaruhi validasi presensi aplikasi karyawan.",
+      "Di luar radius, aplikasi menolak presensi meskipun jadwal benar.",
     ]
   },
   {
@@ -80,13 +101,13 @@ const guideSections: GuideSection[] = [
     summary: "Pengelolaan data pegawai dan akses aplikasi.",
     steps: [
       { title: "Tambah karyawan", description: "Isi nama, email, password awal, NIP, HP, jabatan." },
-      { title: "Lengkapi data penempatan", description: "Pilih kantor, departemen, sub departemen, grup." },
+      { title: "Lengkapi data penempatan", description: "Pilih kantor, departemen, dan grup karyawan." },
       { title: "Aktifkan akun", description: "Aktifkan akun via toggle jika data sudah benar." },
       { title: "Cek peringatan (badge)", description: "Periksa badge: aktif, pending, belum ada kantor, belum ada grup, belum ada jadwal." },
     ],
     notes: [
       "Karyawan tanpa group_id tidak mendapat jadwal grup.",
-      "Email dan password awal dipakai login Flutter.",
+      "Email dan password awal dipakai login aplikasi karyawan.",
     ]
   },
   {
@@ -105,7 +126,7 @@ const guideSections: GuideSection[] = [
     ],
     notes: [
       "Prioritas: Jadwal Lembur > Jadwal Khusus > Hari Libur > Jadwal Rutin.",
-      "Jika tidak ada jadwal aktif, Flutter menolak absen.",
+      "Jika tidak ada jadwal aktif, aplikasi karyawan menolak absen.",
     ]
   },
   {
@@ -113,19 +134,19 @@ const guideSections: GuideSection[] = [
     title: "Jadwal lembur",
     menu: "Jadwal Kerja → Jadwal Lembur",
     icon: ClipboardCheck,
-    summary: "Membuat jadwal tambahan di luar jam kerja normal atau hari libur.",
+    summary: "Membuat jadwal tambahan di luar jam kerja normal atau hari libur bagi karyawan.",
     steps: [
       { title: "Buat grup lembur", description: "Klik tambah jadwal lembur." },
-      { title: "Isi nama grup lembur", description: "Berikan nama yang deskriptif." },
-      { title: "Pilih karyawan", description: "Centang satu/banyak karyawan yang akan lembur." },
-      { title: "Pilih tanggal", description: "Pilih satu/banyak tanggal dari input kalender." },
+      { title: "Isi nama grup lembur", description: "Berikan nama yang deskriptif, misalnya 'Lembur IT Support'." },
+      { title: "Pilih karyawan", description: "Centang satu atau banyak karyawan yang akan lembur." },
+      { title: "Pilih tanggal", description: "Pilih satu atau banyak tanggal dari input kalender." },
       { title: "Jam kerja & window", description: "Isi jam kerja dan window check-in/check-out lembur tersebut." },
-      { title: "Simpan jadwal", description: "Sistem menyimpan dan mengirim push notifikasi ref_type schedule ke target." },
+      { title: "Simpan jadwal", description: "Sistem menyimpan dan mengirim notifikasi perangkat dengan ref_type schedule ke target." },
     ],
     notes: [
       "Untuk lembur perorangan, buat grup berisi 1 karyawan.",
-      "Jadwal lembur mengalahkan hari libur nasional untuk user target.",
-      "Sistem harus hard block (menolak save) jika karyawan, tanggal, dan jam lembur bertabrakan dengan jadwal lembur sebelumnya.",
+      "Jadwal lembur mengalahkan hari libur nasional untuk karyawan target.",
+      "Sistem akan menolak penyimpanan jika karyawan, tanggal, dan jam lembur bertabrakan dengan jadwal lembur sebelumnya di user yang sama.",
     ]
   },
   {
@@ -133,16 +154,16 @@ const guideSections: GuideSection[] = [
     title: "Absensi",
     menu: "Absensi",
     icon: ListChecks,
-    summary: "Melihat data presensi masuk dan keluar harian.",
+    summary: "Melihat data presensi masuk dan keluar harian karyawan.",
     steps: [
-      { title: "Gunakan filter tanggal", description: "Lihat data pada hari/periode spesifik." },
-      { title: "Gunakan filter hierarki", description: "Filter data per kantor/departemen/sub departemen/grup." },
-      { title: "Cek lokasi absensi", description: "Perhatikan status geofence (inside/outside) dan jarak dari titik koordinat (meter)." },
-      { title: "Preview", description: "Cek foto selfie/lokasi peta jika perlu validasi manual." },
+      { title: "Gunakan filter tanggal", description: "Lihat data pada hari atau periode spesifik." },
+      { title: "Gunakan filter hierarki", description: "Filter data per kantor, departemen, grup, atau karyawan." },
+      { title: "Cek lokasi absensi", description: "Perhatikan status geofence (didalam/diluar radius) dan jarak dari titik koordinat kantor (meter)." },
+      { title: "Preview", description: "Cek foto selfie atau lokasi peta jika perlu validasi manual." },
     ],
     notes: [
-      "Jika karyawan mengaku sudah absen tetapi tidak terlihat, cek tanggal, filter, action type, dan pastikan devicenya memiliki koneksi internet.",
-      "Attendance hasil kerja dari jadwal lembur memiliki \"schedule_source: overtime_schedule\" atau \"overtime_flag: true\".",
+      "Jika karyawan mengaku sudah absen tetapi tidak terlihat, cek tanggal, filter, jenis aksi, dan pastikan perangkatnya memiliki koneksi internet.",
+      "Data kehadiran hasil kerja dari jadwal lembur memiliki penanda khusus di kolom jadwal.",
     ]
   },
   {
@@ -152,28 +173,28 @@ const guideSections: GuideSection[] = [
     icon: CheckCircle,
     summary: "Memproses pengajuan perubahan data presensi dari karyawan.",
     steps: [
-      { title: "Buka daftar koreksi", description: "Lihat data yang perlu ditindaklanjuti." },
+      { title: "Buka daftar koreksi", description: "Lihat data pengajuan yang perlu ditindaklanjuti." },
       { title: "Periksa pengajuan", description: "Cek karyawan, tanggal absensi, alasan, dan data koreksi yang diajukan." },
-      { title: "Tindak lanjut", description: "Setujui atau tolak pengajuan (bisa menyertakan catatan)." },
+      { title: "Tindak lanjut", description: "Setujui atau tolak pengajuan (bisa menyertakan catatan tambahan)." },
       { title: "Cek laporan", description: "Setelah disetujui, absensi akan diperbarui. Cek di menu Absensi dan Laporan." },
     ],
     notes: []
   },
   {
     id: "persetujuan",
-    title: "Persetujuan",
+    title: "Persetujuan Sakit / Cuti / Izin",
     menu: "Persetujuan",
     icon: Shield,
-    summary: "Menyetujui izin, sakit, cuti, atau presensi darurat via QR/Manual.",
+    summary: "Menyetujui izin, sakit, cuti, atau presensi darurat karyawan.",
     steps: [
-      { title: "Pilih tab jenis persetujuan", description: "Pilih tab pengajuan jadwal atau tap QR/Manual." },
-      { title: "Cek detail", description: "Periksa nama, tanggal, tipe, alasan, dan file lampiran." },
-      { title: "Cek data lembur", description: "Khusus untuk lembur request, pastikan tanggal, jam, dan durasi sesuai." },
-      { title: "Keputusan", description: "Setujui atau tolak. Jika ditolak, isi alasan penolakan." },
+      { title: "Pilih tab jenis persetujuan", description: "Pilih tab pengajuan jadwal atau persetujuan dokumen pendukung." },
+      { title: "Cek detail", description: "Periksa nama, tanggal, tipe pengajuan, alasan, dan file lampiran pendukung." },
+      { title: "Cek data lembur", description: "Khusus pengajuan lembur, periksa kembali kecocokan durasi dan tanggal." },
+      { title: "Keputusan", description: "Setujui atau tolak pengajuan, letakkan alasan jika ditolak." },
     ],
     notes: [
-      "Sakit sebaiknya difilter dengan memeriksa bukti lampiran keterangan dokter/obat.",
-      "Merespons (Setuju/Tolak) otomatis mengirim notifikasi dengan ref_type leave_request."
+      "Sakit sebaiknya diverifikasi dengan memeriksa bukti foto dokumen atau surat dokter.",
+      "Setuju atau tolak pengajuan akan otomatis mengirimkan notifikasi perangkat ke karyawan bersangkutan."
     ]
   },
   {
@@ -181,35 +202,35 @@ const guideSections: GuideSection[] = [
     title: "Pengumuman",
     menu: "Pengumuman",
     icon: Bell,
-    summary: "Broadcast informasi ke karyawan (Dashboard & Push Notification).",
+    summary: "Broadcast informasi ke karyawan melalui dashboard dan notifikasi perangkat.",
     steps: [
-      { title: "Buat pengumuman", description: "Isi title, body, tipe pemberitahuan, target penerima, dan pilih send_push aktif." },
-      { title: "Pilih target", description: "Atur penerima apakah global, atau spesifik grup." },
-      { title: "Publish", description: "Simpan pengumuman untuk ditampilkan." },
-      { title: "Pantau pengiriman", description: "Lihat di Log Notifikasi jika push dikirimkan." },
+      { title: "Buat pengumuman", description: "Isi judul, isi berita, tipe pemberitahuan, target penerima, dan centang pilihan pengiriman notifikasi." },
+      { title: "Pilih target", description: "Atur penerima apakah global ke seluruh entitas, atau spesifik grup tertentu." },
+      { title: "Publish", description: "Simpan pengumuman untuk ditampilkan di beranda aplikasi karyawan." },
+      { title: "Pantau pengiriman", description: "Lihat di Log Notifikasi jika pengiriman sedang berjalan." },
     ],
     notes: [
-      "Saat karyawan men-tap push pengumuman, target navigasinya adalah ref_type: announcement.",
-      "Jika push queue tertahan/gagal, admin harus memantau log / error."
+      "Saat karyawan membuka notifikasi pengumuman, sistem akan membuka detail pengumuman terkait.",
+      "Jika antrean notifikasi tertahan/gagal, admin dapat memantau status di panel notifikasi."
     ]
   },
   {
     id: "notifikasi",
-    title: "Notifikasi",
+    title: "Notifikasi Perangkat",
     menu: "Pengaturan Notifikasi / Log Notifikasi",
-    icon: AlertTriangle, // fallback icon since Log/Notification mapping can vary
-    summary: "Pengaturan layanan notifikasi FCM dan pemantauan push yang dikirim ke device.",
+    icon: AlertTriangle,
+    summary: "Pengaturan notifikasi perangkat dan pemantauan pengiriman ke karyawan.",
     visibleFor: ["owner"],
     steps: [
       { title: "Buka Log Notifikasi", description: "Masuk ke menu Log Notifikasi (Settings)." },
       { title: "Pilih karyawan target", description: "Ketik atau cari nama/email karyawan." },
       { title: "Pilih jenis test", description: "Pilih scenario test: Pengumuman, Pengajuan, Riwayat Presensi, Jadwal Kerja." },
-      { title: "Kirim Test Push", description: "Eksekusi pengiriman notifikasi test." },
-      { title: "Cek status", description: "Lihat riwayat status queue dan cek device target." },
+      { title: "Kirim Test Notifikasi", description: "Eksekusi pengiriman notifikasi test." },
+      { title: "Cek status", description: "Lihat riwayat status antrean dan cek device target." },
     ],
     notes: [
-      "Untuk mengarahkan user membuka Detail Jadwal di Flutter, test push harus menggunakan ref_type schedule.",
-      "Sebaiknya jangan gunakan ref_type test karena navigasi app mungkin tidak mengenali type tersebut."
+      "Untuk mengarahkan user membuka Detail Jadwal di aplikasi karyawan, test notifikasi harus menggunakan ref_type schedule.",
+      "Sebaiknya jangan gunakan jenis pengujian umum demi menjaga stabilitas pembacaan aplikasi karyawan."
     ]
   },
   {
@@ -217,35 +238,36 @@ const guideSections: GuideSection[] = [
     title: "Laporan",
     menu: "Laporan",
     icon: Database,
-    summary: "Melihat rekap kehadiran dan status karyawan dalam satu periode.",
+    summary: "Melihat rekap kehadiran dan status karyawan dalam satu periode tertentu.",
     steps: [
       { title: "Pilih periode", description: "Tentukan rentang tanggal laporan." },
-      { title: "Atur Filter", description: "Gunakan filter organisasi/karyawan untuk mempersempit jangkauan jika tersedia." },
-      { title: "Cek rekapan", description: "Lihat status count hadir, terlambat, pulang awal, izin, sakit, cuti, absen lembur." },
-      { title: "Cek perhitungan lembur", description: "Perbedakan lembur user request dan lembur dari jadwal lembur admin." },
+      { title: "Atur Filter", description: "Gunakan filter organisasi/karyawan untuk mempersempit jangkauan." },
+      { title: "Cek rekapan", description: "Lihat status jumlah hari hadir, terlambat, pulang cepat, izin, sakit, cuti, serta akumulasi jam lembur." },
+      { title: "Cek perhitungan lembur", description: "Pahami perbedaan rekapan lembur yang disetujui dari permohonan mandiri vs lembur terjadwal." },
     ],
     notes: [
-      "Lembur terjadwal (assigned_overtime) dibaca murni dari attendance dengan schedule_source overtime_schedule atau overtime_flag true."
+      "Lembur terjadwal dibaca murni dari transaksi kehadiran yang cocok dengan setup jadwal lembur yang dibuat admin."
     ]
   },
   {
     id: "menu-owner",
-    title: "Menu Owner (Terbatas)",
-    menu: "Perusahaan / Admin PT / Audit Log / Kesehatan Database",
+    title: "Menu Owner dan Tools Lanjutan",
+    menu: "Perusahaan / Admin PT / Audit Log / Kesehatan Data",
     icon: Shield,
-    summary: "Menu khusus akun owner sistem untuk pengelolaan tenant dan tools lanjutan.",
+    summary: "Menu khusus owner untuk mengelola semua perusahaan, admin PT, audit, dan alat pemeliharaan data.",
     visibleFor: ["owner"],
     steps: [
-      { title: "Kelola Perusahaan", description: "Melihat tenant/perusahaan terdaftar dan mengaturnya." },
-      { title: "Kelola Admin PT", description: "Mendaftarkan dan memanage akun admin untuk spesifik perusahaan." },
-      { title: "Cek Audit Log", description: "Melihat history action dari admin-admin platform." },
-      { title: "Cek Kesehatan Database", description: "Memantau kepadatan database dan metrics RTDB." },
-      { title: "Reset data dummy", description: "Melakukan reset data transaksi dengan aman saat sistem akan on-board." },
+      { title: "Kelola semua perusahaan", description: "Owner dapat melihat semua perusahaan, menambah perusahaan baru, serta mengelola status perusahaan." },
+      { title: "Kelola Admin PT", description: "Mendaftarkan dan mengatur akun admin untuk perusahaan tertentu." },
+      { title: "Cek Audit Log", description: "Melihat riwayat aksi owner dan admin dalam sistem." },
+      { title: "Cek Kesehatan Data", description: "Memantau kepadatan data dan penyimpanan aplikasi." },
+      { title: "Reset data dummy", description: "Melakukan reset data transaksi dengan aman saat sistem akan on-board." }
     ],
     notes: [
-      "Reset database HANYA boleh dilakukan oleh owner.",
-      "Sebagai pengamanan ekstra, owner wajib mengetik string \"RESET DATABASE\".",
-      "Reset data TIDAK menghapus master data wajib seperti: users, companies, company_users, kantor, grup, timetable, shift.",
+      "Menu ini hanya tampil untuk owner/system owner.",
+      "Admin PT tetap bisa membuka menu Perusahaan, tetapi hanya untuk perusahaan miliknya sendiri.",
+      "Reset data hanya boleh dilakukan oleh owner.",
+      "Reset data tidak menghapus master data wajib seperti users, companies, company_users, kantor, grup, jam kerja, dan shift."
     ]
   },
   {
@@ -255,11 +277,11 @@ const guideSections: GuideSection[] = [
     icon: HelpCircle,
     summary: "Bantuan cepat untuk menangani masalah operasional sehari-hari.",
     steps: [
-      { title: "Data tidak muncul / Empty", description: "Cek company_id aktif di dropdown header, periksa rules Firebase RTDB, pastikan role admin Anda sesuai." },
+      { title: "Data tidak muncul / Empty", description: "Cek perusahaan aktif, pastikan akun admin terhubung ke perusahaan yang benar, dan pastikan role admin sesuai." },
       { title: "Akun karyawan tidak bisa absen (nol jadwal)", description: "Pastikan lokasi dalam radius (di menu Organisasi), cek status akun (aktif), user tergabung dalam grup, dan pastikan sudah di-assign jadwal kerja / tidak masuk hari libur." },
       { title: "Jadwal yang tampil salah", description: "Gunakan fitur Cek Jadwal Karyawan pada Jadwal Kerja untuk mendiagnostik sumber yang aktif (overtime vs holiday vs shift)." },
-      { title: "Push tidak masuk HP", description: "Di Log Notifikasi cek antrian, token FCM, success_count, failed_count. Cek juga permission OS mobile, koneksi inet hp target, atau log Cloud Functions." },
-      { title: "Database banyak data dummy pasca UAT", description: "Gunakan menu Kesehatan Database dan reset dengan akun Owner." },
+      { title: "Notifikasi tidak masuk HP", description: "Di Log Notifikasi cek antrean pengiriman, status perangkat, jumlah berhasil/gagal. Cek juga izin notifikasi HP, koneksi internet, atau log layanan otomatis." },
+      { title: "Database banyak data dummy pasca UAT", description: "Gunakan menu Kesehatan Data dan reset dengan akun Owner." },
     ],
     notes: []
   }
@@ -296,7 +318,7 @@ const quickFlows: QuickFlow[] = [
       "Buat Departemen, lalu Grup Karyawan",
       "Buka Karyawan dan tambah karyawan (lengkap)",
       "Buka Jadwal Kerja (buat jam kerja, shift, dan terapkan jadwal)",
-      "Terakhir: Uji login di app Flutter dan test presence"
+      "Terakhir: Uji login di aplikasi karyawan dan tes presensi"
     ]
   },
   {
@@ -308,7 +330,7 @@ const quickFlows: QuickFlow[] = [
       "Centang karyawan target",
       "Tambah / pilih tanggal",
       "Isi jam kerja spesifik & window valid absen (check-in/out)",
-      "Klik Simpan dan cek push notif di hp target Flutter"
+      "Klik Simpan dan periksa notifikasi masuk di perangkat karyawan"
     ]
   },
   {
@@ -317,20 +339,20 @@ const quickFlows: QuickFlow[] = [
       "Buka Jadwal Kerja",
       "Gunakan form Cek Jadwal Karyawan",
       "Pilih nama karyawan dan input tanggal spesifik",
-      "Cek hasilnya: apakah teridentifikasi sbg libur (holiday), jadwal khusus, jadwal lembur, atau jadwal shift rutin kosong?",
+      "Cek hasilnya: apakah teridentifikasi sebagai libur, jadwal khusus, jadwal lembur, atau jadwal shift rutin kosong?",
       "Pastikan radius kantor di menu Organisasi memadai, status akun aktif"
     ]
   },
   {
-    title: "Mengetes sistem push notification",
+    title: "Menguji sistem notifikasi perangkat",
     visibleFor: ["owner"],
     items: [
       "Buka menu Log Notifikasi",
       "Pilih / ketik nama target karyawan spesifik",
-      "Pilih jenis push test di dropdown (Pilih Jadwal Kerja misalnya)",
-      "Kirim Test Push",
-      "Pantau status tabel queue di dashboard",
-      "Periksa HP/device target untuk memastikan toast masuk"
+      "Pilih jenis pengujian di dropdown (Pilih Jadwal Kerja misalnya)",
+      "Kirim Test Notifikasi",
+      "Pantau status tabel antrean di dashboard",
+      "Periksa HP atau perangkat target untuk memastikan notifikasi diterima"
     ]
   }
 ];
@@ -352,7 +374,7 @@ const importantRules: ImportantRule[] = [
 
 export const AdminGuide: React.FC = () => {
   const { userData } = useAuth();
-  const isOwner = userData?.role === "owner";
+  const isOwner = isOwnerLike(userData);
   const guideRole: GuideVisibilityRole = isOwner ? "owner" : "admin";
 
   const roleAllowedSections = useMemo(() => {
@@ -515,7 +537,7 @@ export const AdminGuide: React.FC = () => {
                      ))}
                   </div>
 
-                  {isOwner && activeSection.notes && activeSection.notes.length > 0 && (
+                  {activeSection.notes && activeSection.notes.length > 0 && (
                     <div className="mt-8 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800/50 rounded-xl p-5">
                        <h4 className="font-bold text-sm text-yellow-800 dark:text-yellow-500 mb-3 flex items-center gap-2">
                           <AlertTriangle className="w-4 h-4" />
