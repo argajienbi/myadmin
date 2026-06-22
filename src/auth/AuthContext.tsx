@@ -40,7 +40,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setCurrentUser(user);
       if (user) {
         try {
-          const OWNER_UID = "tWtZoVGg3qgwU4Odtl1FPCGC6zZ2";
+          const OWNER_UID = "BIVgnX2aIwTjMSG2lHkicEfkt9I3";
           const OWNER_EMAIL = "armin.gandi@gmail.com";
           const isOwner = user.uid === OWNER_UID || user.email?.toLowerCase() === OWNER_EMAIL;
           const userRef = ref(db, paths.userIndex(user.uid));
