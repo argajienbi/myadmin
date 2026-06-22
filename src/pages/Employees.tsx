@@ -99,6 +99,8 @@ export const Employees: React.FC = () => {
   };
 
   const isOwner = isOwnerLike(userData);
+  const activeCompany = companies.find((c: any) => c.id === targetCompanyId);
+  const activeCompanyName = activeCompany?.name || targetCompanyId;
 
   useEffect(() => {
     if (!userData) {
@@ -949,7 +951,10 @@ const filteredEmployees = employees.filter(emp => emp.status_akun === activeTab)
           <label className="text-sm font-medium text-slate-600 dark:text-slate-400">Pilih Perusahaan:</label>
           <select 
             value={targetCompanyId} 
-            onChange={(e) => setTargetCompanyId(e.target.value)}
+            onChange={(e) => {
+              setTargetCompanyId(e.target.value);
+              localStorage.setItem("admin_selected_company", e.target.value);
+            }}
             className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 rounded p-2 text-sm focus:outline-none focus:border-blue-500 min-w-[200px]"
           >
             <option value="" disabled>-- Pilih Perusahaan --</option>
@@ -957,6 +962,15 @@ const filteredEmployees = employees.filter(emp => emp.status_akun === activeTab)
               <option key={c.id} value={c.id}>{c.name}</option>
             ))}
           </select>
+        </div>
+      )}
+
+      {targetCompanyId && (
+        <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3 text-xs text-slate-600 dark:text-slate-300">
+          Perusahaan aktif:{" "}
+          <span className="font-semibold text-blue-600 dark:text-blue-400">
+            {activeCompanyName}
+          </span>
         </div>
       )}
 
@@ -1028,6 +1042,9 @@ const filteredEmployees = employees.filter(emp => emp.status_akun === activeTab)
                                 {emp.qr_active && (
                                     <span className="text-[10px] border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded px-1.5 py-0.5 inline-block font-mono uppercase">QR Aktif</span>
                                 )}
+                                {emp.last_transfer_at && (
+                                    <span className="text-[10px] border border-purple-500/30 bg-purple-500/10 text-purple-600 dark:text-purple-400 rounded px-1.5 py-0.5 inline-block font-mono uppercase">Pernah Transfer</span>
+                                )}
                             </div>
                             <div className="flex flex-wrap gap-1 mt-2">
                                 {getEmployeeBadges(emp, assignments).map((b, i) => (
@@ -1052,6 +1069,12 @@ const filteredEmployees = employees.filter(emp => emp.status_akun === activeTab)
                               <div><span className="opacity-50">Kantor:</span> {offices.find(o => o.id === emp.office_id)?.name || "Kantor tidak ditemukan"}</div>
                               {emp.department_id && <div><span className="opacity-50">Dept:</span> {departments.find(d => d.id === emp.department_id)?.name || "Departemen tidak ditemukan"}</div>}
                               {emp.group_id && <div><span className="opacity-50">Grup Karyawan:</span> {groups.find(g => g.id === emp.group_id)?.name || "Grup tidak ditemukan"}</div>}
+                               {emp.last_transfer_at && (
+                                 <div className="text-[10px] text-purple-600 dark:text-purple-400 mt-1 font-medium bg-purple-500/5 px-1.5 py-0.5 rounded border border-purple-500/10 inline-block">
+                                   Transfer terakhir: {new Date(Number(emp.last_transfer_at)).toLocaleDateString("id-ID")}
+                                   {emp.last_transfer_reason && <span className="block text-slate-400 dark:text-slate-500 font-normal">Alasan: {emp.last_transfer_reason}</span>}
+                                 </div>
+                               )}
                            </div>
                         ) : (
                             <span className="text-xs text-slate-600 italic">Belum di-assign</span>
@@ -1220,6 +1243,10 @@ const filteredEmployees = employees.filter(emp => emp.status_akun === activeTab)
                   <option value="CREW">CREW</option>
                   <option value="USER">USER</option>
                 </select>
+              </div>
+
+              <div className="rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/20 p-3 text-xs text-amber-700 dark:text-amber-300">
+                Untuk memindahkan karyawan ke area/kantor/departemen/grup lain, gunakan tombol Transfer agar perubahan tercatat di riwayat transfer.
               </div>
 
               <div>

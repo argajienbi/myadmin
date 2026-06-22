@@ -49,13 +49,16 @@ export async function mirrorUserToFirestore(
 ) {
   if (!payload.uid) return;
 
-  setDoc(
-    doc(firestore, "users", payload.uid),
-    normalizeFirestoreUserMirror(payload),
-    { merge: true }
-  ).catch(err => {
+  try {
+    await setDoc(
+      doc(firestore, "users", payload.uid),
+      normalizeFirestoreUserMirror(payload),
+      { merge: true }
+    );
+  } catch (err) {
     console.warn("Failed to mirror user to Firestore:", err);
-  });
+    throw err;
+  }
 }
 
 export async function mirrorUsersToFirestore(
