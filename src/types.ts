@@ -84,6 +84,56 @@ export interface CompanyUser extends UserIndex {
   qr_token?: string;
   qr_active?: boolean;
   qr_updated_at?: number;
+  last_transfer_id?: string;
+  last_transfer_at?: number;
+  last_transfer_reason?: string;
+  updated_by?: string;
+  updated_by_name?: string;
+}
+
+export interface EmployeeTransferLog {
+  id?: string;
+  company_id: string;
+  uid: string;
+  employee_name: string;
+  employee_email?: string;
+
+  old_area_id?: string;
+  old_office_id?: string;
+  old_department_id?: string;
+  old_sub_department_id?: string;
+  old_group_id?: string;
+
+  old_area_name?: string;
+  old_office_name?: string;
+  old_department_name?: string;
+  old_sub_department_name?: string;
+  old_group_name?: string;
+
+  new_area_id?: string;
+  new_office_id?: string;
+  new_department_id?: string;
+  new_sub_department_id?: string;
+  new_group_id?: string;
+
+  new_area_name?: string;
+  new_office_name?: string;
+  new_department_name?: string;
+  new_sub_department_name?: string;
+  new_group_name?: string;
+
+  effective_date: string;
+  reason: string;
+  status: "completed" | "cancelled";
+
+  schedule_warning?: string;
+  individual_assignment_count?: number;
+  new_group_assignment_count?: number;
+
+  created_by: string;
+  created_by_name: string;
+  created_at: number;
+  updated_at: number;
 }
 
 export interface Company {

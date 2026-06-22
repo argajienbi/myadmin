@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../auth/AuthContext";
-import { ref, onValue, update, get } from "firebase/database";
+import { ref, onValue, update, get, push } from "firebase/database";
 import { initializeApp } from "firebase/app";
 import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
 import { db, firebaseConfig } from "../firebase";
@@ -13,6 +13,7 @@ import { writeAuditLog } from "../services/auditService";
 import { mirrorUserToFirestore } from "../services/firestoreUserMirrorService";
 import toast from "react-hot-toast";
 import { ConfirmModal } from "../components/ConfirmModal";
+import { getEffectiveCompanyId, isOwnerLike } from "../utils/roleAccess";
 
 const EmployeeAvatar: React.FC<{ emp: CompanyUser }> = ({ emp }) => {
   const [url, setUrl] = useState<string>("");
@@ -67,6 +68,18 @@ export const Employees: React.FC = () => {
   const [editingEmp, setEditingEmp] = useState<CompanyUser | null>(null);
   const [formData, setFormData] = useState<any>({});
 
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [transferEmp, setTransferEmp] = useState<CompanyUser | null>(null);
+  const [transferFormData, setTransferFormData] = useState<any>({
+    area_id: "",
+    office_id: "",
+    department_id: "",
+    sub_department_id: "",
+    group_id: "",
+    effective_date: new Date().toISOString().split("T")[0],
+    reason: "",
+  });
+
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -85,23 +98,42 @@ export const Employees: React.FC = () => {
     setConfirmModal({ isOpen: true, title, message, isDestructive, onConfirm });
   };
 
-  const isOwner = userData?.role === "owner";
+  const isOwner = isOwnerLike(userData);
 
   useEffect(() => {
-    if (isOwner) {
-      get(ref(db, paths.companies())).then((snapshot) => {
-        if (snapshot.exists()) {
-           const data = snapshot.val();
-           const compList = Object.keys(data).map(k => ({...data[k], id: k}));
-           setCompanies(compList);
-           if (compList.length > 0 && !targetCompanyId) {
-             setTargetCompanyId(compList[0].id);
-           }
-        }
-      });
-    } else if (userData?.company_id) {
-      setTargetCompanyId(userData.company_id);
+    if (!userData) {
+      setLoading(false);
+      return;
     }
+
+    if (isOwner) {
+      get(ref(db, paths.companies()))
+        .then((snapshot) => {
+          const data = snapshot.exists() ? snapshot.val() : {};
+          const compList = Object.keys(data).map(k => ({ ...data[k], id: k }));
+          setCompanies(compList);
+
+          const savedCompanyId = localStorage.getItem("admin_selected_company") || "";
+          const resolvedCompanyId =
+            savedCompanyId && compList.some((item: any) => item.id === savedCompanyId)
+              ? savedCompanyId
+              : userData.company_id && compList.some((item: any) => item.id === userData.company_id)
+                ? userData.company_id
+                : compList[0]?.id || "";
+
+          setTargetCompanyId(resolvedCompanyId);
+
+          if (resolvedCompanyId) {
+            localStorage.setItem("admin_selected_company", resolvedCompanyId);
+          }
+        })
+        .finally(() => setLoading(false));
+
+      return;
+    }
+
+    setTargetCompanyId(getEffectiveCompanyId(userData));
+    setLoading(false);
   }, [isOwner, userData]);
 
   useEffect(() => {
@@ -228,6 +260,348 @@ export const Employees: React.FC = () => {
       success: (msg) => msg,
       error: (err) => `Gagal update: ${err.message}`
     });
+  };
+
+  const isActiveRecord = (item: any) => item?.active !== false && item?.status !== "inactive";
+
+  const getAreaName = (id?: string) =>
+    areas.find((item: any) => item.id === id)?.name || "";
+
+  const getOfficeName = (id?: string) =>
+    offices.find((item: any) => item.id === id)?.name || "";
+
+  const getDepartmentName = (id?: string) =>
+    departments.find((item: any) => item.id === id)?.name || "";
+
+  const getSubDepartmentName = (id?: string) =>
+    subDepartments.find((item: any) => item.id === id)?.name || "";
+
+  const getGroupName = (id?: string) =>
+    groups.find((item: any) => item.id === id)?.name || "";
+
+  const getActiveOfficesForArea = (areaId: string) =>
+    offices.filter((item: any) => item.area_id === areaId && isActiveRecord(item));
+
+  const getActiveDepartmentsForOffice = (officeId: string) =>
+    departments.filter((item: any) => item.office_id === officeId && isActiveRecord(item));
+
+  const getActiveSubDepartmentsForDepartment = (departmentId: string) =>
+    subDepartments.filter((item: any) => item.department_id === departmentId && isActiveRecord(item));
+
+  const getActiveGroupsForTarget = (officeId: string, departmentId: string, subDepartmentId = "") =>
+    groups.filter((item: any) => {
+      if (!isActiveRecord(item)) return false;
+      if (officeId && item.office_id !== officeId) return false;
+      if (departmentId && item.department_id !== departmentId) return false;
+
+      if (subDepartmentId && item.sub_department_id && item.sub_department_id !== subDepartmentId) return false;
+
+      return true;
+    });
+
+  const getTransferSchedulePreview = (employee: CompanyUser, newGroupId: string) => {
+    const individualAssignments = assignments.filter((item: any) => {
+      if (!isActiveRecord(item)) return false;
+      const type = String(item.type || item.target_type || "").toLowerCase();
+      return type === "user" && item.target_id === employee.uid;
+    });
+
+    const newGroupAssignments = assignments.filter((item: any) => {
+      if (!isActiveRecord(item)) return false;
+      const type = String(item.type || item.target_type || "").toLowerCase();
+      return type === "group" && item.target_id === newGroupId;
+    });
+
+    let scheduleWarning = "";
+
+    if (individualAssignments.length > 0) {
+      scheduleWarning = "Karyawan memiliki jadwal individual aktif. Jadwal individual biasanya tetap menjadi prioritas walaupun grup berubah.";
+    } else if (newGroupId && newGroupAssignments.length === 0) {
+      scheduleWarning = "Grup tujuan belum memiliki penerapan jadwal aktif. Karyawan bisa tidak memiliki jadwal setelah transfer.";
+    } else if (!newGroupId) {
+      scheduleWarning = "Grup tujuan belum dipilih. Karyawan bisa tidak memiliki jadwal grup.";
+    }
+
+    return {
+      individualAssignmentCount: individualAssignments.length,
+      newGroupAssignmentCount: newGroupAssignments.length,
+      scheduleWarning,
+    };
+  };
+
+  const buildTransferPreviewMessage = () => {
+    if (!transferEmp) return "";
+
+    const preview = getTransferSchedulePreview(transferEmp, transferFormData.group_id || "");
+
+    return [
+      `Karyawan: ${transferEmp.nama_lengkap || transferEmp.email || transferEmp.uid}`,
+      "",
+      "Struktur lama:",
+      `Area: ${getAreaName(transferEmp.area_id) || "-"}`,
+      `Kantor: ${getOfficeName(transferEmp.office_id) || "-"}`,
+      `Departemen: ${getDepartmentName(transferEmp.department_id) || "-"}`,
+      `Grup: ${getGroupName(transferEmp.group_id) || "-"}`,
+      "",
+      "Struktur baru:",
+      `Area: ${getAreaName(transferFormData.area_id) || "-"}`,
+      `Kantor: ${getOfficeName(transferFormData.office_id) || "-"}`,
+      `Departemen: ${getDepartmentName(transferFormData.department_id) || "-"}`,
+      `Grup: ${getGroupName(transferFormData.group_id) || "-"}`,
+      "",
+      `Tanggal efektif: ${transferFormData.effective_date || "-"}`,
+      `Alasan: ${transferFormData.reason || "-"}`,
+      "",
+      `Jadwal individual aktif: ${preview.individualAssignmentCount}`,
+      `Jadwal grup tujuan aktif: ${preview.newGroupAssignmentCount}`,
+      preview.scheduleWarning ? `Peringatan: ${preview.scheduleWarning}` : "",
+      "",
+      "Notifikasi akan dikirim ke karyawan.",
+      "Karyawan perlu membuka ulang aplikasi agar lokasi/radius presensi terbaru dipakai.",
+    ].filter(Boolean).join("\n");
+  };
+
+  const openTransferModal = (emp: CompanyUser) => {
+    setTransferEmp(emp);
+    setTransferFormData({
+      area_id: emp.area_id || "",
+      office_id: emp.office_id || "",
+      department_id: emp.department_id || "",
+      sub_department_id: emp.sub_department_id || "",
+      group_id: emp.group_id || "",
+      effective_date: new Date().toISOString().split("T")[0],
+      reason: "",
+    });
+    setShowTransferModal(true);
+  };
+
+  const validateTransferForm = () => {
+    if (!transferEmp) throw new Error("Data karyawan belum dipilih.");
+
+    const areaId = String(transferFormData.area_id || "");
+    const officeId = String(transferFormData.office_id || "");
+    const departmentId = String(transferFormData.department_id || "");
+    const subDepartmentId = String(transferFormData.sub_department_id || "");
+    const groupId = String(transferFormData.group_id || "");
+
+    if (!areaId) throw new Error("Area tujuan wajib dipilih.");
+    if (!officeId) throw new Error("Kantor tujuan wajib dipilih.");
+    if (!departmentId) throw new Error("Departemen tujuan wajib dipilih.");
+    if (!groupId) throw new Error("Grup karyawan tujuan wajib dipilih.");
+    if (!transferFormData.effective_date) throw new Error("Tanggal efektif wajib diisi.");
+    if (!String(transferFormData.reason || "").trim()) throw new Error("Alasan transfer wajib diisi.");
+
+    const area = areas.find((item: any) => item.id === areaId);
+    if (!area || !isActiveRecord(area)) throw new Error("Area tujuan tidak aktif atau tidak ditemukan.");
+
+    const office = offices.find((item: any) => item.id === officeId);
+    if (!office || !isActiveRecord(office)) throw new Error("Kantor tujuan tidak aktif atau tidak ditemukan.");
+    if (office.area_id !== areaId) throw new Error("Kantor tujuan tidak berada di area yang dipilih.");
+
+    const department = departments.find((item: any) => item.id === departmentId);
+    if (!department || !isActiveRecord(department)) throw new Error("Departemen tujuan tidak aktif atau tidak ditemukan.");
+    if (department.office_id !== officeId) throw new Error("Departemen tujuan tidak berada di kantor yang dipilih.");
+
+    if (subDepartmentId) {
+      const subDepartment = subDepartments.find((item: any) => item.id === subDepartmentId);
+      if (!subDepartment || !isActiveRecord(subDepartment)) throw new Error("Sub departemen tujuan tidak aktif atau tidak ditemukan.");
+      if (subDepartment.department_id !== departmentId) throw new Error("Sub departemen tujuan tidak berada di departemen yang dipilih.");
+    }
+
+    const group = groups.find((item: any) => item.id === groupId);
+    if (!group || !isActiveRecord(group)) throw new Error("Grup tujuan tidak aktif atau tidak ditemukan.");
+    if (group.office_id !== officeId) throw new Error("Grup tujuan tidak berada di kantor yang dipilih.");
+    if (group.department_id !== departmentId) throw new Error("Grup tujuan tidak berada di departemen yang dipilih.");
+
+    const noChange =
+      areaId === (transferEmp.area_id || "") &&
+      officeId === (transferEmp.office_id || "") &&
+      departmentId === (transferEmp.department_id || "") &&
+      subDepartmentId === (transferEmp.sub_department_id || "") &&
+      groupId === (transferEmp.group_id || "");
+
+    if (noChange) {
+      throw new Error("Struktur tujuan sama dengan struktur saat ini. Tidak ada yang ditransfer.");
+    }
+  };
+
+  const handleTransferEmployee = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+
+    if (!targetCompanyId || !transferEmp) return;
+
+    const submitTransfer = async () => {
+      validateTransferForm();
+
+      const uid = transferEmp.uid;
+      const now = Date.now();
+      const newTransferRef = push(ref(db, paths.employeeTransferLogs(targetCompanyId)));
+      const transferId = newTransferRef.key;
+
+      if (!transferId) throw new Error("Gagal membuat ID transfer.");
+
+      const effectiveDate = String(transferFormData.effective_date || "");
+      const reason = String(transferFormData.reason || "").trim();
+
+      const schedulePreview = getTransferSchedulePreview(transferEmp, transferFormData.group_id || "");
+
+      const transferLog = {
+        id: transferId,
+        company_id: targetCompanyId,
+        uid,
+        employee_name: transferEmp.nama_lengkap || "",
+        employee_email: transferEmp.email || "",
+
+        old_area_id: transferEmp.area_id || "",
+        old_office_id: transferEmp.office_id || "",
+        old_department_id: transferEmp.department_id || "",
+        old_sub_department_id: transferEmp.sub_department_id || "",
+        old_group_id: transferEmp.group_id || "",
+
+        old_area_name: getAreaName(transferEmp.area_id),
+        old_office_name: getOfficeName(transferEmp.office_id),
+        old_department_name: getDepartmentName(transferEmp.department_id),
+        old_sub_department_name: getSubDepartmentName(transferEmp.sub_department_id),
+        old_group_name: getGroupName(transferEmp.group_id),
+
+        new_area_id: transferFormData.area_id || "",
+        new_office_id: transferFormData.office_id || "",
+        new_department_id: transferFormData.department_id || "",
+        new_sub_department_id: transferFormData.sub_department_id || "",
+        new_group_id: transferFormData.group_id || "",
+
+        new_area_name: getAreaName(transferFormData.area_id),
+        new_office_name: getOfficeName(transferFormData.office_id),
+        new_department_name: getDepartmentName(transferFormData.department_id),
+        new_sub_department_name: getSubDepartmentName(transferFormData.sub_department_id),
+        new_group_name: getGroupName(transferFormData.group_id),
+
+        effective_date: effectiveDate,
+        reason,
+        status: "completed",
+
+        schedule_warning: schedulePreview.scheduleWarning,
+        individual_assignment_count: schedulePreview.individualAssignmentCount,
+        new_group_assignment_count: schedulePreview.newGroupAssignmentCount,
+
+        created_by: userData?.uid || "",
+        created_by_name: userData?.nama_lengkap || "Unknown",
+        created_at: now,
+        updated_at: now,
+      };
+
+      const cuPath = paths.companyUser(targetCompanyId, uid);
+      const updates: any = {};
+
+      updates[paths.employeeTransferLog(targetCompanyId, transferId)] = transferLog;
+
+      updates[`${cuPath}/area_id`] = transferFormData.area_id || "";
+      updates[`${cuPath}/office_id`] = transferFormData.office_id || "";
+      updates[`${cuPath}/department_id`] = transferFormData.department_id || "";
+      updates[`${cuPath}/sub_department_id`] = transferFormData.sub_department_id || "";
+      updates[`${cuPath}/group_id`] = transferFormData.group_id || "";
+      updates[`${cuPath}/last_transfer_id`] = transferId;
+      updates[`${cuPath}/last_transfer_at`] = now;
+      updates[`${cuPath}/last_transfer_reason`] = reason;
+      updates[`${cuPath}/updated_at`] = now;
+      updates[`${cuPath}/updated_by`] = userData?.uid || "";
+      updates[`${cuPath}/updated_by_name`] = userData?.nama_lengkap || "";
+
+      await update(ref(db), updates);
+
+      try {
+        await mirrorUserToFirestore({
+          uid,
+          company_id: targetCompanyId,
+          role: transferEmp.role || "user",
+          status_akun: transferEmp.status_akun || "active",
+          nama_lengkap: transferEmp.nama_lengkap || "",
+          position: transferEmp.position || "USER",
+          email: transferEmp.email || "",
+          nip: transferEmp.nip || "",
+          no_hp: transferEmp.no_hp || "",
+          area_id: transferFormData.area_id || "",
+          office_id: transferFormData.office_id || "",
+          department_id: transferFormData.department_id || "",
+          sub_department_id: transferFormData.sub_department_id || "",
+          group_id: transferFormData.group_id || "",
+          photo_url: transferEmp.photo_url || "",
+          photo_path: transferEmp.photo_path || "",
+        });
+      } catch (mirrorErr) {
+        console.warn("Failed to mirror transferred user", mirrorErr);
+      }
+
+      await writeAuditLog(targetCompanyId, {
+        action: "TRANSFER_EMPLOYEE",
+        details: `Transfer karyawan ${transferEmp.nama_lengkap || uid} ke ${getOfficeName(transferFormData.office_id) || "kantor baru"}`,
+        user_uid: userData?.uid || "",
+        user_name: userData?.nama_lengkap || "Unknown",
+        target_path: cuPath,
+        old_value: {
+          area_id: transferEmp.area_id || "",
+          office_id: transferEmp.office_id || "",
+          department_id: transferEmp.department_id || "",
+          sub_department_id: transferEmp.sub_department_id || "",
+          group_id: transferEmp.group_id || "",
+        },
+        new_value: {
+          area_id: transferFormData.area_id || "",
+          office_id: transferFormData.office_id || "",
+          department_id: transferFormData.department_id || "",
+          sub_department_id: transferFormData.sub_department_id || "",
+          group_id: transferFormData.group_id || "",
+          transfer_id: transferId,
+          reason,
+          effective_date: effectiveDate,
+        },
+      });
+
+      await createNotification(uid, {
+        company_id: targetCompanyId,
+        title: "Lokasi Kerja Diperbarui",
+        message: `Anda dipindahkan ke ${getOfficeName(transferFormData.office_id) || "kantor/area baru"}. Buka ulang aplikasi agar jadwal dan radius presensi diperbarui.`,
+        type: "info",
+        ref_type: "employee_transfer",
+        ref_id: transferId,
+        data: {
+          transfer_id: transferId,
+          effective_date: effectiveDate,
+          new_area_id: transferFormData.area_id || "",
+          new_office_id: transferFormData.office_id || "",
+          new_department_id: transferFormData.department_id || "",
+          new_group_id: transferFormData.group_id || "",
+        },
+      });
+
+      return "Transfer karyawan berhasil disimpan.";
+    };
+
+    requestConfirm(
+      "Konfirmasi Transfer Karyawan",
+      buildTransferPreviewMessage(),
+      false,
+      () => {
+        toast.promise(submitTransfer(), {
+          loading: "Memproses transfer...",
+          success: (msg) => {
+            setShowTransferModal(false);
+            setTransferEmp(null);
+            setTransferFormData({
+              area_id: "",
+              office_id: "",
+              department_id: "",
+              sub_department_id: "",
+              group_id: "",
+              effective_date: new Date().toISOString().split("T")[0],
+              reason: "",
+            });
+            return msg;
+          },
+          error: (err) => `Gagal transfer karyawan: ${err.message}`,
+        });
+      }
+    );
   };
 
   const handleSaveEdit = async (e: React.FormEvent) => {
@@ -726,6 +1100,12 @@ const filteredEmployees = employees.filter(emp => emp.status_akun === activeTab)
                         )}
                         {activeTab === "active" && (
                           <>
+                            <button
+                              onClick={() => openTransferModal(emp)}
+                              className="text-purple-600 dark:text-purple-400 hover:text-purple-300 text-xs font-medium bg-purple-500/10 px-2 py-1 rounded inline-flex items-center"
+                            >
+                              Transfer
+                            </button>
                             <button 
                               onClick={() => handleUpdateStatus(emp.uid, "inactive")}
                               className="text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:text-slate-200 text-xs font-medium"
@@ -953,6 +1333,207 @@ const filteredEmployees = employees.filter(emp => emp.status_akun === activeTab)
                 <button disabled={isAdding} type="button" onClick={() => { setShowAddModal(false); setAddFormData({}); }} className="px-4 py-2 border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded text-sm hover:bg-slate-700 disabled:opacity-50">Batal</button>
                 <button disabled={isAdding} type="submit" className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded text-sm font-medium disabled:opacity-50 flex items-center gap-2">
                   {isAdding ? "Memproses..." : "Simpan Karyawan"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showTransferModal && transferEmp && (
+        <div className="fixed inset-0 bg-slate-50 dark:bg-slate-950/80 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg shadow-2xl w-full max-w-lg my-auto">
+            <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center sticky top-0 bg-white dark:bg-slate-900 z-10">
+              <h3 className="font-bold text-lg text-slate-800 dark:text-slate-200">Transfer Struktur Karyawan</h3>
+              <button onClick={() => { setShowTransferModal(false); setTransferEmp(null); }} className="text-slate-500 hover:text-slate-700 dark:text-slate-300">✕</button>
+            </div>
+            
+            <form onSubmit={handleTransferEmployee} className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+              <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-lg border border-slate-100 dark:border-slate-800 text-xs space-y-1">
+                <div className="font-semibold text-slate-700 dark:text-slate-300 text-sm mb-2">Informasi Karyawan</div>
+                <div><span className="text-slate-500">Nama:</span> <span className="font-medium text-slate-800 dark:text-slate-200">{transferEmp.nama_lengkap || "-"}</span></div>
+                <div><span className="text-slate-500">Email:</span> <span className="text-slate-800 dark:text-slate-200">{transferEmp.email || "-"}</span></div>
+                <div><span className="text-slate-500">NIP:</span> <span className="text-slate-800 dark:text-slate-200">{transferEmp.nip || "-"}</span></div>
+                <div className="pt-2 border-t border-slate-100 dark:border-slate-800 mt-2">
+                  <span className="text-slate-500 font-medium">Struktur Saat Ini:</span>
+                  <div className="grid grid-cols-2 gap-2 mt-1">
+                    <div><span className="text-slate-400">Area:</span> {getAreaName(transferEmp.area_id) || "-"}</div>
+                    <div><span className="text-slate-400">Kantor:</span> {getOfficeName(transferEmp.office_id) || "-"}</div>
+                    <div><span className="text-slate-400">Dept:</span> {getDepartmentName(transferEmp.department_id) || "-"}</div>
+                    <div><span className="text-slate-400">Grup:</span> {getGroupName(transferEmp.group_id) || "-"}</div>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Pilih Area Tujuan *</label>
+                <select 
+                  required 
+                  value={transferFormData.area_id || ""} 
+                  onChange={e => {
+                    const val = e.target.value;
+                    setTransferFormData({
+                      ...transferFormData,
+                      area_id: val,
+                      office_id: "",
+                      department_id: "",
+                      sub_department_id: "",
+                      group_id: ""
+                    });
+                  }} 
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded p-2 text-slate-800 dark:text-slate-200 text-sm"
+                >
+                  <option value="">-- Pilih Area --</option>
+                  {areas.filter(a => isActiveRecord(a)).map(a => (
+                    <option key={a.id} value={a.id}>{a.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Pilih Kantor Tujuan *</label>
+                <select 
+                  required 
+                  disabled={!transferFormData.area_id}
+                  value={transferFormData.office_id || ""} 
+                  onChange={e => {
+                    const val = e.target.value;
+                    setTransferFormData({
+                      ...transferFormData,
+                      office_id: val,
+                      department_id: "",
+                      sub_department_id: "",
+                      group_id: ""
+                    });
+                  }} 
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded p-2 text-slate-800 dark:text-slate-200 text-sm disabled:opacity-50"
+                >
+                  <option value="">-- Pilih Kantor --</option>
+                  {getActiveOfficesForArea(transferFormData.area_id).map(o => (
+                    <option key={o.id} value={o.id}>{o.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Pilih Departemen Tujuan *</label>
+                <select 
+                  required 
+                  disabled={!transferFormData.office_id}
+                  value={transferFormData.department_id || ""} 
+                  onChange={e => {
+                    const val = e.target.value;
+                    setTransferFormData({
+                      ...transferFormData,
+                      department_id: val,
+                      sub_department_id: "",
+                      group_id: ""
+                    });
+                  }} 
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded p-2 text-slate-800 dark:text-slate-200 text-sm disabled:opacity-50"
+                >
+                  <option value="">-- Pilih Departemen --</option>
+                  {getActiveDepartmentsForOffice(transferFormData.office_id).map(d => (
+                    <option key={d.id} value={d.id}>{d.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Pilih Sub Departemen (Opsional)</label>
+                <select 
+                  disabled={!transferFormData.department_id}
+                  value={transferFormData.sub_department_id || ""} 
+                  onChange={e => {
+                    const val = e.target.value;
+                    setTransferFormData({
+                      ...transferFormData,
+                      sub_department_id: val,
+                      group_id: ""
+                    });
+                  }} 
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded p-2 text-slate-800 dark:text-slate-200 text-sm disabled:opacity-50"
+                >
+                  <option value="">-- Tanpa Sub Departemen --</option>
+                  {getActiveSubDepartmentsForDepartment(transferFormData.department_id).map(sd => (
+                    <option key={sd.id} value={sd.id}>{sd.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Pilih Grup Karyawan Baru *</label>
+                <select 
+                  required 
+                  disabled={!transferFormData.department_id}
+                  value={transferFormData.group_id || ""} 
+                  onChange={e => setTransferFormData({...transferFormData, group_id: e.target.value})} 
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded p-2 text-slate-800 dark:text-slate-200 text-sm disabled:opacity-50"
+                >
+                  <option value="">-- Pilih Grup --</option>
+                  {getActiveGroupsForTarget(transferFormData.office_id, transferFormData.department_id, transferFormData.sub_department_id).map(g => (
+                    <option key={g.id} value={g.id}>{g.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Tanggal Efektif Transfer *</label>
+                <input 
+                  required 
+                  type="date" 
+                  value={transferFormData.effective_date} 
+                  onChange={e => setTransferFormData({...transferFormData, effective_date: e.target.value})} 
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded p-2 text-slate-800 dark:text-slate-200 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Alasan Transfer / Keterangan *</label>
+                <textarea 
+                  required 
+                  rows={3}
+                  value={transferFormData.reason} 
+                  onChange={e => setTransferFormData({...transferFormData, reason: e.target.value})} 
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded p-2 text-slate-800 dark:text-slate-200 text-sm"
+                  placeholder="Contoh: Promosi jabatan, mutasi dinas, restrukturisasi divisi..."
+                />
+              </div>
+
+              {transferFormData.group_id && (
+                <div className="p-3 bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/50 rounded-lg space-y-2">
+                  <div className="text-xs font-bold text-indigo-700 dark:text-indigo-400 uppercase tracking-wider">Pratinjau Dampak & Jadwal</div>
+                  
+                  {(() => {
+                    const preview = getTransferSchedulePreview(transferEmp, transferFormData.group_id);
+                    return (
+                      <div className="text-xs space-y-1 text-slate-600 dark:text-slate-300">
+                        <div>Jadwal individual aktif saat ini: <span className="font-semibold text-slate-800 dark:text-slate-200">{preview.individualAssignmentCount}</span></div>
+                        <div>Jadwal grup tujuan aktif baru: <span className="font-semibold text-slate-800 dark:text-slate-200">{preview.newGroupAssignmentCount}</span></div>
+                        {preview.scheduleWarning && (
+                          <div className="text-amber-600 dark:text-amber-400 mt-2 font-medium bg-amber-500/10 p-2 rounded border border-amber-500/20">
+                            ⚠️ {preview.scheduleWarning}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+
+              <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 pb-2 relative z-10">
+                <button 
+                  type="button" 
+                  onClick={() => { setShowTransferModal(false); setTransferEmp(null); }} 
+                  className="px-4 py-2 border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded text-sm hover:bg-slate-700"
+                >
+                  Batal
+                </button>
+                <button 
+                  type="submit" 
+                  className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded text-sm font-medium flex items-center gap-2 shadow-sm"
+                >
+                  Simpan Transfer
                 </button>
               </div>
             </form>

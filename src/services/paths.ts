@@ -110,6 +110,11 @@ export const paths = {
   auditLog: (companyId: string, logId: string) =>
     `audit_logs/${companyId}/${logId}`,
 
+  employeeTransferLogs: (companyId: string) =>
+    `employee_transfer_logs/${companyId}`,
+  employeeTransferLog: (companyId: string, transferId: string) =>
+    `employee_transfer_logs/${companyId}/${transferId}`,
+
   notifications: (uid: string) => `notifications/${uid}`,
   notification: (uid: string, notificationId: string) =>
     `notifications/${uid}/${notificationId}`,

@@ -24,7 +24,15 @@ type GuideVisibilityRole = "owner" | "admin";
 type GuideStep = {
   title: string;
   description: string;
+  visibleFor?: GuideVisibilityRole[];
 };
+
+type GuideNote =
+  | string
+  | {
+      text: string;
+      visibleFor?: GuideVisibilityRole[];
+    };
 
 type GuideSection = {
   id: string;
@@ -33,8 +41,24 @@ type GuideSection = {
   icon: React.ElementType;
   summary: string;
   steps: GuideStep[];
-  notes?: string[];
+  notes?: GuideNote[];
   visibleFor?: GuideVisibilityRole[];
+};
+
+const isVisibleForRole = (
+  visibleFor: GuideVisibilityRole[] | undefined,
+  guideRole: GuideVisibilityRole
+) => {
+  if (!visibleFor || visibleFor.length === 0) return true;
+  return visibleFor.includes(guideRole);
+};
+
+const getGuideNoteText = (note: GuideNote) => {
+  return typeof note === "string" ? note : note.text;
+};
+
+const getGuideNoteVisibleFor = (note: GuideNote) => {
+  return typeof note === "string" ? undefined : note.visibleFor;
 };
 
 const guideSections: GuideSection[] = [
@@ -51,7 +75,7 @@ const guideSections: GuideSection[] = [
       { title: "Uji aplikasi karyawan", description: "Login aplikasi karyawan, cek radius, cek jadwal, dan uji presensi." },
     ],
     notes: [
-      "Jika dashboard kosong, cek perusahaan aktif/company_id.",
+      "Jika dashboard kosong, cek perusahaan aktif dan pastikan akun terhubung ke perusahaan yang benar.",
       "Penyebab absen gagal paling umum: kantor/radius belum lengkap, karyawan belum punya grup, atau jadwal belum diterapkan.",
     ]
   },
@@ -141,7 +165,7 @@ const guideSections: GuideSection[] = [
       { title: "Pilih karyawan", description: "Centang satu atau banyak karyawan yang akan lembur." },
       { title: "Pilih tanggal", description: "Pilih satu atau banyak tanggal dari input kalender." },
       { title: "Jam kerja & window", description: "Isi jam kerja dan window check-in/check-out lembur tersebut." },
-      { title: "Simpan jadwal", description: "Sistem menyimpan dan mengirim notifikasi perangkat dengan ref_type schedule ke target." },
+      { title: "Simpan jadwal", description: "Sistem menyimpan jadwal dan mengirim notifikasi perangkat ke karyawan target." },
     ],
     notes: [
       "Untuk lembur perorangan, buat grup berisi 1 karyawan.",
@@ -229,7 +253,7 @@ const guideSections: GuideSection[] = [
       { title: "Cek status", description: "Lihat riwayat status antrean dan cek device target." },
     ],
     notes: [
-      "Untuk mengarahkan user membuka Detail Jadwal di aplikasi karyawan, test notifikasi harus menggunakan ref_type schedule.",
+      "Untuk mengarahkan user membuka Detail Jadwal di aplikasi karyawan, test notifikasi harus memakai jenis Jadwal Kerja.",
       "Sebaiknya jangan gunakan jenis pengujian umum demi menjaga stabilitas pembacaan aplikasi karyawan."
     ]
   },
@@ -281,7 +305,11 @@ const guideSections: GuideSection[] = [
       { title: "Akun karyawan tidak bisa absen (nol jadwal)", description: "Pastikan lokasi dalam radius (di menu Organisasi), cek status akun (aktif), user tergabung dalam grup, dan pastikan sudah di-assign jadwal kerja / tidak masuk hari libur." },
       { title: "Jadwal yang tampil salah", description: "Gunakan fitur Cek Jadwal Karyawan pada Jadwal Kerja untuk mendiagnostik sumber yang aktif (overtime vs holiday vs shift)." },
       { title: "Notifikasi tidak masuk HP", description: "Di Log Notifikasi cek antrean pengiriman, status perangkat, jumlah berhasil/gagal. Cek juga izin notifikasi HP, koneksi internet, atau log layanan otomatis." },
-      { title: "Database banyak data dummy pasca UAT", description: "Gunakan menu Kesehatan Data dan reset dengan akun Owner." },
+      {
+        title: "Data dummy pasca UAT",
+        description: "Gunakan menu Kesehatan Data dan reset dengan akun owner.",
+        visibleFor: ["owner"]
+      },
     ],
     notes: []
   }
@@ -303,6 +331,7 @@ const quickFlows: QuickFlow[] = [
     title: "Setup operasional perusahaan",
     visibleFor: ["admin"],
     items: [
+      "Buka Perusahaan untuk mengecek profil, branding/logo, website, dan kode undangan perusahaan sendiri.",
       "Buka Organisasi untuk melengkapi kantor, radius, departemen, dan grup.",
       "Buka Karyawan untuk menambahkan atau melengkapi data pegawai.",
       "Buka Jadwal Kerja untuk membuat jam kerja, pola shift, dan penerapan jadwal.",
@@ -313,12 +342,11 @@ const quickFlows: QuickFlow[] = [
     title: "Setup perusahaan baru",
     visibleFor: ["owner"],
     items: [
-      "Buka Perusahaan/Admin PT jika status Anda owner",
-      "Buka Organisasi (buat Area dan Kantor)",
-      "Buat Departemen, lalu Grup Karyawan",
-      "Buka Karyawan dan tambah karyawan (lengkap)",
-      "Buka Jadwal Kerja (buat jam kerja, shift, dan terapkan jadwal)",
-      "Terakhir: Uji login di aplikasi karyawan dan tes presensi"
+      "Buka Perusahaan untuk membuat perusahaan baru.",
+      "Buka Admin PT untuk menugaskan admin ke perusahaan.",
+      "Pilih perusahaan aktif di Dashboard/Setup Awal jika tersedia.",
+      "Lengkapi Organisasi, Karyawan, dan Jadwal Kerja.",
+      "Terakhir: uji login aplikasi karyawan dan uji presensi."
     ]
   },
   {
@@ -391,6 +419,18 @@ export const AdminGuide: React.FC = () => {
     return roleAllowedSections.find(g => g.id === activeTab) || roleAllowedSections[0];
   }, [activeTab, roleAllowedSections]);
 
+  const activeSteps = useMemo(() => {
+    if (!activeSection) return [];
+    return activeSection.steps.filter(step => isVisibleForRole(step.visibleFor, guideRole));
+  }, [activeSection, guideRole]);
+
+  const activeNotes = useMemo(() => {
+    if (!activeSection?.notes) return [];
+    return activeSection.notes.filter(note =>
+      isVisibleForRole(getGuideNoteVisibleFor(note), guideRole)
+    );
+  }, [activeSection, guideRole]);
+
   React.useEffect(() => {
     if (roleAllowedSections.length === 0) return;
     if (!roleAllowedSections.some(section => section.id === activeTab)) {
@@ -403,14 +443,24 @@ export const AdminGuide: React.FC = () => {
     if (!search) return source;
     
     const lower = search.toLowerCase();
-    return source.filter(sec => 
-      sec.title.toLowerCase().includes(lower) || 
-      sec.summary.toLowerCase().includes(lower) ||
-      sec.menu.toLowerCase().includes(lower) ||
-      sec.steps.some(st => st.title.toLowerCase().includes(lower) || st.description.toLowerCase().includes(lower)) ||
-      (isOwner && sec.notes && sec.notes.some(n => n.toLowerCase().includes(lower)))
-    );
-  }, [search, roleAllowedSections]);
+    return source.filter(sec => {
+      const visibleSteps = sec.steps.filter(step => isVisibleForRole(step.visibleFor, guideRole));
+      const visibleNotes = (sec.notes || []).filter(note =>
+        isVisibleForRole(getGuideNoteVisibleFor(note), guideRole)
+      );
+
+      return (
+        sec.title.toLowerCase().includes(lower) ||
+        sec.summary.toLowerCase().includes(lower) ||
+        sec.menu.toLowerCase().includes(lower) ||
+        visibleSteps.some(st =>
+          st.title.toLowerCase().includes(lower) ||
+          st.description.toLowerCase().includes(lower)
+        ) ||
+        visibleNotes.some(note => getGuideNoteText(note).toLowerCase().includes(lower))
+      );
+    });
+  }, [search, roleAllowedSections, guideRole]);
 
   const visibleQuickFlows = useMemo(() => {
     return quickFlows.filter(flow => {
@@ -437,7 +487,9 @@ export const AdminGuide: React.FC = () => {
              Buku Petunjuk Admin Web
           </h1>
           <p className="mt-2 text-blue-100 max-w-xl text-sm md:text-base">
-            Panduan Operasional Admin MyPresence. Pelajari tata cara manajemen absensi, pengaturan perangkat organisasi, jadwal kerja, hingga sistem keamanan data.
+            {isOwner
+              ? "Panduan owner untuk pengelolaan perusahaan, admin PT, audit, monitoring, dan operasional presensi."
+              : "Panduan admin perusahaan untuk mengelola profil perusahaan, karyawan, organisasi, jadwal kerja, presensi, dan laporan."}
           </p>
         </div>
         <div className="hidden md:flex flex-col items-end text-right">
@@ -522,7 +574,7 @@ export const AdminGuide: React.FC = () => {
                   </h3>
                   
                   <div className="space-y-6 relative before:absolute before:inset-0 before:ml-[13px] before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-200 dark:before:via-slate-700 before:to-transparent">
-                     {activeSection.steps.map((step, idx) => (
+                     {activeSteps.map((step, idx) => (
                        <div key={idx} className="relative flex items-start gap-4">
                           <div className="w-7 h-7 flex items-center justify-center bg-blue-100 dark:bg-blue-900/60 border-2 border-white dark:border-slate-900 text-blue-600 dark:text-blue-400 rounded-full font-bold text-xs shrink-0 z-10 shadow-sm">
                              {idx + 1}
@@ -537,19 +589,22 @@ export const AdminGuide: React.FC = () => {
                      ))}
                   </div>
 
-                  {activeSection.notes && activeSection.notes.length > 0 && (
+                  {activeNotes.length > 0 && (
                     <div className="mt-8 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800/50 rounded-xl p-5">
                        <h4 className="font-bold text-sm text-yellow-800 dark:text-yellow-500 mb-3 flex items-center gap-2">
                           <AlertTriangle className="w-4 h-4" />
                           Catatan Penting
                        </h4>
                        <ul className="space-y-2">
-                         {activeSection.notes.map((n, i) => (
-                           <li key={i} className="flex items-start gap-2 text-sm text-yellow-700 dark:text-yellow-600/90 leading-relaxed">
-                             <div className="w-1.5 h-1.5 bg-yellow-400 rounded-full mt-1.5 shrink-0" />
-                             {n}
-                           </li>
-                         ))}
+                         {activeNotes.map((note, i) => {
+                           const noteText = getGuideNoteText(note);
+                           return (
+                             <li key={i} className="flex items-start gap-2 text-sm text-yellow-700 dark:text-yellow-600/90 leading-relaxed">
+                               <div className="w-1.5 h-1.5 bg-yellow-400 rounded-full mt-1.5 shrink-0" />
+                               {noteText}
+                             </li>
+                           );
+                         })}
                        </ul>
                     </div>
                   )}
@@ -558,7 +613,9 @@ export const AdminGuide: React.FC = () => {
 
                   {/* Supplemental sections shown at bottom of active guide */}
                   <div className="opacity-80">
-                      <h3 className="text-xs uppercase tracking-wider font-bold text-slate-400 dark:text-slate-500 mb-6">Pengetahuan Lanjutan Administrasi</h3>
+                      <h3 className="text-xs uppercase tracking-wider font-bold text-slate-400 dark:text-slate-500 mb-6">
+                        {isOwner ? "Pengetahuan Lanjutan Owner" : "Panduan Operasional Admin"}
+                      </h3>
                       
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-8">
                          <div className="bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-800 rounded-xl p-5">

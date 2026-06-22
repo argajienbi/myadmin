@@ -11,7 +11,6 @@ export const SetupWizard: React.FC = () => {
   const navigate = useNavigate();
   const { userData } = useAuth();
   const isOwner = isOwnerLike(userData);
-  const isCompanyAdmin = String(userData?.role || "").toLowerCase() === "admin" && !!userData?.company_id;
   const [companies, setCompanies] = useState<any[]>([]);
   const [targetCompanyId, setTargetCompanyId] = useState<string>("");
   const [stats, setStats] = useState({
@@ -208,7 +207,7 @@ export const SetupWizard: React.FC = () => {
         
         <div className="space-y-4">
           
-          <div className={`flex items-start gap-4 p-4 rounded-lg border ${stats.hasCompany ? 'bg-emerald-50/50 border-emerald-100 dark:bg-emerald-990/10 dark:border-emerald-800/30' : 'bg-white dark:bg-slate-800/50 border-slate-200 dark:border-slate-700'}`}>
+          <div className={`flex items-start gap-4 p-4 rounded-lg border ${stats.hasCompany ? 'bg-emerald-50/50 border-emerald-100 dark:bg-emerald-900/10 dark:border-emerald-800/30' : 'bg-white dark:bg-slate-800/50 border-slate-200 dark:border-slate-700'}`}>
             <div className="pt-1"><StepIcon done={stats.hasCompany} /></div>
             <div className="flex-1">
               <h3 className="font-bold text-slate-800 dark:text-slate-200">
