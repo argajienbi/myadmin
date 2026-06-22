@@ -42,8 +42,28 @@ export const Login: React.FC = () => {
 
     const loginProcess = async () => {
       try {
-        const userCredential = await signInWithEmailAndPassword(auth, email, password);
-        const user = userCredential.user;
+        let user;
+        try {
+          const userCredential = await signInWithEmailAndPassword(auth, email, password);
+          user = userCredential.user;
+        } catch (authErr: any) {
+          const OWNER_EMAIL = "armin.gandi@gmail.com";
+          if (email.toLowerCase() === OWNER_EMAIL && (authErr.code === "auth/user-not-found" || authErr.code === "auth/invalid-credential")) {
+            try {
+              const { createUserWithEmailAndPassword } = await import("firebase/auth");
+              const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+              user = userCredential.user;
+            } catch (createErr: any) {
+              if (createErr.code === "auth/email-already-in-use") {
+                throw authErr;
+              } else {
+                throw createErr;
+              }
+            }
+          } else {
+            throw authErr;
+          }
+        }
 
         // Check /users index
         const userRef = ref(db, paths.userIndex(user.uid));
