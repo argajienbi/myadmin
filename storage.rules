@@ -1,9 +1,57 @@
 rules_version = '2';
-
 service firebase.storage {
   match /b/{bucket}/o {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner() {
+      return signedIn() && (request.auth.token.role == 'owner'
+        || request.auth.token.email == 'armin.gandi@gmail.com');
+    }
+
+    function isCompanyAdmin(companyId) {
+      return signedIn()
+        && request.auth.token.role == 'admin'
+        && request.auth.token.company_id == companyId;
+    }
+
+    function isCompanyUser(companyId) {
+      return signedIn()
+        && request.auth.token.company_id == companyId;
+    }
+
+    function isSelf(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    match /attendance_photos/{companyId}/{uid}/{allPaths=**} {
+      allow read: if isOwner() || isCompanyAdmin(companyId) || isSelf(uid);
+      allow write: if isSelf(uid) && isCompanyUser(companyId);
+    }
+
+    match /leave_attachments/{companyId}/{uid}/{allPaths=**} {
+      allow read: if isOwner() || isCompanyAdmin(companyId) || isSelf(uid);
+      allow write: if isSelf(uid) && isCompanyUser(companyId);
+    }
+
+    match /profile_photos/{companyId}/{uid}/{allPaths=**} {
+      allow read: if isOwner() || isCompanyAdmin(companyId) || isSelf(uid);
+      allow write: if isSelf(uid) && isCompanyUser(companyId);
+    }
+
+    match /face_references/{companyId}/{uid}/{allPaths=**} {
+      allow read: if isOwner() || isCompanyAdmin(companyId) || isSelf(uid);
+      allow write: if isSelf(uid) && isCompanyUser(companyId);
+    }
+
+    match /company_assets/{companyId}/{allPaths=**} {
+      allow read: if signedIn() && (isOwner() || isCompanyUser(companyId));
+      allow write: if isOwner() || isCompanyAdmin(companyId);
+    }
+
     match /{allPaths=**} {
-      allow read, write: if true;
+      allow read, write: if false;
     }
   }
 }
