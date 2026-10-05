@@ -1,6 +1,134 @@
 {
   "rules": {
-    ".read": true,
-    ".write": true
+
+    ".read": false,
+    ".write": false,
+
+    "users": {
+      "$uid": {
+        ".read": "auth != null && (auth.uid == $uid || auth.token.email == 'armin.gandi@gmail.com' || (root.child('users').child(auth.uid).child('company_id').val() == root.child('users').child($uid).child('company_id').val() && (root.child('users').child(auth.uid).child('role').val() == 'admin' || root.child('users').child(auth.uid).child('role').val() == 'owner')))",
+        ".write": "auth != null && (auth.uid == $uid || auth.token.email == 'armin.gandi@gmail.com' || (root.child('users').child(auth.uid).child('company_id').val() == root.child('users').child($uid).child('company_id').val() && (root.child('users').child(auth.uid).child('role').val() == 'admin' || root.child('users').child(auth.uid).child('role').val() == 'owner')))"
+      }
+    },
+
+    "companies": {
+      ".read": "auth != null && auth.token.email == 'armin.gandi@gmail.com'",
+      ".write": "auth != null && auth.token.email == 'armin.gandi@gmail.com'",
+      "$companyId": {
+        ".read": "auth != null && (auth.token.email == 'armin.gandi@gmail.com' || root.child('users').child(auth.uid).child('company_id').val() == $companyId)",
+        ".write": "auth != null && (auth.token.email == 'armin.gandi@gmail.com' || (root.child('users').child(auth.uid).child('company_id').val() == $companyId && (root.child('users').child(auth.uid).child('role').val() == 'admin' || root.child('users').child(auth.uid).child('role').val() == 'owner')))"
+      }
+    },
+
+    "company_users": {
+      "$companyId": {
+        ".read": "auth != null && (auth.token.email == 'armin.gandi@gmail.com' || root.child('users').child(auth.uid).child('company_id').val() == $companyId)",
+        ".write": "auth != null && (auth.token.email == 'armin.gandi@gmail.com' || (root.child('users').child(auth.uid).child('company_id').val() == $companyId && (root.child('users').child(auth.uid).child('role').val() == 'admin' || root.child('users').child(auth.uid).child('role').val() == 'owner')))"
+      }
+    },
+
+    "areas": { "$companyId": {
+      ".read": "auth != null && (auth.token.email == 'armin.gandi@gmail.com' || root.child('users').child(auth.uid).child('company_id').val() == $companyId)",
+      ".write": "auth != null && (auth.token.email == 'armin.gandi@gmail.com' || (root.child('users').child(auth.uid).child('company_id').val() == $companyId && (root.child('users').child(auth.uid).child('role').val() == 'admin' || root.child('users').child(auth.uid).child('role').val() == 'owner')))" } },
+    "offices": { "$companyId": {
+      ".read": "auth != null && (auth.token.email == 'armin.gandi@gmail.com' || root.child('users').child(auth.uid).child('company_id').val() == $companyId)",
+      ".write": "auth != null && (auth.token.email == 'armin.gandi@gmail.com' || (root.child('users').child(auth.uid).child('company_id').val() == $companyId && (root.child('users').child(auth.uid).child('role').val() == 'admin' || root.child('users').child(auth.uid).child('role').val() == 'owner')))" } },
+    "departments": { "$companyId": {
+      ".read": "auth != null && (auth.token.email == 'armin.gandi@gmail.com' || root.child('users').child(auth.uid).child('company_id').val() == $companyId)",
+      ".write": "auth != null && (auth.token.email == 'armin.gandi@gmail.com' || (root.child('users').child(auth.uid).child('company_id').val() == $companyId && (root.child('users').child(auth.uid).child('role').val() == 'admin' || root.child('users').child(auth.uid).child('role').val() == 'owner')))" } },
+    "sub_departments": { "$companyId": {
+      ".read": "auth != null && (auth.token.email == 'armin.gandi@gmail.com' || root.child('users').child(auth.uid).child('company_id').val() == $companyId)",
+      ".write": "auth != null && (auth.token.email == 'armin.gandi@gmail.com' || (root.child('users').child(auth.uid).child('company_id').val() == $companyId && (root.child('users').child(auth.uid).child('role').val() == 'admin' || root.child('users').child(auth.uid).child('role').val() == 'owner')))" } },
+    "employee_groups": { "$companyId": {
+      ".read": "auth != null && (auth.token.email == 'armin.gandi@gmail.com' || root.child('users').child(auth.uid).child('company_id').val() == $companyId)",
+      ".write": "auth != null && (auth.token.email == 'armin.gandi@gmail.com' || (root.child('users').child(auth.uid).child('company_id').val() == $companyId && (root.child('users').child(auth.uid).child('role').val() == 'admin' || root.child('users').child(auth.uid).child('role').val() == 'owner')))" } },
+    "timetables": { "$companyId": {
+      ".read": "auth != null && (auth.token.email == 'armin.gandi@gmail.com' || root.child('users').child(auth.uid).child('company_id').val() == $companyId)",
+      ".write": "auth != null && (auth.token.email == 'armin.gandi@gmail.com' || (root.child('users').child(auth.uid).child('company_id').val() == $companyId && (root.child('users').child(auth.uid).child('role').val() == 'admin' || root.child('users').child(auth.uid).child('role').val() == 'owner')))" } },
+    "shifts": { "$companyId": {
+      ".read": "auth != null && (auth.token.email == 'armin.gandi@gmail.com' || root.child('users').child(auth.uid).child('company_id').val() == $companyId)",
+      ".write": "auth != null && (auth.token.email == 'armin.gandi@gmail.com' || (root.child('users').child(auth.uid).child('company_id').val() == $companyId && (root.child('users').child(auth.uid).child('role').val() == 'admin' || root.child('users').child(auth.uid).child('role').val() == 'owner')))" } },
+    "schedule_assignments": { "$companyId": {
+      ".read": "auth != null && (auth.token.email == 'armin.gandi@gmail.com' || root.child('users').child(auth.uid).child('company_id').val() == $companyId)",
+      ".write": "auth != null && (auth.token.email == 'armin.gandi@gmail.com' || (root.child('users').child(auth.uid).child('company_id').val() == $companyId && (root.child('users').child(auth.uid).child('role').val() == 'admin' || root.child('users').child(auth.uid).child('role').val() == 'owner')))" } },
+    "holidays": { "$companyId": {
+      ".read": "auth != null && (auth.token.email == 'armin.gandi@gmail.com' || root.child('users').child(auth.uid).child('company_id').val() == $companyId)",
+      ".write": "auth != null && (auth.token.email == 'armin.gandi@gmail.com' || (root.child('users').child(auth.uid).child('company_id').val() == $companyId && (root.child('users').child(auth.uid).child('role').val() == 'admin' || root.child('users').child(auth.uid).child('role').val() == 'owner')))" } },
+    "schedule_specials": { "$companyId": {
+      ".read": "auth != null && (auth.token.email == 'armin.gandi@gmail.com' || root.child('users').child(auth.uid).child('company_id').val() == $companyId)",
+      ".write": "auth != null && (auth.token.email == 'armin.gandi@gmail.com' || (root.child('users').child(auth.uid).child('company_id').val() == $companyId && (root.child('users').child(auth.uid).child('role').val() == 'admin' || root.child('users').child(auth.uid).child('role').val() == 'owner')))" } },
+    "schedule_change_logs": { "$companyId": {
+      ".read": "auth != null && (auth.token.email == 'armin.gandi@gmail.com' || root.child('users').child(auth.uid).child('company_id').val() == $companyId)",
+      ".write": "auth != null && (auth.token.email == 'armin.gandi@gmail.com' || (root.child('users').child(auth.uid).child('company_id').val() == $companyId && (root.child('users').child(auth.uid).child('role').val() == 'admin' || root.child('users').child(auth.uid).child('role').val() == 'owner')))" } },
+    "overtime_schedules": { "$companyId": {
+      ".read": "auth != null && (auth.token.email == 'armin.gandi@gmail.com' || root.child('users').child(auth.uid).child('company_id').val() == $companyId)",
+      ".write": "auth != null && (auth.token.email == 'armin.gandi@gmail.com' || (root.child('users').child(auth.uid).child('company_id').val() == $companyId && (root.child('users').child(auth.uid).child('role').val() == 'admin' || root.child('users').child(auth.uid).child('role').val() == 'owner')))" } },
+
+    "attendance": {
+      "$companyId": {
+        ".read": "auth != null && (auth.token.email == 'armin.gandi@gmail.com' || (root.child('users').child(auth.uid).child('company_id').val() == $companyId && (root.child('users').child(auth.uid).child('role').val() == 'admin' || root.child('users').child(auth.uid).child('role').val() == 'owner')))",
+        ".write": "auth != null && (auth.token.email == 'armin.gandi@gmail.com' || (root.child('users').child(auth.uid).child('company_id').val() == $companyId && (root.child('users').child(auth.uid).child('role').val() == 'admin' || root.child('users').child(auth.uid).child('role').val() == 'owner')))",
+        "$uid": {
+          ".write": "auth != null && auth.uid == $uid && root.child('users').child(auth.uid).child('company_id').val() == $companyId"
+        }
+      }
+    },
+
+    "attendance_by_date": { "$companyId": {
+      ".read": "auth != null && (auth.token.email == 'armin.gandi@gmail.com' || (root.child('users').child(auth.uid).child('company_id').val() == $companyId && (root.child('users').child(auth.uid).child('role').val() == 'admin' || root.child('users').child(auth.uid).child('role').val() == 'owner')))",
+      ".write": "auth != null && (auth.token.email == 'armin.gandi@gmail.com' || (root.child('users').child(auth.uid).child('company_id').val() == $companyId && (root.child('users').child(auth.uid).child('role').val() == 'admin' || root.child('users').child(auth.uid).child('role').val() == 'owner')))" } },
+    "attendance_recent": { "$companyId": {
+      ".read": "auth != null && (auth.token.email == 'armin.gandi@gmail.com' || (root.child('users').child(auth.uid).child('company_id').val() == $companyId && (root.child('users').child(auth.uid).child('role').val() == 'admin' || root.child('users').child(auth.uid).child('role').val() == 'owner')))",
+      ".write": "auth != null && (auth.token.email == 'armin.gandi@gmail.com' || (root.child('users').child(auth.uid).child('company_id').val() == $companyId && (root.child('users').child(auth.uid).child('role').val() == 'admin' || root.child('users').child(auth.uid).child('role').val() == 'owner')))" } },
+    "dashboard_summary": { "$companyId": {
+      ".read": "auth != null && (auth.token.email == 'armin.gandi@gmail.com' || root.child('users').child(auth.uid).child('company_id').val() == $companyId)",
+      ".write": "auth != null && (auth.token.email == 'armin.gandi@gmail.com' || (root.child('users').child(auth.uid).child('company_id').val() == $companyId && (root.child('users').child(auth.uid).child('role').val() == 'admin' || root.child('users').child(auth.uid).child('role').val() == 'owner')))" } },
+    "pending_approval_summary": { "$companyId": {
+      ".read": "auth != null && (auth.token.email == 'armin.gandi@gmail.com' || root.child('users').child(auth.uid).child('company_id').val() == $companyId)",
+      ".write": "auth != null && (auth.token.email == 'armin.gandi@gmail.com' || (root.child('users').child(auth.uid).child('company_id').val() == $companyId && (root.child('users').child(auth.uid).child('role').val() == 'admin' || root.child('users').child(auth.uid).child('role').val() == 'owner')))" } },
+    "report_cache": { "$companyId": {
+      ".read": "auth != null && (auth.token.email == 'armin.gandi@gmail.com' || (root.child('users').child(auth.uid).child('company_id').val() == $companyId && (root.child('users').child(auth.uid).child('role').val() == 'admin' || root.child('users').child(auth.uid).child('role').val() == 'owner')))",
+      ".write": "auth != null && (auth.token.email == 'armin.gandi@gmail.com' || (root.child('users').child(auth.uid).child('company_id').val() == $companyId && (root.child('users').child(auth.uid).child('role').val() == 'admin' || root.child('users').child(auth.uid).child('role').val() == 'owner')))" } },
+    "storage_index": { "$companyId": {
+      ".read": "auth != null && (auth.token.email == 'armin.gandi@gmail.com' || (root.child('users').child(auth.uid).child('company_id').val() == $companyId && (root.child('users').child(auth.uid).child('role').val() == 'admin' || root.child('users').child(auth.uid).child('role').val() == 'owner')))",
+      ".write": "auth != null && (auth.token.email == 'armin.gandi@gmail.com' || (root.child('users').child(auth.uid).child('company_id').val() == $companyId && (root.child('users').child(auth.uid).child('role').val() == 'admin' || root.child('users').child(auth.uid).child('role').val() == 'owner')))" } },
+
+    "leave_requests": { "$companyId": {
+      ".read": "auth != null && (auth.token.email == 'armin.gandi@gmail.com' || root.child('users').child(auth.uid).child('company_id').val() == $companyId)",
+      ".write": "auth != null && (auth.token.email == 'armin.gandi@gmail.com' || root.child('users').child(auth.uid).child('company_id').val() == $companyId)" } },
+    "qr_attendance_requests": { "$companyId": {
+      ".read": "auth != null && (auth.token.email == 'armin.gandi@gmail.com' || root.child('users').child(auth.uid).child('company_id').val() == $companyId)",
+      ".write": "auth != null && (auth.token.email == 'armin.gandi@gmail.com' || root.child('users').child(auth.uid).child('company_id').val() == $companyId)" } },
+    "attendance_corrections": { "$companyId": {
+      ".read": "auth != null && (auth.token.email == 'armin.gandi@gmail.com' || root.child('users').child(auth.uid).child('company_id').val() == $companyId)",
+      ".write": "auth != null && (auth.token.email == 'armin.gandi@gmail.com' || root.child('users').child(auth.uid).child('company_id').val() == $companyId)" } },
+
+    "announcements": { "$companyId": {
+      ".read": "auth != null && (auth.token.email == 'armin.gandi@gmail.com' || root.child('users').child(auth.uid).child('company_id').val() == $companyId)",
+      ".write": "auth != null && (auth.token.email == 'armin.gandi@gmail.com' || (root.child('users').child(auth.uid).child('company_id').val() == $companyId && (root.child('users').child(auth.uid).child('role').val() == 'admin' || root.child('users').child(auth.uid).child('role').val() == 'owner')))" } },
+
+    "audit_logs": { "$companyId": {
+      ".read": "auth != null && (auth.token.email == 'armin.gandi@gmail.com' || (root.child('users').child(auth.uid).child('company_id').val() == $companyId && (root.child('users').child(auth.uid).child('role').val() == 'admin' || root.child('users').child(auth.uid).child('role').val() == 'owner')))",
+      ".write": "auth != null && (auth.token.email == 'armin.gandi@gmail.com' || (root.child('users').child(auth.uid).child('company_id').val() == $companyId && (root.child('users').child(auth.uid).child('role').val() == 'admin' || root.child('users').child(auth.uid).child('role').val() == 'owner')))",
+      ".indexOn": ["created_at"] } },
+
+    "notifications": {
+      "$uid": {
+        ".read": "auth != null && (auth.uid == $uid || auth.token.email == 'armin.gandi@gmail.com')",
+        ".write": "auth != null && (auth.uid == $uid || auth.token.email == 'armin.gandi@gmail.com')"
+      }
+    },
+
+    "company_invites": {
+      ".read": "auth != null",
+      "$code": {
+        ".write": "auth != null && (auth.token.email == 'armin.gandi@gmail.com' || root.child('users').child(auth.uid).child('role').val() == 'admin' || root.child('users').child(auth.uid).child('role').val() == 'owner')"
+      }
+    },
+
+    "app_config": {
+      ".read": "auth != null",
+      ".write": "auth != null && auth.token.email == 'armin.gandi@gmail.com'"
+    }
   }
 }
