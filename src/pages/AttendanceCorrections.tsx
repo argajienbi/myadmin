@@ -68,18 +68,20 @@ export const AttendanceCorrections: React.FC = () => {
 
         const activeUsers = usersList.filter(u => u.status_akun === 'active' || u.status_akun === 'verified');
 
-        const attSnap = await get(ref(db, paths.attendanceRoot(targetCompanyId)));
+        const todayStr = new Date().toISOString().slice(0, 10);
+
+        // HEMAT BIAYA: hanya unduh node tanggal hari ini, bukan seluruh riwayat.
+        // Struktur attendance_by_date: {uid: {actionType: record}}.
+        // Prasyarat: `npm run backfill:attendance-index` sudah dijalankan.
+        const attSnap = await get(ref(db, paths.attendanceByDate(targetCompanyId, todayStr)));
         const attObj = attSnap.exists() ? attSnap.val() : {};
 
         const foundProblems: any[] = [];
-        const todayStr = new Date().toISOString().slice(0, 10);
 
         activeUsers.forEach(u => {
-            const userAtt = attObj[u.uid] || {};
-            const dates = Object.keys(userAtt).filter(d => d === todayStr); // Look at today
-            
-            dates.forEach(d => {
-                const actions = userAtt[d];
+            const actions = attObj[u.uid] || {};
+            {
+                const d = todayStr;
                 const checkIn = actions["check_in"] || actions["check-in"] || actions["in"];
                 const checkOut = actions["check_out"] || actions["check-out"] || actions["out"];
                 
@@ -105,8 +107,8 @@ export const AttendanceCorrections: React.FC = () => {
                         foundProblems.push({ uid: u.uid, name: u.nama_lengkap, date: d, issue: "Absen Luar Radius (Pulang)", record: checkOut, action: "check_out" });
                     }
                 }
-            });
-            
+            }
+
             // Note: Does not currently check "Tidak ada absen masuk padahal ada jadwal" without backend due to full DB queries. We check only when resolving.
         });
 
@@ -126,8 +128,7 @@ export const AttendanceCorrections: React.FC = () => {
                 const u = activeUsers.find(x => x.uid === res.uid);
                 const isHoliday = res.out.schedule_source === 'holiday';
                 if (!isHoliday) {
-                    const userAtt = attObj[res.uid] || {};
-                    const actions = userAtt[todayStr] || {};
+                    const actions = attObj[res.uid] || {};
                     const checkIn = actions["check_in"] || actions["check-in"] || actions["in"];
                     
                     if (!checkIn) {
