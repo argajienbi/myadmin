@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../auth/AuthContext";
-import { ref, onValue, get } from "firebase/database";
+import { ref, onValue, get, query, orderByChild, limitToLast } from "firebase/database";
 import { db } from "../firebase";
 import { paths } from "../services/paths";
 import { Company } from "../types";
@@ -46,8 +46,14 @@ export const Audit: React.FC = () => {
     setLoading(true);
     setError("");
     
-    const logsRef = ref(db, paths.auditLogs(targetCompanyId));
-    const unsub = onValue(logsRef, (snapshot) => {
+    // HEMAT BIAYA: audit log hanya 100 terbaru. Node ini tumbuh tanpa batas dan
+    // listener onValue mengunduh ulang seluruh node setiap ada perubahan.
+    const logsQuery = query(
+        ref(db, paths.auditLogs(targetCompanyId)),
+        orderByChild("created_at"),
+        limitToLast(100)
+    );
+    const unsub = onValue(logsQuery, (snapshot) => {
        if (snapshot.exists()) {
           const data = snapshot.val();
           const items = Object.keys(data).map(key => ({
