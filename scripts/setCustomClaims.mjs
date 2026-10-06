@@ -24,8 +24,8 @@ const serviceAccount = JSON.parse(readFileSync(serviceAccountPath, "utf8"));
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
-  databaseURL: "https://mypresence-db-default-rtdb.asia-southeast1.firebasedatabase.app",
-  storageBucket: "mypresence-db.firebasestorage.app",
+  databaseURL: "https://mypresence-prod-default-rtdb.asia-southeast1.firebasedatabase.app",
+  storageBucket: "mypresence-prod.firebasestorage.app",
 });
 
 await admin.auth().setCustomUserClaims(uid, {

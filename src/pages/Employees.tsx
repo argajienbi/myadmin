@@ -826,6 +826,7 @@ export const Employees: React.FC = () => {
         loading: 'Menyimpan...',
         success: (msg) => {
             setShowAddModal(false);
+            setActiveTab("active");
             setAddFormData({
                  nama_lengkap: "", email: "", password: "",
                  nip: "", no_hp: "", position: "",

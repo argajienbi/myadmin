@@ -65,59 +65,70 @@ export const Login: React.FC = () => {
           }
         }
 
-        // Check /users index
-        const userRef = ref(db, paths.userIndex(user.uid));
-        const snapshot = await get(userRef);
-
         const OWNER_UID = "BIVgnX2aIwTjMSG2lHkicEfkt9I3";
         const OWNER_EMAIL = "armin.gandi@gmail.com";
         const isOwner = user.uid === OWNER_UID || user.email?.toLowerCase() === OWNER_EMAIL;
 
-        if (!snapshot.exists()) {
-          if (isOwner) {
-             const ownerData = {
-               uid: user.uid,
-               company_id: "",
-               role: "owner",
-               status_akun: "active",
-               email: user.email || "",
-               nama_lengkap: "System Owner",
-               created_at: Date.now(),
-               is_owner: true,
-               is_system_owner: true,
-               bootstrap_owner: true,
-               updated_at: Date.now(),
-             } as UserIndex & Record<string, any>;
-             // bootstrap owner into rtdb
-             const { set } = await import("firebase/database");
-             await set(userRef, ownerData);
-             return "Login berhasil! Akun Owner telah dibuat.";
+        if (isOwner) {
+          const ownerData = {
+            uid: user.uid,
+            company_id: "",
+            role: "owner",
+            status_akun: "active",
+            email: user.email || OWNER_EMAIL,
+            nama_lengkap: "System Owner",
+            created_at: Date.now(),
+            is_owner: true,
+            is_system_owner: true,
+            bootstrap_owner: true,
+            updated_at: Date.now(),
+          } as UserIndex & Record<string, any>;
+
+          try {
+            const userRef = ref(db, paths.userIndex(user.uid));
+            const snapshot = await get(userRef);
+            if (!snapshot.exists()) {
+              try {
+                const { set } = await import("firebase/database");
+                await set(userRef, ownerData);
+              } catch (setErr) {
+                console.warn("Owner write to RTDB restricted:", setErr);
+              }
+            } else {
+              const userData = snapshot.val() as UserIndex & Record<string, any>;
+              if (userData.role !== "owner" || userData.status_akun !== "active" || !userData.is_owner || !userData.is_system_owner) {
+                try {
+                  const { update } = await import("firebase/database");
+                  await update(userRef, {
+                    role: "owner",
+                    status_akun: "active",
+                    is_owner: true,
+                    is_system_owner: true,
+                    bootstrap_owner: true,
+                    updated_at: Date.now(),
+                  });
+                } catch (updateErr) {
+                  console.warn("Owner update to RTDB restricted:", updateErr);
+                }
+              }
+            }
+          } catch (rtdbErr) {
+            console.warn("Notice: RTDB access restricted, continuing with authenticated owner session:", rtdbErr);
           }
+
+          return "Login berhasil! Selamat datang Owner.";
+        }
+
+        // Check /users index for non-owner
+        const userRef = ref(db, paths.userIndex(user.uid));
+        const snapshot = await get(userRef);
+
+        if (!snapshot.exists()) {
           await auth.signOut();
           throw new Error("Akun belum terdaftar di sistem.");
         }
 
         const userData = snapshot.val() as UserIndex & Record<string, any>;
-
-        if (isOwner) {
-           if (userData.role !== "owner" || userData.status_akun !== "active" || !userData.is_owner || !userData.is_system_owner) {
-             userData.role = "owner";
-             userData.status_akun = "active";
-             userData.is_owner = true;
-             userData.is_system_owner = true;
-             userData.bootstrap_owner = true;
-             userData.updated_at = Date.now();
-             const { update } = await import("firebase/database");
-             await update(userRef, {
-               role: "owner",
-               status_akun: "active",
-               is_owner: true,
-               is_system_owner: true,
-               bootstrap_owner: true,
-               updated_at: Date.now(),
-             });
-           }
-        }
 
         if (userData.status_akun !== "active") {
           await auth.signOut();

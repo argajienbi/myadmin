@@ -1,7 +1,7 @@
 const admin = require("firebase-admin");
 admin.initializeApp({
-  projectId: "mypresence-db",
-  databaseURL: "https://mypresence-db-default-rtdb.asia-southeast1.firebasedatabase.app"
+  projectId: "mypresence-prod",
+  databaseURL: "https://mypresence-prod-default-rtdb.asia-southeast1.firebasedatabase.app"
 });
 
 async function run() {

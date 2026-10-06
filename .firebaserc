@@ -1,5 +1,5 @@
 {
   "projects": {
-    "default": "mypresence-db"
+    "default": "mypresence-prod"
   }
 }
