@@ -23,7 +23,11 @@
     "company_users": {
       "$companyId": {
         ".read": "auth != null && (auth.token.email == 'armin.gandi@gmail.com' || root.child('users').child(auth.uid).child('company_id').val() == $companyId)",
-        ".write": "auth != null && (auth.token.email == 'armin.gandi@gmail.com' || (root.child('users').child(auth.uid).child('company_id').val() == $companyId && (root.child('users').child(auth.uid).child('role').val() == 'admin' || root.child('users').child(auth.uid).child('role').val() == 'owner')))"
+        ".write": "auth != null && (auth.token.email == 'armin.gandi@gmail.com' || (root.child('users').child(auth.uid).child('company_id').val() == $companyId && (root.child('users').child(auth.uid).child('role').val() == 'admin' || root.child('users').child(auth.uid).child('role').val() == 'owner')))",
+        "$uid": {
+          ".write": "auth != null && auth.uid == $uid && root.child('users').child(auth.uid).child('company_id').val() == $companyId",
+          ".validate": "(auth.token.email == 'armin.gandi@gmail.com' || root.child('users').child(auth.uid).child('role').val() == 'admin' || root.child('users').child(auth.uid).child('role').val() == 'owner') || ((!newData.hasChild('role') || newData.child('role').val() == data.child('role').val()) && (!newData.hasChild('company_id') || newData.child('company_id').val() == data.child('company_id').val()))"
+        }
       }
     },
 
