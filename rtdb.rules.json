@@ -69,6 +69,7 @@
         ".read": "auth != null && (auth.token.email == 'armin.gandi@gmail.com' || (root.child('users').child(auth.uid).child('company_id').val() == $companyId && (root.child('users').child(auth.uid).child('role').val() == 'admin' || root.child('users').child(auth.uid).child('role').val() == 'owner')))",
         ".write": "auth != null && (auth.token.email == 'armin.gandi@gmail.com' || (root.child('users').child(auth.uid).child('company_id').val() == $companyId && (root.child('users').child(auth.uid).child('role').val() == 'admin' || root.child('users').child(auth.uid).child('role').val() == 'owner')))",
         "$uid": {
+          ".read": "auth != null && auth.uid == $uid",
           ".write": "auth != null && auth.uid == $uid && root.child('users').child(auth.uid).child('company_id').val() == $companyId"
         }
       }
