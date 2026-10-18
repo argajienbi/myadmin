@@ -1,20 +1,20 @@
-import { getFunctions, httpsCallable } from "firebase/functions";
-import { app } from "../firebase";
+import { push, ref, set } from "firebase/database";
+import { db } from "../firebase";
 
 export type NotificationDeliveryOptions = {
   companyId: string;
   uid: string;
   title: string;
   body: string;
-  type: string; // e.g. success, info, warning, danger, schedule_update, etc.
-  refType: string; // e.g. schedule, leave, correction, qr_attendance_request
+  type: string;
+  refType: string;
   refId: string;
   relatedId?: string;
   data?: Record<string, any>;
   senderUid?: string;
   senderName?: string;
   senderRole?: string;
-  notificationId?: string; // Optional custom notification_id
+  notificationId?: string;
   dedupeKey?: string;
   forceRetry?: boolean;
   skipSettingsCheck?: boolean;
@@ -42,71 +42,73 @@ export async function createUserNotificationAndPush(options: NotificationDeliver
     throw new Error("companyId atau uid tidak boleh kosong.");
   }
 
-  try {
-    const functions = getFunctions(app, "asia-southeast1");
-    const callable = httpsCallable<any, any>(functions, "createUserNotificationAndPushCallable");
+  const nowMs = Date.now();
+  const related = relatedId || refId || "";
 
-    const result = await callable({
-      companyId,
-      uid,
-      title,
-      body,
-      type,
-      refType,
-      refId,
-      relatedId: relatedId || refId || "",
-      payload: data || {},
-      notificationId,
-      dedupeKey,
-      senderName,
-      senderRole,
-      skipSettingsCheck,
-      forceRetry: options.forceRetry || false,
-    });
+  const notifRef = push(ref(db, `companies/${companyId}/users/${uid}/notification_inbox`));
+  const notifPayload = {
+    notification_id: notificationId || notifRef.key,
+    company_id: companyId,
+    uid,
+    title,
+    message: body,
+    body,
+    type: type || "info",
+    ref_type: refType || "",
+    ref_id: refId || "",
+    related_id: related,
+    data: data || {},
+    sender_name: senderName,
+    sender_role: senderRole,
+    dedupe_key: dedupeKey || null,
+    skip_settings_check: skipSettingsCheck,
+    read: false,
+    is_read: false,
+    created_at: nowMs,
+    updated_at: nowMs,
+  };
+  await set(notifRef, notifPayload);
 
-    const resData = result.data || {};
-    if (resData.skipped) {
-      console.info(`Notification of type ${type} to user ${uid} skipped:`, resData.reason);
-    } else {
-      console.info("Notification successfully triggered via Callable:", resData);
-    }
+  const queueRef = push(ref(db, `companies/${companyId}/notification_queue`));
+  const queuePayload = {
+    company_id: companyId,
+    uid,
+    title,
+    message: body,
+    body,
+    type: type || "info",
+    ref_type: refType || "",
+    ref_id: refId || "",
+    related_id: related,
+    data: data || {},
+    notification_id: notificationId || notifRef.key,
+    status: "pending",
+    retry_count: 0,
+    token_count: 0,
+    success_count: 0,
+    failed_count: 0,
+    error: null,
+    created_at: nowMs,
+    sent_at: null,
+    failed_at: null,
+  };
+  await set(queueRef, queuePayload);
 
-    return {
-      success: Boolean(resData.success),
-      skipped: Boolean(resData.skipped),
-      reason: resData.reason || "",
-      notificationId: resData.notification_id || notificationId || "",
-      queueId: resData.queue_id || "",
-      pushSent: Boolean(resData.push_sent),
-      inAppSent: Boolean(resData.in_app_sent),
-    };
-  } catch (error: any) {
-    const code = error?.code || "";
-    const message = error?.message || "";
-    const details = error?.details || {};
+  console.info("Notification + queue written directly to RTDB (no Cloud Function)", {
+    company_id: companyId,
+    uid,
+    notificationId: notifRef.key,
+    queueId: queueRef.key,
+    type,
+  });
 
-    const detailsMessage =
-      details?.original_message ||
-      details?.message ||
-      details?.reason ||
-      details?.error ||
-      "";
-
-    const errorMsg = [
-      code,
-      detailsMessage || message || "Unknown callable error",
-    ]
-      .filter(Boolean)
-      .join(": ");
-
-    console.warn("Failed to create user notification and push queue via Callable:", {
-      code,
-      message,
-      details,
-      raw: error,
-    });
-
-    throw new Error(`Failed to create notification and push: ${errorMsg}`);
-  }
+  return {
+    success: true,
+    skipped: false,
+    reason: "",
+    notificationId: notifRef.key || "",
+    queueId: queueRef.key || "",
+    pushSent: false,
+    inAppSent: true,
+  };
 }
-
