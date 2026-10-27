@@ -1,0 +1,9 @@
+{
+  "apiKey": "AIzaSyCMRvCSBe1qjJ1bGMxoHqD1M572lDQ_x4w",
+  "authDomain": "mypresence-prod.firebaseapp.com",
+  "databaseURL": "https://mypresence-prod-default-rtdb.asia-southeast1.firebasedatabase.app",
+  "projectId": "mypresence-prod",
+  "storageBucket": "mypresence-prod.firebasestorage.app",
+  "messagingSenderId": "1099105297287",
+  "appId": "1:1099105297287:web:544b5af3ac0acfa7296922"
+}
