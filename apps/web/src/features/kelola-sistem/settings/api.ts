@@ -6,9 +6,9 @@
  * halaman Perusahaan (field `company_*`). Sinkronisasi user ke Firestore
  * mem-port syncFirestoreUsersFromRtdb.ts.
  *
- * SEAM SEMENTARA: sampai auth Firebase Raka mendarat, UID Firebase admin
- * dicari dengan mencocokkan email (template auth JWT tidak membawa UID
- * Firebase). Bila tidak cocok, profil menampilkan pemberitahuan jujur.
+ * UID Firebase admin diambil langsung dari `auth.currentUser.uid`
+ * (auth Firebase sudah mendarat); pencocokan email di bawah hanya
+ * fallback bila UID belum tersedia saat query jalan.
  */
 import { useQuery } from "@tanstack/react-query"
 import { updatePassword } from "firebase/auth"
@@ -25,6 +25,8 @@ export interface SettingsData {
   company: Company | null
 }
 
+/** Fallback bila UID belum tersedia: pindai node `users` per email.
+    Dipakai hanya saat `auth.currentUser` belum terisi. */
 export async function findUserByEmail(
   email: string,
 ): Promise<CompanyUser | null> {
@@ -36,18 +38,25 @@ export async function findUserByEmail(
 }
 
 export function useSettingsData(companyId: string, email: string | undefined) {
+  const uid = auth?.currentUser?.uid
   return useQuery({
-    queryKey: ["ks", "settings", companyId, email],
+    queryKey: ["ks", "settings", companyId, email, uid],
     queryFn: async (): Promise<SettingsData> => {
-      const [firebaseUser, company] = await Promise.all([
-        email ? findUserByEmail(email) : Promise.resolve(null),
-        companyId
-          ? readValue<Company>(paths.company(companyId))
-          : Promise.resolve(null),
-      ])
+      // Jalur utama: baca langsung users/{uid} — tanpa memindai node.
+      const byUid = uid
+        ? await readValue<CompanyUser>(paths.userIndex(uid))
+        : null
+      const firebaseUser = byUid
+        ? { ...byUid, uid: uid ?? byUid.uid }
+        : email
+          ? await findUserByEmail(email)
+          : null
+      const company = companyId
+        ? await readValue<Company>(paths.company(companyId))
+        : null
       return { firebaseUser, company }
     },
-    enabled: isFirebaseConfigured() && Boolean(email),
+    enabled: isFirebaseConfigured() && Boolean(email || uid),
   })
 }
 

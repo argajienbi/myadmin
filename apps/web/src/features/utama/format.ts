@@ -11,8 +11,14 @@ export function textValue(value: unknown, fallback = "-"): string {
 }
 
 export function employeeName(req: Record<string, unknown>): string {
+  // B1: pengajuan QR memakai `target_name` (nama karyawan yang
+  // diabsenkan), bukan nama helper — tanpa ini baris QR tampil "Karyawan".
   return textValue(
-    req.user_name || req.nama_lengkap || req.employee_name || req.name,
+    req.user_name ||
+      req.nama_lengkap ||
+      req.employee_name ||
+      req.target_name ||
+      req.name,
     "Karyawan"
   )
 }
@@ -72,8 +78,21 @@ export function formatWaktuDariTanggal(
 }
 
 export function durationLabel(req: Record<string, unknown>): string {
-  const start = String(req.start_date || req.date || "")
-  const end = String(req.end_date || "")
+  // B7: rantai fallback lengkap seperti aplikasi lama (startDateValue /
+  // endDateValue di Approvals.tsx): date_start / tanggal_mulai / date_end /
+  // tanggal_selesai ikut dibaca, bukan hanya start_date / date / end_date.
+  const start = String(
+    req.date_start || req.tanggal_mulai || req.start_date || req.date || ""
+  )
+  const end = String(
+    req.date_end ||
+      req.tanggal_selesai ||
+      req.date_start ||
+      req.tanggal_mulai ||
+      req.start_date ||
+      req.date ||
+      ""
+  )
   if (!start) return "-"
   if (!end || end === start) return formatTanggal(start)
   return `${formatTanggal(start)} – ${formatTanggal(end)}`

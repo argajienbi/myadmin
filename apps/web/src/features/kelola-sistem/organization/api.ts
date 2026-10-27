@@ -40,11 +40,21 @@ export const ENTITY_LABEL: Record<EntityType, string> = {
   group: "Grup Karyawan",
 }
 
+/** Aktif = tidak dinonaktifkan DAN status akun bukan "inactive"
+    (seperti guard aplikasi lama: `active !== false && status !==
+    "inactive"`). Tanpa cek status, karyawan nonaktif ikut memblokir
+    hapus Area/Kantor/Departemen/Grup di guard dependensi. */
 export function isActiveRecord(item: {
   active?: boolean
+  status?: string
   status_akun?: string
+  is_active?: boolean
 }): boolean {
-  return item.active !== false
+  if (item.active === false || item.is_active === false) return false
+  const status = String(
+    item.status_akun ?? item.status ?? "active"
+  ).toLowerCase()
+  return status !== "inactive"
 }
 
 export interface OrganizationData {

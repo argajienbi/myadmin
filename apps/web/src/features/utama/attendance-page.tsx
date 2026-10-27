@@ -168,6 +168,41 @@ export function AttendancePage({ search }: { search: AttendanceSearch }) {
       })
   }, [companyId])
 
+  // C7 — sinkronkan filter saat search param berubah (navigasi dalam
+  // halaman yang sama, mis. klik dua baris Log Terbaru di Dashboard):
+  // penyesuaian state saat render (pola React yang didokumentasikan),
+  // bukan setState di dalam effect. State hanya berubah saat navigasi;
+  // mengetik di filter tidak mengubah search.
+  const searchSyncKey = [
+    search.startDate || "",
+    search.endDate || "",
+    search.date || "",
+    search.search || "",
+    search.method || "",
+    search.action || "",
+    search.office || "",
+    search.department || "",
+    search.group || "",
+    search.status || "",
+    search.geofence || "",
+  ].join("|")
+  const [prevSearchSyncKey, setPrevSearchSyncKey] =
+    useState(searchSyncKey)
+  if (searchSyncKey !== prevSearchSyncKey) {
+    setPrevSearchSyncKey(searchSyncKey)
+    setStartDate(search.startDate || search.date || todayKey())
+    setEndDate(search.endDate || search.date || todayKey())
+    setSearchText(search.search || "")
+    setMethodFilter(search.method || "all")
+    setActionFilter(search.action || "all")
+    setOfficeFilter(search.office || "all")
+    setDepartmentFilter(search.department || "all")
+    setGroupFilter(search.group || "all")
+    setStatusFilter(search.status || "all")
+    setGeofenceFilter(search.geofence || "all")
+    setPage(1)
+  }
+
   const rangeKey = `${companyId}|${startDate}|${endDate}`
   const [loadedRangeKey, setLoadedRangeKey] = useState("")
   // loading diturunkan dari kunci rentang (bukan setState di dalam effect):
@@ -191,21 +226,79 @@ export function AttendancePage({ search }: { search: AttendanceSearch }) {
     return map
   }, [employees])
 
+  // Peta nama master untuk pencarian (C1): nama kantor/departemen/grup
+  // tidak tersimpan di record absensi, jadi dicari lewat id-nya.
+  const masterNameById = useMemo(() => {
+    const build = (list: MasterRow[]) => {
+      const map = new Map<string, string>()
+      list.forEach((item) =>
+        map.set(String(item.id), String(item.name || item.id))
+      )
+      return map
+    }
+    return {
+      office: build(offices),
+      department: build(departments),
+      group: build(groups),
+    }
+  }, [offices, departments, groups])
+
   const filteredRows = useMemo(() => {
     const q = searchText.trim().toLowerCase()
     return rows.filter((row) => {
       const emp = employeeByUid.get(String(row.uid))
       const name = emp ? employeeName(emp) : String(row.uid || "")
-      if (
-        q &&
-        !name.toLowerCase().includes(q) &&
-        !String(row.dateKey || "").includes(q)
-      )
-        return false
+      // C1 — pencarian seperti aplikasi lama: nama, NIP, tanggal,
+      // kantor, departemen, grup (sub-departemen tidak dimuat — lihat C5).
+      if (q) {
+        const haystack = [
+          name,
+          String(emp?.nip || row.nip || ""),
+          String(row.dateKey || row.record_date || ""),
+          String(
+            row.office_name ||
+              masterNameById.office.get(
+                String(row.office_id || emp?.office_id || "")
+              ) ||
+              ""
+          ),
+          String(
+            row.department_name ||
+              masterNameById.department.get(
+                String(row.department_id || emp?.department_id || "")
+              ) ||
+              ""
+          ),
+          String(
+            row.group_name ||
+              masterNameById.group.get(
+                String(row.group_id || emp?.group_id || "")
+              ) ||
+              ""
+          ),
+        ]
+          .join(" ")
+          .toLowerCase()
+        if (!haystack.includes(q)) return false
+      }
       const method = String(row.method || "").toLowerCase()
       if (methodFilter !== "all" && method !== methodFilter) return false
       if (actionFilter === "masuk" && !isCheckIn(row)) return false
       if (actionFilter === "pulang" && !isCheckOut(row)) return false
+      // C4 — lembur bisa difilter khusus (isCheckIn/isCheckOut sudah
+      // menggabungkan lembur ke Masuk/Pulang; di sini dicocokkan persis).
+      if (
+        actionFilter === "lembur_masuk" &&
+        String(row.action_type || row.record_action || "").toLowerCase() !==
+          "lembur_masuk"
+      )
+        return false
+      if (
+        actionFilter === "lembur_pulang" &&
+        String(row.action_type || row.record_action || "").toLowerCase() !==
+          "lembur_pulang"
+      )
+        return false
       if (
         officeFilter !== "all" &&
         String(row.office_id || emp?.office_id || "") !== officeFilter
@@ -224,14 +317,31 @@ export function AttendancePage({ search }: { search: AttendanceSearch }) {
         return false
       const status = getAttendanceStatus(row)
       if (statusFilter === "hadir") {
+        // Seperti aplikasi lama: "Hadir" mencakup approved/success/
+        // valid/on_time/tepat_waktu (record approved tanpa
+        // attendance_status ikut masuk); status kosong tetap Hadir
+        // (getAttendanceStatusLabel("") = "Hadir").
         if (
           !(
             status.includes("hadir") ||
-            status === "success" ||
+            ["success", "approved", "valid", "on_time", "tepat_waktu"].some(
+              (x) => status.includes(x)
+            ) ||
             status === ""
           )
         )
           return false
+      } else if (statusFilter === "izin") {
+        if (!status.includes("izin")) return false
+      } else if (statusFilter === "sakit") {
+        if (!status.includes("sakit")) return false
+      } else if (statusFilter === "cuti") {
+        if (!status.includes("cuti")) return false
+      } else if (statusFilter === "alpha") {
+        if (!(status.includes("alpha") || status.includes("alpa")))
+          return false
+      } else if (statusFilter === "libur") {
+        if (!status.includes("libur")) return false
       } else if (statusFilter === "terlambat") {
         if (
           !(
@@ -268,6 +378,7 @@ export function AttendancePage({ search }: { search: AttendanceSearch }) {
     statusFilter,
     geofenceFilter,
     employeeByUid,
+    masterNameById,
   ])
 
   const pageCount = Math.max(1, Math.ceil(filteredRows.length / PAGE_SIZE))
@@ -367,7 +478,7 @@ export function AttendancePage({ search }: { search: AttendanceSearch }) {
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 type="search"
-                placeholder="Cari nama karyawan atau tanggal..."
+                placeholder="Cari nama, NIP, kantor, atau tanggal..."
                 value={searchText}
                 onChange={(e) => {
                   setSearchText(e.target.value)
@@ -413,6 +524,8 @@ export function AttendancePage({ search }: { search: AttendanceSearch }) {
                 <SelectItem value="all">Semua Aksi</SelectItem>
                 <SelectItem value="masuk">Masuk</SelectItem>
                 <SelectItem value="pulang">Pulang</SelectItem>
+                <SelectItem value="lembur_masuk">Lembur Masuk</SelectItem>
+                <SelectItem value="lembur_pulang">Lembur Pulang</SelectItem>
               </SelectContent>
             </Select>
           </Field>
@@ -496,6 +609,11 @@ export function AttendancePage({ search }: { search: AttendanceSearch }) {
                 <SelectItem value="terlambat">Terlambat</SelectItem>
                 <SelectItem value="luar_radius">Luar Radius</SelectItem>
                 <SelectItem value="pulang_cepat">Pulang Cepat</SelectItem>
+                <SelectItem value="izin">Izin</SelectItem>
+                <SelectItem value="sakit">Sakit</SelectItem>
+                <SelectItem value="cuti">Cuti</SelectItem>
+                <SelectItem value="alpha">Alpha</SelectItem>
+                <SelectItem value="libur">Libur</SelectItem>
               </SelectContent>
             </Select>
           </Field>
@@ -517,6 +635,26 @@ export function AttendancePage({ search }: { search: AttendanceSearch }) {
               </SelectContent>
             </Select>
           </Field>
+          <Button
+            variant="outline"
+            onClick={() => {
+              // C6 — kembalikan tombol Reset Filters aplikasi lama:
+              // semua filter ke bawaan, rentang ke hari ini.
+              setStartDate(todayKey())
+              setEndDate(todayKey())
+              setSearchText("")
+              setMethodFilter("all")
+              setActionFilter("all")
+              setOfficeFilter("all")
+              setDepartmentFilter("all")
+              setGroupFilter("all")
+              setStatusFilter("all")
+              setGeofenceFilter("all")
+              setPage(1)
+            }}
+          >
+            Reset Filter
+          </Button>
         </CardContent>
       </Card>
 
@@ -734,9 +872,45 @@ export function AttendancePage({ search }: { search: AttendanceSearch }) {
                       ? `${detailRow.distance_meter} m / ${detailRow.radius_meter || 0} m`
                       : "-"}
                   </dd>
+                  {/* C3 — koordinat + tautan peta (seperti modal lokasi
+                      aplikasi lama) supaya klaim "Luar Radius" bisa
+                      diverifikasi; koordinat ikut terbawa di row. */}
+                  {Boolean(detailRow.latitude) &&
+                    Boolean(detailRow.longitude) && (
+                    <>
+                      <dt className="text-muted-foreground">Latitude</dt>
+                      <dd className="font-mono">
+                        {String(detailRow.latitude)}
+                      </dd>
+                      <dt className="text-muted-foreground">Longitude</dt>
+                      <dd className="font-mono">
+                        {String(detailRow.longitude)}
+                      </dd>
+                    </>
+                  )}
+                  {detailRow.mock_location_detected ? (
+                    <>
+                      <dt className="text-muted-foreground">Lokasi</dt>
+                      <dd className="font-medium text-red-600">
+                        ⚠️ Lokasi Palsu Terdeteksi!
+                      </dd>
+                    </>
+                  ) : null}
                   <dt className="text-muted-foreground">Sumber</dt>
                   <dd>{textValue(detailRow.source, "-")}</dd>
                 </dl>
+                {Boolean(detailRow.latitude) &&
+                  Boolean(detailRow.longitude) && (
+                  <Button variant="outline" asChild>
+                    <a
+                      href={`https://www.openstreetmap.org/?mlat=${detailRow.latitude}&mlon=${detailRow.longitude}#map=18/${detailRow.latitude}/${detailRow.longitude}`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Buka di OpenStreetMap
+                    </a>
+                  </Button>
+                )}
               </div>
             </>
           )}

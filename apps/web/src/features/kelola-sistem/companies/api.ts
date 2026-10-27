@@ -8,7 +8,7 @@ import { deleteObject, getDownloadURL, ref as storageRef, uploadBytes } from "fi
 import { push, ref, set, update } from "firebase/database"
 import { writeAuditLog } from "@/lib/firebase-audit"
 import { getDb, getFirebaseStorage, isFirebaseConfigured } from "@/lib/firebase"
-import { readList } from "@/lib/rtdb-read"
+import { readList, readValue } from "@/lib/rtdb-read"
 import { paths } from "@/lib/firebase-paths"
 import type { Company, CompanyInvite } from "@/lib/firebase-types"
 import {
@@ -95,7 +95,18 @@ export async function generateInviteCode(
   const db = getDb()
   if (!db) throw new Error("Firebase belum dikonfigurasi.")
   if (!company.id) throw new Error("ID perusahaan tidak ditemukan.")
-  const code = Math.random().toString(36).substring(2, 8).toUpperCase()
+  // Kode harus unik — tanpa cek, set() akan menimpa undangan lain bila
+  // kode acak bertabrakan.
+  let code = ""
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const candidate = Math.random().toString(36).substring(2, 8).toUpperCase()
+    const existing = await readValue(paths.companyInvite(candidate))
+    if (!existing) {
+      code = candidate
+      break
+    }
+  }
+  if (!code) throw new Error("Gagal membuat kode undangan unik, coba lagi.")
   const inviteData: CompanyInvite = {
     company_id: company.id,
     company_name: company.name,

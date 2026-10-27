@@ -6,7 +6,7 @@
 // sudah Spark tanpa billing, jadi baca mentah tidak lagi berisiko biaya.
 // Kartu "Terlambat Hari Ini" mengikuti mockup (di kode lama tempat ini
 // masih placeholder "Papan Kedisiplinan").
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react"
 import { useMutation } from "@tanstack/react-query"
 import { Link, useNavigate } from "@tanstack/react-router"
 import { format, isSameMonth, parseISO, subDays } from "date-fns"
@@ -18,7 +18,6 @@ import {
   Calendar as CalendarIcon,
   CheckCircle,
   Clock,
-  Download,
   FileText,
   Flag,
   TrendingUp,
@@ -472,6 +471,15 @@ export function DashboardPage() {
     })
   }
 
+  // Kartu yang bisa diklik: handler keyboard seperti aplikasi lama
+  // (Enter/Spasi), karena Card bukan elemen button.
+  const cardKeyDown = (e: KeyboardEvent<HTMLDivElement>, fn: () => void) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault()
+      fn()
+    }
+  }
+
   if (!userData && !companyLoading) {
     return (
       <EmptyState>
@@ -503,8 +511,8 @@ export function DashboardPage() {
             )}
             <Button variant="outline" asChild>
               <Link to="/admin/reports">
-                <Download className="mr-2 h-4 w-4" />
-                Ekspor Laporan
+                <ArrowRight className="mr-2 h-4 w-4" />
+                Lihat Laporan
               </Link>
             </Button>
           </div>
@@ -694,7 +702,21 @@ export function DashboardPage() {
               </div>
 
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-                <Card className="lg:col-span-2">
+                {/* A2 — kartu tren bisa diklik ke Laporan. Target lama
+                    (?view=trend) belum ada di halaman Laporan redesain,
+                    jadi mengikuti pola fallback kartu "Belum Absen" di
+                    file ini: navigasi polos ke /admin/reports. */}
+                <Card
+                  className="cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-md lg:col-span-2"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => void navigate({ to: "/admin/reports" })}
+                  onKeyDown={(e) =>
+                    cardKeyDown(e, () =>
+                      void navigate({ to: "/admin/reports" })
+                    )
+                  }
+                >
                   <CardHeader>
                     <div className="flex items-center gap-2">
                       <TrendingUp className="h-5 w-5" />
@@ -787,7 +809,28 @@ export function DashboardPage() {
                   </CardContent>
                 </Card>
 
-                <Card>
+                {/* A1 — kartu libur bisa diklik ke tab Hari Libur halaman
+                    Jadwal (perilaku aplikasi lama); "holiday" adalah id
+                    tab yang valid di SchedulesPage. */}
+                <Card
+                  className="cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-md"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() =>
+                    void navigate({
+                      to: "/admin/schedules",
+                      search: { tab: "holiday" },
+                    })
+                  }
+                  onKeyDown={(e) =>
+                    cardKeyDown(e, () =>
+                      void navigate({
+                        to: "/admin/schedules",
+                        search: { tab: "holiday" },
+                      })
+                    )
+                  }
+                >
                   <CardHeader>
                     <div className="flex items-center gap-2">
                       <Flag className="h-5 w-5" />
@@ -954,7 +997,21 @@ export function DashboardPage() {
                   </CardContent>
                 </Card>
 
-                <Card>
+                {/* A3 — kartu Terlambat bisa diklik ke Laporan. Target
+                    lama (?view=discipline) belum ada di halaman Laporan
+                    redesain; mockup sendiri menautkan kartu ini ke
+                    reports.html ("Lihat Laporan Disiplin"). */}
+                <Card
+                  className="cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-md"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => void navigate({ to: "/admin/reports" })}
+                  onKeyDown={(e) =>
+                    cardKeyDown(e, () =>
+                      void navigate({ to: "/admin/reports" })
+                    )
+                  }
+                >
                   <CardHeader>
                     <div className="flex items-center gap-2">
                       <Clock className="h-5 w-5" />

@@ -54,7 +54,7 @@ export function LoginForm({ redirectTo }: { redirectTo?: string }) {
       setError(
         err instanceof ApiError && err.status === 429
           ? "Too many attempts. Try again in a minute."
-          : "Incorrect email or password."
+          : "Email atau kata sandi salah."
       )
       if (passwordRef.current) passwordRef.current.value = ""
     } finally {

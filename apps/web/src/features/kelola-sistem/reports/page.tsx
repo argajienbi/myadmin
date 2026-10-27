@@ -625,9 +625,9 @@ export function ReportsPage() {
                 <TableRow>
                   <TableHead>Nama / NIP</TableHead>
                   <TableHead>Waktu</TableHead>
-                  <TableHead>Metode / Tipe</TableHead>
-                  <TableHead>Status / Jarak</TableHead>
-                  <TableHead>Jadwal / Lokasi</TableHead>
+                  <TableHead>Tipe</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Jam Lembur</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

@@ -242,6 +242,19 @@ export async function saveScheduleItem(params: {
 }): Promise<string> {
   const { tab, formData, companyId, userData, lists } = params
   if (!companyId) throw new Error("Perusahaan belum dipilih.")
+  // Penjaga: tab Ringkasan/Diagnostik/Riwayat bukan CRUD — tanpa ini,
+  // listPath tetap "" dan push(ref(db, "")) akan menulis ke root RTDB.
+  const CRUD_TABS: ScheduleTabId[] = [
+    "timetable",
+    "shift",
+    "assignment",
+    "holiday",
+    "special",
+    "overtime",
+  ]
+  if (!CRUD_TABS.includes(tab)) {
+    throw new Error("Tab ini tidak mendukung operasi simpan.")
+  }
   const {
     shifts,
     assignments,
@@ -971,6 +984,56 @@ export async function toggleScheduleActive(params: {
   toast.success(
     `${createLabel(tab)} ${nextActive ? "diaktifkan" : "dinonaktifkan"}.`
   )
+}
+
+/** Perbaiki pola shift yang tidak lengkap menjadi aktif Senin–Minggu
+    (seperti tombol repair aplikasi lama): jam kerja diambil dari hari yang
+    sudah terisi, fallback ke jam kerja aktif pertama. */
+export async function repairShiftToFullWeek(params: {
+  shift: ScheduleRow
+  companyId: string
+  userData: FirebaseUserData | null
+  timetables: ScheduleRow[]
+}): Promise<void> {
+  const { shift, companyId, userData, timetables } = params
+  const days = (shift.days as Record<string, Record<string, unknown>>) || {}
+  const fallbackTimetableId =
+    SHIFT_DAY_KEYS.map((day) => String(days[day]?.timetable_id || "")).find(
+      Boolean
+    ) ||
+    String(
+      timetables.find((t) => t.active !== false)?.id || timetables[0]?.id || ""
+    )
+  if (!fallbackTimetableId) {
+    throw new Error(
+      "Tidak ada jam kerja/timetable untuk diterapkan ke semua hari."
+    )
+  }
+  const nextDays = SHIFT_DAY_KEYS.reduce(
+    (acc, day) => {
+      acc[day] = {
+        active: true,
+        timetable_id: String(days[day]?.timetable_id || fallbackTimetableId),
+      }
+      return acc
+    },
+    {} as Record<string, Record<string, unknown>>
+  )
+  await update(ref(db, paths.shift(companyId, String(shift.id))), {
+    days: nextDays,
+    workday_mode: "full_week",
+    updated_at: Date.now(),
+    updated_by: userData?.uid || "",
+  })
+  await writeScheduleChangeLog(companyId, {
+    admin_uid: userData?.uid || "",
+    admin_name: userData?.nama_lengkap || "",
+    action: "REPAIR_SHIFT_FULL_WEEK",
+    ref_type: "shift",
+    ref_id: String(shift.id),
+    new_value: String(shift.name || shift.id || ""),
+  })
+  toast.success("Pola shift diset aktif Senin sampai Minggu.")
 }
 
 export async function deleteScheduleItem(params: {

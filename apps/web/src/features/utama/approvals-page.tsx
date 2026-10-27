@@ -8,6 +8,7 @@
 // ditandai "FIX 2b". Modal detail menampilkan dua kartu terpisah
 // (Foto Absensi vs Lampiran Koreksi) seperti mockup.
 import { useEffect, useMemo, useRef, useState } from "react"
+import { useSearch } from "@tanstack/react-router"
 import { get, ref, update } from "firebase/database"
 import {
   Download,
@@ -15,6 +16,7 @@ import {
   Shield,
   ShieldCheck,
   TriangleAlert,
+  X,
 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@workspace/ui/components/button"
@@ -27,6 +29,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@workspace/ui/components/dialog"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@workspace/ui/components/select"
 import { Textarea } from "@workspace/ui/components/textarea"
 import { PageHeader } from "@/components/page"
 import { useCompany } from "@/lib/use-company"
@@ -64,6 +73,72 @@ type ApprovalRequest = Record<string, unknown> & {
   kind: RequestKind
 }
 
+type ApprovalTab = "semua" | "izin" | "qr" | "koreksi"
+
+// B3: nilai tab lama (?tab=leave|correction) dipetakan ke id baru; nilai
+// tak dikenal mengembalikan null supaya tab lokal tidak diacak-acak.
+function normalizeTab(value: string | undefined): ApprovalTab | null {
+  if (value === "izin" || value === "leave") return "izin"
+  if (value === "qr") return "qr"
+  if (value === "koreksi" || value === "correction") return "koreksi"
+  if (value === "semua") return "semua"
+  return null
+}
+
+function formatOvertimeDuration(minuteValue: unknown): string {
+  const minutes = Number(minuteValue || 0)
+  if (!Number.isFinite(minutes) || minutes <= 0) return ""
+  const hours = Math.floor(minutes / 60)
+  const remain = minutes % 60
+  if (hours <= 0) return `${minutes} menit`
+  if (remain <= 0) return `${hours} jam`
+  return `${hours} jam ${remain} menit`
+}
+
+// B4: satu tanggal pengajuan (lembur memakai overtime_date; izin memakai
+// rentang date_start..date_end bila ada).
+function requestDateKey(req: ApprovalRequest): string {
+  return String(
+    req.overtime_date ||
+      req.date ||
+      req.tanggal ||
+      req.start_date ||
+      req.date_start ||
+      req.tanggal_mulai ||
+      ""
+  )
+}
+
+function requestMatchesDate(req: ApprovalRequest, dateKey: string): boolean {
+  if (!dateKey) return true
+  if (req.kind === "leave") {
+    const start = String(
+      req.date_start ||
+        req.tanggal_mulai ||
+        req.overtime_date ||
+        req.date ||
+        req.tanggal ||
+        req.start_date ||
+        ""
+    )
+    const end = String(
+      req.date_end ||
+        req.tanggal_selesai ||
+        req.date_start ||
+        req.tanggal_mulai ||
+        req.overtime_date ||
+        req.date ||
+        req.tanggal ||
+        req.start_date ||
+        ""
+    )
+    if (start && end) return start <= dateKey && dateKey <= end
+    if (start) return start === dateKey
+    return false
+  }
+  return requestDateKey(req) === dateKey
+}
+
 const PENDING_LEAVE = ["pending", "pending_admin", "processing"]
 
 function isPendingStatus(status: unknown): boolean {
@@ -99,6 +174,33 @@ function correctionTypeLabel(req: ApprovalRequest): string {
 
 function requestDetailText(req: ApprovalRequest): string {
   if (req.kind === "leave") {
+    // B7: pengajuan lembur menampilkan tanggal + jam lembur + durasi,
+    // seperti aplikasi lama (Approvals.tsx:883-887).
+    if (
+      leaveTypeValue(req) === "lembur" &&
+      (req.overtime_date || req.overtime_start_time || req.overtime_end_time)
+    ) {
+      const date = String(
+        req.overtime_date ||
+          req.date_start ||
+          req.tanggal_mulai ||
+          req.date ||
+          req.tanggal ||
+          ""
+      )
+      const start = String(req.overtime_start_time || "")
+      const end = String(req.overtime_end_time || "")
+      const dur = formatOvertimeDuration(req.overtime_duration_minute)
+      const reason = dateReason(req)
+      return [
+        date ? formatTanggal(date) : "",
+        start && end ? `${start.slice(0, 5)}–${end.slice(0, 5)}` : "",
+        dur,
+        reason !== "-" ? reason : "",
+      ]
+        .filter(Boolean)
+        .join(" · ")
+    }
     const parts = [durationLabel(req)]
     const reason = dateReason(req)
     if (reason !== "-") parts.push(reason)
@@ -113,8 +215,9 @@ function requestDetailText(req: ApprovalRequest): string {
     const distance = Number(req.distance_meter || 0)
     const radius = Number(req.radius_meter || 0)
     let text = `${action}${time ? ` ${time.slice(0, 5)}` : ""}`
-    if (distance > 0 && radius > 0 && distance > radius) {
-      text += ` · di luar radius ${distance} m`
+    // B2: status radius selalu tampil (Dalam/Luar + meter), seperti lama.
+    if (distance > 0 && radius > 0) {
+      text += ` · ${distance <= radius ? "Dalam" : "Luar"} radius (${distance} m / ${radius} m)`
     }
     return text
   }
@@ -129,7 +232,10 @@ function requestDetailText(req: ApprovalRequest): string {
     return `Pulang ${oldOut ? `${oldOut.slice(0, 5)} → ` : ""}${newOut.slice(0, 5)}${reason !== "-" ? ` · ${reason}` : ""}`
   }
   if (corrType === "masuk_pulang") {
-    return `Masuk ${oldIn ? `${oldIn.slice(0, 5)} → ` : ""}${newIn.slice(0, 5)}${reason !== "-" ? ` · ${reason}` : ""}`
+    // B8: koreksi gabungan menampilkan Masuk DAN Pulang (lama: :1084-1090).
+    const masuk = `Masuk ${oldIn ? `${oldIn.slice(0, 5)} → ` : ""}${newIn.slice(0, 5)}`
+    const pulang = `Pulang ${oldOut ? `${oldOut.slice(0, 5)} → ` : ""}${newOut.slice(0, 5)}`
+    return `${masuk} · ${pulang}${reason !== "-" ? ` · ${reason}` : ""}`
   }
   return `Masuk ${oldIn ? `${oldIn.slice(0, 5)} → ` : ""}${newIn.slice(0, 5)}${reason !== "-" ? ` · ${reason}` : ""}`
 }
@@ -149,11 +255,38 @@ function requestTypeBadge(req: ApprovalRequest) {
 }
 
 function requestDate(req: ApprovalRequest): string {
-  const d = String(req.date || req.tanggal || req.start_date || "")
+  // B7: overtime_date (lembur) + date_start/tanggal_mulai ikut dibaca.
+  const d = String(
+    req.overtime_date ||
+      req.date ||
+      req.tanggal ||
+      req.start_date ||
+      req.date_start ||
+      req.tanggal_mulai ||
+      ""
+  )
   if (d) return formatTanggal(d)
   const created = Number(req.created_at || 0)
   if (created) return formatTanggalWaktu(created).slice(0, 11)
   return "-"
+}
+
+// B9: sumber lampiran per jenis (izin: attachment_url; koreksi:
+// correction_attachment_* dulu, lalu attachment_url; QR: tidak ada).
+function requestAttachment(req: ApprovalRequest): string {
+  if (req.kind === "correction") {
+    return String(
+      req.correction_attachment_url ||
+        req.correction_attachment_path ||
+        req.attachment_url ||
+        req.attachment_path ||
+        ""
+    )
+  }
+  if (req.kind === "leave") {
+    return String(req.attachment_url || req.attachment_path || "")
+  }
+  return ""
 }
 
 export function ApprovalsPage({
@@ -163,71 +296,131 @@ export function ApprovalsPage({
   initialTab?: string
   initialStatus?: string
 }) {
-  const { userData, companyId, loading: companyLoading } = useCompany()
+  const {
+    userData,
+    companyId,
+    companies,
+    isOwner,
+    selectCompany,
+    loading: companyLoading,
+  } = useCompany()
+  // B4: param `date` dibaca langsung dari search route (route hanya
+  // meneruskan tab/status sebagai prop) — deep-link ?date=... kini memfilter.
+  const search = useSearch({ from: "/admin/approvals" })
   const [leaveRequests, setLeaveRequests] = useState<ApprovalRequest[]>([])
   const [qrRequests, setQrRequests] = useState<ApprovalRequest[]>([])
   const [correctionRequests, setCorrectionRequests] = useState<
     ApprovalRequest[]
   >([])
   const [employees, setEmployees] = useState<Record<string, Record<string, unknown>>>({})
-  const [tab, setTab] = useState(
-    initialTab === "izin" || initialTab === "qr" || initialTab === "koreksi"
-      ? initialTab
-      : "semua"
+  // B6: tiap listener menandai sudah pernah mengembalikan data (termasuk
+  // null = tidak ada data) — sebelum itu tabel menampilkan status muat,
+  // bukan "Tidak ada pengajuan".
+  const [loadedKeys, setLoadedKeys] = useState({
+    leave: false,
+    qr: false,
+    correction: false,
+  })
+  const [loadError, setLoadError] = useState("")
+  const [tab, setTab] = useState<ApprovalTab>(
+    normalizeTab(initialTab) ?? "semua"
   )
+  const [dateFilter, setDateFilter] = useState(search.date || "")
   const [detailReq, setDetailReq] = useState<ApprovalRequest | null>(null)
   const [detailPhotoUrl, setDetailPhotoUrl] = useState("")
   const [detailAttachmentUrl, setDetailAttachmentUrl] = useState("")
   const [detailAttachmentField, setDetailAttachmentField] = useState("—")
   const [detailOldTime, setDetailOldTime] = useState("")
   const [detailNewTime, setDetailNewTime] = useState("")
+  // B8: pasangan jam Pulang untuk koreksi masuk_pulang (selain Masuk).
+  const [detailOldOutTime, setDetailOldOutTime] = useState("")
+  const [detailNewOutTime, setDetailNewOutTime] = useState("")
   const [adminNote, setAdminNote] = useState("")
   const [savingAction, setSavingAction] = useState(false)
   const processingRef = useRef(false)
 
   const queryStatus = initialStatus || ""
 
+  // B3/B4: sinkronkan tab & filter tanggal dari search param saat
+  // navigasi dalam halaman yang sama (mis. klik kartu Dashboard) —
+  // penyesuaian state saat render (pola React yang didokumentasikan),
+  // bukan setState di dalam effect. Nilai tak dikenal tidak mengacak
+  // tab lokal.
+  const searchSyncKey = `${initialTab || ""}|${search.date || ""}`
+  const [prevSearchSyncKey, setPrevSearchSyncKey] =
+    useState(searchSyncKey)
+  if (searchSyncKey !== prevSearchSyncKey) {
+    setPrevSearchSyncKey(searchSyncKey)
+    const next = normalizeTab(initialTab)
+    if (next) setTab(next)
+    setDateFilter(search.date || "")
+  }
+
+  // B6: ganti perusahaan (B5) mengulang status muat dari nol —
+  // penyesuaian state saat render, bukan setState di dalam effect.
+  const [prevCompanyIdForLoad, setPrevCompanyIdForLoad] =
+    useState(companyId)
+  if (companyId !== prevCompanyIdForLoad) {
+    setPrevCompanyIdForLoad(companyId)
+    setLoadedKeys({ leave: false, qr: false, correction: false })
+    setLoadError("")
+  }
+
   useEffect(() => {
     if (!companyId) return
+    const markLoaded = (key: "leave" | "qr" | "correction") => () =>
+      setLoadedKeys((prev) => ({ ...prev, [key]: true }))
     const unsubs = [
       manualListen({
         key: "leave_requests",
         path: paths.leaveRequests(companyId),
-        onData: (value) =>
+        onData: (value) => {
+          markLoaded("leave")()
           setLeaveRequests(
             snapshotToList(
               (value as Record<string, unknown> | null) || null,
               "leave"
             )
-          ),
-        onError: (err) =>
-          toast.error(`Gagal memuat pengajuan izin: ${err.message}`),
+          )
+        },
+        onError: (err) => {
+          setLoadError(`Gagal memuat pengajuan izin: ${err.message}`)
+          toast.error(`Gagal memuat pengajuan izin: ${err.message}`)
+        },
       }),
       manualListen({
         key: "qr_requests",
         path: paths.qrRequests(companyId),
-        onData: (value) =>
+        onData: (value) => {
+          markLoaded("qr")()
           setQrRequests(
             snapshotToList(
               (value as Record<string, unknown> | null) || null,
               "qr"
             )
-          ),
-        onError: (err) =>
-          toast.error(`Gagal memuat pengajuan QR: ${err.message}`),
+          )
+        },
+        onError: (err) => {
+          setLoadError(`Gagal memuat pengajuan QR: ${err.message}`)
+          toast.error(`Gagal memuat pengajuan QR: ${err.message}`)
+        },
       }),
       manualListen({
         key: "attendance_corrections",
         path: paths.attendanceCorrections(companyId),
-        onData: (value) =>
+        onData: (value) => {
+          markLoaded("correction")()
           setCorrectionRequests(
             snapshotToList(
               (value as Record<string, unknown> | null) || null,
               "correction"
             )
-          ),
-        onError: (err) =>
-          toast.error(`Gagal memuat pengajuan koreksi: ${err.message}`),
+          )
+        },
+        onError: (err) => {
+          setLoadError(`Gagal memuat pengajuan koreksi: ${err.message}`)
+          toast.error(`Gagal memuat pengajuan koreksi: ${err.message}`)
+        },
       }),
     ]
     // Peta karyawan untuk NIP / departemen di modal detail.
@@ -283,11 +476,34 @@ export function ApprovalsPage({
     else if (tab === "qr") merged = qrs
     else if (tab === "koreksi") merged = corrections
     else merged = [...leaves, ...qrs, ...corrections]
-    merged.sort(
+    // B4: filter tanggal dari deep-link (?date=...) — izin dicocokkan
+    // dengan rentang tanggalnya, QR/koreksi dengan tanggal tunggalnya.
+    const dated = dateFilter
+      ? merged.filter((req) => requestMatchesDate(req, dateFilter))
+      : merged
+    dated.sort(
       (a, b) => Number(b.created_at || 0) - Number(a.created_at || 0)
     )
-    return merged
-  }, [leaveRequests, qrRequests, correctionRequests, tab, queryStatus])
+    return dated
+  }, [leaveRequests, qrRequests, correctionRequests, tab, queryStatus, dateFilter])
+
+  // B1: NIP baris QR tidak ada di record pengajuan — ambil dari peta
+  // karyawan (company_users) lewat uid/target_uid bila field langsung kosong.
+  const nipFor = (req: ApprovalRequest): string => {
+    const direct = employeeNip(req)
+    if (direct !== "-") return direct
+    const emp = employees[String(req.uid || req.target_uid || "")]
+    return emp ? employeeNip(emp as Record<string, unknown>) : "-"
+  }
+
+  // B9: buka lampiran tabel (resolve URL file seperti openDetail).
+  const openAttachment = async (req: ApprovalRequest) => {
+    const source = requestAttachment(req)
+    if (!source) return
+    const url = await getFileUrl(source)
+    if (url) window.open(url, "_blank")
+    else toast.error("Lampiran tidak dapat dibuka.")
+  }
 
   const openDetail = async (req: ApprovalRequest) => {
     setDetailReq(req)
@@ -297,6 +513,8 @@ export function ApprovalsPage({
     setDetailAttachmentField("—")
     setDetailOldTime("")
     setDetailNewTime("")
+    setDetailOldOutTime("")
+    setDetailNewOutTime("")
     if (!companyId) return
     if (req.kind === "qr") {
       const url = await getFileUrl(
@@ -359,6 +577,9 @@ export function ApprovalsPage({
           : String(req.requested_check_in_time || "")
       setDetailOldTime(oldTime)
       setDetailNewTime(newTime)
+      // B8: pasangan Pulang dihitung juga, untuk koreksi masuk_pulang.
+      setDetailOldOutTime(String(pulang?.waktu || pulang?.time || ""))
+      setDetailNewOutTime(String(req.requested_check_out_time || ""))
     }
   }
 
@@ -451,7 +672,8 @@ export function ApprovalsPage({
         const updates: Record<string, unknown> = {}
         const base = paths.qrRequest(companyId, actionReq.request_id)
         updates[`${base}/status`] = actionStatus
-        updates[`${base}/admin_note`] = adminNote
+        // B12: pakai noteText (sudah di-trim) seperti izin/koreksi.
+        updates[`${base}/admin_note`] = noteText
         updates[`${base}/updated_at`] = Date.now()
         if (actionStatus === "approved") {
           const safeDate = String(actionReq.date || actionReq.tanggal || "")
@@ -644,7 +866,7 @@ export function ApprovalsPage({
         await update(ref(db), updates)
         await writeAuditLog(companyId, {
           action: actionStatus === "approved" ? "APPROVE_QR" : "REJECT_QR",
-          details: `Admin note: ${adminNote}`,
+          details: `Admin note: ${noteText}`,
           user_uid: userData?.uid || "",
           user_name: userData?.nama_lengkap || "",
           target_path: base,
@@ -655,8 +877,8 @@ export function ApprovalsPage({
             actionStatus === "approved"
               ? "QR Attendance Disetujui"
               : "QR Attendance Ditolak",
-          message: adminNote
-            ? `Admin note: ${adminNote}`
+          message: noteText
+            ? `Admin note: ${noteText}`
             : actionStatus === "approved"
               ? "Kehadiran melalui QR teman disetujui."
               : "Kehadiran melalui QR ditolak.",
@@ -695,8 +917,9 @@ export function ApprovalsPage({
         }
         updates[`${base}/updated_at`] = Date.now()
         if (actionStatus === "approved") {
+          // B12: fallback `corr_type` seperti openDetail/requestDetailText.
           const corrType = String(
-            actionReq.correction_type || "masuk"
+            actionReq.correction_type || actionReq.corr_type || "masuk"
           )
           const employeeSnap = await get(
             ref(db, paths.companyUser(companyId, String(actionReq.uid || "")))
@@ -823,12 +1046,19 @@ export function ApprovalsPage({
               created_at: existing.created_at || Date.now(),
               updated_at: Date.now(),
             }
-            // FIX 2b — lampiran ke field terpisah:
-            if (actionReq.attachment_url) {
-              record.correction_attachment_url = actionReq.attachment_url
+            // FIX 2b — lampiran ke field terpisah. B11: bila pengajuan
+            // membawa lampiran di correction_attachment_url/path, pakai
+            // itu dulu (openDetail sudah membacanya) — jangan buang.
+            const attachUrl =
+              actionReq.correction_attachment_url || actionReq.attachment_url
+            const attachPath =
+              actionReq.correction_attachment_path ||
+              actionReq.attachment_path
+            if (attachUrl) {
+              record.correction_attachment_url = attachUrl
             }
-            if (actionReq.attachment_path) {
-              record.correction_attachment_path = actionReq.attachment_path
+            if (attachPath) {
+              record.correction_attachment_path = attachPath
             }
             return record
           }
@@ -911,7 +1141,7 @@ export function ApprovalsPage({
       ["Pengaju", "NIP", "Jenis", "Detail", "Tanggal", "Status"],
       visibleRequests.map((req) => [
         employeeName(req),
-        employeeNip(req),
+        nipFor(req),
         req.kind === "leave"
           ? leaveTypeLabel(leaveTypeValue(req))
           : req.kind === "qr"
@@ -928,6 +1158,15 @@ export function ApprovalsPage({
     ? employees[String(detailReq.uid || detailReq.target_uid || "")]
     : undefined
 
+  // B8: jenis koreksi untuk pasangan jam di modal (masuk/pulang/masuk_pulang).
+  const detailCorrType = detailReq
+    ? String(detailReq.correction_type || detailReq.corr_type || "masuk")
+    : "masuk"
+
+  // B6: semua listener sudah pernah mengembalikan data.
+  const dataLoaded =
+    loadedKeys.leave && loadedKeys.qr && loadedKeys.correction
+
   if (!userData && !companyLoading) {
     return (
       <EmptyState>
@@ -942,16 +1181,58 @@ export function ApprovalsPage({
         title="Persetujuan"
         description={`${pendingTotal} pengajuan menunggu keputusan — izin, QR absensi, dan koreksi presensi`}
         actions={
-          <Button variant="outline" onClick={exportCsv}>
-            <Download className="mr-2 h-4 w-4" />
-            Ekspor CSV
-          </Button>
+          <div className="flex items-center gap-2">
+            {/* B5: owner bisa ganti perusahaan dari halaman ini,
+                seperti aplikasi lama (Approvals.tsx:792-800). */}
+            {isOwner && companies.length > 0 && (
+              <Select value={companyId || undefined} onValueChange={selectCompany}>
+                <SelectTrigger className="w-64" aria-label="Perusahaan">
+                  <SelectValue placeholder="Perusahaan" />
+                </SelectTrigger>
+                <SelectContent>
+                  {companies.map((c) => (
+                    <SelectItem key={c.id} value={c.id ?? ""}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            <Button variant="outline" onClick={exportCsv}>
+              <Download className="mr-2 h-4 w-4" />
+              Ekspor CSV
+            </Button>
+          </div>
         }
       />
 
+      {/* B4: chip filter tanggal dari deep-link — bisa dihapus. */}
+      {dateFilter && (
+        <div className="flex items-center gap-2 text-sm">
+          <span className="text-muted-foreground">
+            Filter tanggal: <b>{formatTanggal(dateFilter)}</b>
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setDateFilter("")}
+          >
+            <X className="mr-1 h-3.5 w-3.5" />
+            Hapus filter
+          </Button>
+        </div>
+      )}
+
+      {/* B6: error muat tampil persisten, bukan hanya toast. */}
+      {loadError && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-800/50 dark:bg-red-900/10 dark:text-red-300">
+          {loadError}
+        </div>
+      )}
+
       <UtamaTabs
         active={tab}
-        onChange={setTab}
+        onChange={(id) => setTab(normalizeTab(id) ?? "semua")}
         tabs={[
           { id: "semua", label: "Semua", count: pendingTotal },
           { id: "izin", label: "Izin & Cuti", count: pendingLeaves.length },
@@ -966,7 +1247,13 @@ export function ApprovalsPage({
 
       <Card>
         <CardContent className="p-0">
-          {visibleRequests.length === 0 ? (
+          {/* B6: selama listener belum mengembalikan data, tampilkan
+              status muat — bukan daftar kosong palsu. */}
+          {companyLoading || !dataLoaded ? (
+            <EmptyState>
+              <p>Memuat data persetujuan...</p>
+            </EmptyState>
+          ) : visibleRequests.length === 0 ? (
             <EmptyState>
               <p>Tidak ada pengajuan pada tab ini.</p>
             </EmptyState>
@@ -979,6 +1266,7 @@ export function ApprovalsPage({
                     <th className="px-4 py-3 font-medium">Jenis</th>
                     <th className="px-4 py-3 font-medium">Detail</th>
                     <th className="px-4 py-3 font-medium">Tanggal</th>
+                    <th className="px-4 py-3 font-medium">Lampiran</th>
                     <th className="px-4 py-3 font-medium">Status</th>
                     <th className="px-4 py-3 text-right font-medium">Aksi</th>
                   </tr>
@@ -994,7 +1282,7 @@ export function ApprovalsPage({
                               {employeeName(req)}
                             </div>
                             <div className="font-mono text-xs text-muted-foreground">
-                              {employeeNip(req)}
+                              {nipFor(req)}
                             </div>
                           </div>
                         </div>
@@ -1004,6 +1292,38 @@ export function ApprovalsPage({
                         {requestDetailText(req)}
                       </td>
                       <td className="px-4 py-3">{requestDate(req)}</td>
+                      {/* B9: kolom Lampiran (lama: Approvals.tsx:905-915)
+                          + peringatan bukti sakit bila wajib tapi tak ada. */}
+                      <td className="px-4 py-3">
+                        {req.kind === "qr" ? (
+                          <span className="text-muted-foreground">—</span>
+                        ) : requestAttachment(req) ? (
+                          <button
+                            type="button"
+                            onClick={() => void openAttachment(req)}
+                            className="inline-flex items-center gap-1 text-primary underline"
+                          >
+                            <Paperclip className="h-3.5 w-3.5" />
+                            {textValue(
+                              req.attachment_name || req.attachmentName,
+                              "Lampiran"
+                            )}
+                          </button>
+                        ) : (
+                          <div>
+                            <span className="text-muted-foreground">
+                              Tidak ada lampiran
+                            </span>
+                            {req.kind === "leave" &&
+                              (req.attachment_required ||
+                                leaveTypeValue(req) === "sakit") && (
+                                <div className="mt-1 text-[11px] text-red-500">
+                                  Bukti sakit wajib untuk data baru.
+                                </div>
+                              )}
+                          </div>
+                        )}
+                      </td>
                       <td className="px-4 py-3">
                         <StatusBadge
                           tone={
@@ -1078,7 +1398,7 @@ export function ApprovalsPage({
                   <dt className="text-muted-foreground">Karyawan</dt>
                   <dd className="font-medium">{employeeName(detailReq)}</dd>
                   <dt className="text-muted-foreground">NIP</dt>
-                  <dd className="font-mono">{employeeNip(detailReq)}</dd>
+                  <dd className="font-mono">{nipFor(detailReq)}</dd>
                   <dt className="text-muted-foreground">Departemen</dt>
                   <dd>
                     {textValue(
@@ -1116,27 +1436,173 @@ export function ApprovalsPage({
                   </dd>
                 </dl>
 
-                {detailReq.kind === "correction" && detailNewTime && (
-                  <div className="flex items-center gap-3">
-                    <div className="flex-1 rounded-lg border p-3 text-center">
-                      <div className="text-xs text-muted-foreground">
-                        Tercatat
-                      </div>
-                      <div className="text-lg font-bold">
-                        {detailOldTime ? detailOldTime.slice(0, 5) : "—"}
-                      </div>
+                {/* B2: info audit QR (lama: Approvals.tsx:1185-1230) —
+                    tanpa ini admin menyetujui QR secara buta. */}
+                {detailReq.kind === "qr" && (
+                  <div className="rounded-lg border p-3">
+                    <div className="mb-2 text-sm font-medium">
+                      Audit Lokasi QR
                     </div>
-                    <span aria-hidden>→</span>
-                    <div className="flex-1 rounded-lg border border-primary/40 bg-primary/5 p-3 text-center">
-                      <div className="text-xs text-muted-foreground">
-                        Diajukan
-                      </div>
-                      <div className="text-lg font-bold">
-                        {detailNewTime.slice(0, 5)}
-                      </div>
-                    </div>
+                    <dl className="grid grid-cols-[120px_1fr] gap-x-3 gap-y-2 text-sm">
+                      <dt className="text-muted-foreground">
+                        Karyawan Target
+                      </dt>
+                      <dd className="font-medium">
+                        {textValue(detailReq.target_name, "-")}
+                      </dd>
+                      <dt className="text-muted-foreground">
+                        Didaftarkan Oleh
+                      </dt>
+                      <dd>
+                        {textValue(detailReq.helper_name, "-")}
+                        {detailReq.helper_office_name
+                          ? ` (${String(detailReq.helper_office_name)})`
+                          : ""}
+                      </dd>
+                      <dt className="text-muted-foreground">Unit Target</dt>
+                      <dd>
+                        {textValue(
+                          detailReq.target_office_name ||
+                            detailReq.helper_office_name,
+                          "-"
+                        )}
+                      </dd>
+                      <dt className="text-muted-foreground">
+                        Status Radius
+                      </dt>
+                      <dd
+                        className={
+                          Number(detailReq.distance_meter || 0) <=
+                          Number(detailReq.radius_meter || 0)
+                            ? "font-medium text-teal-600"
+                            : "font-medium text-red-600"
+                        }
+                      >
+                        {Number(detailReq.distance_meter || 0) <=
+                        Number(detailReq.radius_meter || 0)
+                          ? "Dalam Radius"
+                          : "Luar Radius"}{" "}
+                        ({Number(detailReq.distance_meter || 0)} m /{" "}
+                        {Number(detailReq.radius_meter || 0)} m)
+                      </dd>
+                      <dt className="text-muted-foreground">Lokasi</dt>
+                      <dd>
+                        {detailReq.latitude && detailReq.longitude ? (
+                          <>
+                            <span className="font-mono text-xs">
+                              {String(detailReq.latitude)},{" "}
+                              {String(detailReq.longitude)}
+                            </span>{" "}
+                            <a
+                              href={`https://maps.google.com/?q=${detailReq.latitude},${detailReq.longitude}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-primary underline"
+                            >
+                              Lihat Lokasi
+                            </a>
+                            <span className="block text-xs text-muted-foreground">
+                              Akurasi GPS:{" "}
+                              {detailReq.location_accuracy !== undefined
+                                ? `${String(detailReq.location_accuracy)} m`
+                                : detailReq.accuracy
+                                  ? `${String(detailReq.accuracy)} m`
+                                  : "—"}
+                              {detailReq.location_accuracy_warning
+                                ? ` (${String(detailReq.location_accuracy_warning)})`
+                                : ""}
+                            </span>
+                          </>
+                        ) : (
+                          "—"
+                        )}
+                      </dd>
+                      <dt className="text-muted-foreground">Risk Level</dt>
+                      <dd>
+                        {textValue(detailReq.location_risk_level, "low")}
+                      </dd>
+                      <dt className="text-muted-foreground">Foto Bukti</dt>
+                      <dd>
+                        {detailReq.photo_width && detailReq.photo_height
+                          ? `${String(detailReq.photo_width)}×${String(detailReq.photo_height)} px`
+                          : "—"}
+                        {detailReq.photo_file_size
+                          ? ` · ${(Number(detailReq.photo_file_size) / 1024).toFixed(0)} KB`
+                          : ""}
+                        {detailReq.photo_quality_status
+                          ? ` · kualitas: ${String(detailReq.photo_quality_status)}`
+                          : ""}
+                        {detailReq.photo_quality_warning
+                          ? ` (${String(detailReq.photo_quality_warning)})`
+                          : ""}
+                      </dd>
+                    </dl>
+                    {detailReq.mock_location_detected ? (
+                      <p className="mt-2 text-sm font-bold uppercase text-red-500">
+                        ⚠️ Lokasi Palsu Terdeteksi!
+                        {detailReq.location_mock_warning
+                          ? ` (${String(detailReq.location_mock_warning)})`
+                          : ""}
+                      </p>
+                    ) : null}
+                    {detailReq.location_warning ? (
+                      <p className="mt-1 text-xs italic text-amber-500">
+                        Warning: {String(detailReq.location_warning)}
+                      </p>
+                    ) : null}
                   </div>
                 )}
+
+                {/* B8: pasangan Masuk DAN Pulang untuk masuk_pulang
+                    (lama: Approvals.tsx:1293-1299). */}
+                {detailReq.kind === "correction" &&
+                  detailCorrType !== "pulang" &&
+                  detailNewTime && (
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 rounded-lg border p-3 text-center">
+                        <div className="text-xs text-muted-foreground">
+                          Tercatat (Masuk)
+                        </div>
+                        <div className="text-lg font-bold">
+                          {detailOldTime ? detailOldTime.slice(0, 5) : "—"}
+                        </div>
+                      </div>
+                      <span aria-hidden>→</span>
+                      <div className="flex-1 rounded-lg border border-primary/40 bg-primary/5 p-3 text-center">
+                        <div className="text-xs text-muted-foreground">
+                          Diajukan (Masuk)
+                        </div>
+                        <div className="text-lg font-bold">
+                          {detailNewTime.slice(0, 5)}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                {detailReq.kind === "correction" &&
+                  detailCorrType !== "masuk" &&
+                  detailNewOutTime && (
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 rounded-lg border p-3 text-center">
+                        <div className="text-xs text-muted-foreground">
+                          Tercatat (Pulang)
+                        </div>
+                        <div className="text-lg font-bold">
+                          {detailOldOutTime
+                            ? detailOldOutTime.slice(0, 5)
+                            : "—"}
+                        </div>
+                      </div>
+                      <span aria-hidden>→</span>
+                      <div className="flex-1 rounded-lg border border-primary/40 bg-primary/5 p-3 text-center">
+                        <div className="text-xs text-muted-foreground">
+                          Diajukan (Pulang)
+                        </div>
+                        <div className="text-lg font-bold">
+                          {detailNewOutTime.slice(0, 5)}
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                 <div>
                   <div className="mb-1 text-sm font-medium">Alasan</div>
@@ -1179,7 +1645,13 @@ export function ApprovalsPage({
                   <div className="rounded-lg border">
                     <div className="flex items-center gap-2 border-b px-3 py-2 text-sm font-medium">
                       <Paperclip className="h-4 w-4" />
-                      Lampiran Koreksi
+                      {/* B9: judul kartu mengikuti jenis pengajuan —
+                          sebelumnya hardcoded "Lampiran Koreksi". */}
+                      {detailReq.kind === "leave"
+                        ? "Lampiran Izin"
+                        : detailReq.kind === "correction"
+                          ? "Lampiran Koreksi"
+                          : "Lampiran"}
                       <span className="ml-auto rounded bg-muted px-1.5 py-0.5 font-mono text-[11px]">
                         {detailAttachmentField}
                       </span>
@@ -1203,16 +1675,19 @@ export function ApprovalsPage({
                   </div>
                 </div>
 
-                <div className="flex items-start gap-2 rounded-lg border bg-muted/40 p-3 text-xs text-muted-foreground">
-                  <Shield className="mt-0.5 h-4 w-4 shrink-0" />
-                  <span>
-                    Lampiran disimpan di field{" "}
-                    <code className="font-mono">correction_attachment_url</code>{" "}
-                    — foto absensi di{" "}
-                    <code className="font-mono">photo_url</code>{" "}
-                    <b>tetap utuh</b> setelah koreksi disetujui.
-                  </span>
-                </div>
+                {/* B9: catatan field ini hanya benar untuk koreksi. */}
+                {detailReq.kind === "correction" && (
+                  <div className="flex items-start gap-2 rounded-lg border bg-muted/40 p-3 text-xs text-muted-foreground">
+                    <Shield className="mt-0.5 h-4 w-4 shrink-0" />
+                    <span>
+                      Lampiran disimpan di field{" "}
+                      <code className="font-mono">correction_attachment_url</code>{" "}
+                      — foto absensi di{" "}
+                      <code className="font-mono">photo_url</code>{" "}
+                      <b>tetap utuh</b> setelah koreksi disetujui.
+                    </span>
+                  </div>
+                )}
 
                 <div className="flex flex-col gap-1.5">
                   <label

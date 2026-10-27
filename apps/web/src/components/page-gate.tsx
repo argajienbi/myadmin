@@ -49,6 +49,13 @@ export function RequirePermission({
     return <>{children}</>
   }
   if (resource && !can(resource, action)) {
+    // Pengecualian Pengaturan (regresi vs aplikasi lama): /settings lama
+    // tidak di-gate — admin non-owner boleh buka untuk ubah sandi &
+    // profil sendiri. Halaman Pengaturan sendiri yang membatasi konten
+    // non-owner; menu sidebar tetap tersembunyi via can() di app-sidebar.
+    if (resource === "settings") {
+      return <>{children}</>
+    }
     return (
       <AccessDenied message="Akun ini tidak punya akses ke halaman ini." />
     )

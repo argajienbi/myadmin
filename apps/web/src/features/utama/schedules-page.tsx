@@ -2,12 +2,12 @@
 // Mengikuti mockup schedules.html (9 tab) + logika Schedules.tsx lama.
 // Form Jam Kerja tampil inline seperti mockup; form tab lain memakai Dialog.
 // Sinkronisasi Google Calendar TIDAK dibawa (butuh workspaceAuth Google —
-// domain auth Raka); CRUD hari libur tetap jalan. Aksi per tab mengikuti
-// mockup (Jam Kerja: Edit + Nonaktifkan; Shift: Edit; Terapkan/Khusus/
-// Lembur: Edit + Hapus; Libur: Hapus) — penonaktifan tab lain tetap bisa
-// lewat checkbox "Aktif" di form edit.
+// domain auth Raka); CRUD hari libur tetap jalan. Aksi per tab: Jam Kerja
+// Edit + Nonaktifkan + Hapus; Shift Edit + Hapus; Terapkan/Khusus/Lembur
+// Edit + Hapus; Libur Edit + Nonaktifkan + Hapus. Form Holiday & Special
+// punya checkbox "Aktif" seperti tab lain.
 import { useEffect, useMemo, useState } from "react"
-import { get, ref } from "firebase/database"
+import { useNavigate } from "@tanstack/react-router"
 import {
   AlertCircle,
   BadgeCheck,
@@ -51,9 +51,8 @@ import { Textarea } from "@workspace/ui/components/textarea"
 import { PageHeader } from "@/components/page"
 import { useCompany } from "@/lib/use-company"
 import { companyDisplayName } from "@/lib/display-utils"
-import { db } from "@/lib/firebase"
-import { paths } from "@/lib/firebase-paths"
 import { manualListen } from "@/lib/rtdb-data-gate"
+import { paths } from "@/lib/firebase-paths"
 import { todayKey } from "@/lib/rtdb-lean-service"
 import {
   SHIFT_DAY_KEYS,
@@ -73,6 +72,7 @@ import {
   deleteScheduleItem,
   impactedByTimetableOrShift,
   impactedPreviewForForm,
+  repairShiftToFullWeek,
   saveScheduleItem,
   toggleScheduleActive,
 } from "./schedules-forms"
@@ -104,6 +104,39 @@ function ScheduleForm(props: {
   const set = (key: string, value: unknown) =>
     setFormData({ ...formData, [key]: value })
   const [overtimeDateInput, setOvertimeDateInput] = useState("")
+
+  /** Terapkan preset hari kerja (seperti tombol preset aplikasi lama):
+      isi semua hari aktif + jam kerja fallback agar mode Senin–Minggu /
+      Senin–Jumat langsung lolos validasi saat disimpan. */
+  const applyShiftPreset = (mode: "full_week" | "weekday" | "clear") => {
+    const fallbackTimetableId =
+      lists.timetables.find((t) => t.active !== false)?.id ||
+      lists.timetables[0]?.id ||
+      ""
+    const next: Record<string, unknown> = { ...formData }
+    SHIFT_DAY_KEYS.forEach((day) => {
+      const active =
+        mode === "full_week"
+          ? true
+          : mode === "weekday"
+            ? day !== "saturday" && day !== "sunday"
+            : false
+      next[`day_${day}`] = active
+      if (active) {
+        next[`timetable_${day}`] =
+          next[`timetable_${day}`] || fallbackTimetableId
+      } else if (mode === "clear") {
+        next[`timetable_${day}`] = ""
+      }
+    })
+    next.workday_mode =
+      mode === "full_week"
+        ? "full_week"
+        : mode === "weekday"
+          ? "weekday"
+          : "custom"
+    setFormData(next)
+  }
 
   if (tab === "timetable") {
     return (
@@ -227,7 +260,11 @@ function ScheduleForm(props: {
           <Field label="Mode Hari Kerja">
             <Select
               value={String(formData.workday_mode || "custom")}
-              onValueChange={(v) => set("workday_mode", v)}
+              onValueChange={(v) => {
+                if (v === "full_week") applyShiftPreset("full_week")
+                else if (v === "weekday") applyShiftPreset("weekday")
+                else set("workday_mode", v)
+              }}
             >
               <SelectTrigger>
                 <SelectValue />
@@ -235,9 +272,36 @@ function ScheduleForm(props: {
               <SelectContent>
                 <SelectItem value="custom">Kustom (pilih hari)</SelectItem>
                 <SelectItem value="full_week">Senin–Minggu</SelectItem>
+                <SelectItem value="weekday">Senin–Jumat</SelectItem>
               </SelectContent>
             </Select>
           </Field>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => applyShiftPreset("full_week")}
+            >
+              Senin–Minggu
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => applyShiftPreset("weekday")}
+            >
+              Senin–Jumat
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => applyShiftPreset("clear")}
+            >
+              Kosongkan Hari
+            </Button>
+          </div>
         </div>
         <div className="flex flex-col gap-2">
           <Label>Hari kerja &amp; jam kerja per hari</Label>
@@ -424,6 +488,27 @@ function ScheduleForm(props: {
             onChange={(e) => set("title", e.target.value)}
           />
         </Field>
+        <Field label="Keterangan / Note">
+          <Input
+            placeholder="mis. Libur nasional"
+            value={String(formData.note || "")}
+            onChange={(e) => set("note", e.target.value)}
+          />
+        </Field>
+        <label className="flex items-center gap-2 text-sm">
+          <Checkbox
+            checked={formData.paid === true}
+            onCheckedChange={(v) => set("paid", v === true)}
+          />
+          Paid Holiday (Dibayar / Dihitung Hadir)
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <Checkbox
+            checked={formData.active !== false}
+            onCheckedChange={(v) => set("active", v === true)}
+          />
+          Aktif
+        </label>
       </div>
     )
   }
@@ -508,6 +593,13 @@ function ScheduleForm(props: {
             </SelectContent>
           </Select>
         </Field>
+        <label className="flex items-center gap-2 text-sm">
+          <Checkbox
+            checked={formData.active !== false}
+            onCheckedChange={(v) => set("active", v === true)}
+          />
+          Aktif
+        </label>
       </div>
     )
   }
@@ -671,6 +763,23 @@ const TAB_ITEMS: { id: ScheduleTabId; label: string }[] = [
   { id: "logs", label: "Riwayat Perubahan" },
 ]
 
+// Alias ?tab= dari tautan lama/Dashboard (id lama & jamak) ke id tab saat ini.
+const TAB_ALIASES: Record<string, ScheduleTabId> = {
+  ringkasan: "summary",
+  holidays: "holiday",
+  hari_libur: "holiday",
+  timetables: "timetable",
+  shifts: "shift",
+  assignments: "assignment",
+  specials: "special",
+}
+
+function normalizeScheduleTab(value: string | undefined): ScheduleTabId {
+  if (!value) return "summary"
+  if (TAB_ITEMS.some((t) => t.id === value)) return value as ScheduleTabId
+  return TAB_ALIASES[value] || "summary"
+}
+
 export function SchedulesPage({ initialTab }: { initialTab?: string }) {
   const {
     userData,
@@ -680,10 +789,17 @@ export function SchedulesPage({ initialTab }: { initialTab?: string }) {
     isOwner,
     loading: companyLoading,
   } = useCompany()
-  const [tab, setTab] = useState<ScheduleTabId>(
-    (TAB_ITEMS.find((t) => t.id === initialTab)?.id as ScheduleTabId) ||
-      "summary"
-  )
+  const navigate = useNavigate()
+  const [tab, setTab] = useState<ScheduleTabId>(normalizeScheduleTab(initialTab))
+  // Sinkronisasi tab dari ?tab= (tautan Dashboard & tombol back/forward):
+  // alias lama dinormalisasi, tab tidak dikenal jatuh ke Ringkasan.
+  // Penyesuaian state saat render (pola React yang didokumentasikan),
+  // bukan setState di dalam effect.
+  const [prevInitialTab, setPrevInitialTab] = useState(initialTab)
+  if (initialTab !== prevInitialTab) {
+    setPrevInitialTab(initialTab)
+    setTab(normalizeScheduleTab(initialTab))
+  }
   const [timetables, setTimetables] = useState<ScheduleRow[]>([])
   const [shifts, setShifts] = useState<ScheduleRow[]>([])
   const [assignments, setAssignments] = useState<ScheduleRow[]>([])
@@ -710,6 +826,12 @@ export function SchedulesPage({ initialTab }: { initialTab?: string }) {
   const [diagnosticResult, setDiagnosticResult] =
     useState<DiagnosticResult | null>(null)
   const [diagnosticLoading, setDiagnosticLoading] = useState(false)
+  // Hari libur aktif pada tanggal diagnostik (sumber kebenaran yang sama
+  // dengan resolver) — dipakai baris "Hari libur?" agar lembur di hari
+  // libur tidak dilaporkan sebagai hari kerja biasa.
+  const diagnosticHoliday = holidays.find(
+    (h) => h.date === diagnosticDate && isActiveValue(h.active, true)
+  )
 
   const lists: ScheduleLists = useMemo(
     () => ({
@@ -798,28 +920,27 @@ export function SchedulesPage({ initialTab }: { initialTab?: string }) {
           setLogs(rows)
         },
       }),
-    ]
-    Promise.all([
-      get(ref(db, paths.employeeGroups(companyId))),
-      get(ref(db, paths.companyUsers(companyId))),
-    ])
-      .then(([groupsSnap, usersSnap]) => {
-        if (groupsSnap.exists()) {
-          const val = groupsSnap.val() as Record<string, Record<string, unknown>>
+      // Master karyawan & grup ikut listen (bukan sekali get) agar nama
+      // di tabel lembur/diagnostik ikut berubah saat master diubah.
+      manualListen({
+        key: "employee_groups",
+        path: paths.employeeGroups(companyId),
+        onData: (value) =>
           setGroups(
-            Object.keys(val).map((k) => ({ ...val[k], id: k }))
-          )
-        }
-        if (usersSnap.exists()) {
-          const val = usersSnap.val() as Record<string, Record<string, unknown>>
+            snapshotToList(value as Record<string, unknown> | null)
+          ),
+      }),
+      manualListen({
+        key: "company_users",
+        path: paths.companyUsers(companyId),
+        onData: (value) => {
+          const val = value as Record<string, Record<string, unknown>> | null
           setEmployees(
-            Object.keys(val).map((k) => ({ ...val[k], uid: k }))
+            val ? Object.keys(val).map((k) => ({ ...val[k], uid: k })) : []
           )
-        }
-      })
-      .catch((err: Error) => {
-        toast.error(`Gagal memuat data master: ${err.message}`)
-      })
+        },
+      }),
+    ]
     return () => unsubs.forEach((u) => u())
   }, [companyId])
 
@@ -936,6 +1057,21 @@ export function SchedulesPage({ initialTab }: { initialTab?: string }) {
       totalEmployees: employees.length,
       holidaysThisMonth,
       perTimetable,
+      // Peringatan konfigurasi (seperti ringkasan aplikasi lama):
+      // karyawan tanpa grup/kantor dan pola shift yang belum lengkap.
+      withoutGroup: employees.filter((e) => !e.group_id).length,
+      withoutOffice: employees.filter((e) => !e.office_id).length,
+      incompleteShifts: shifts.filter((s) => {
+        if (s.active === false) return false
+        const days = (s.days as Record<string, Record<string, unknown>>) || {}
+        const activeDays = SHIFT_DAY_KEYS.filter((d) =>
+          isActiveValue(days[d]?.active, false)
+        )
+        return (
+          activeDays.length === 0 ||
+          activeDays.some((d) => !days[d]?.timetable_id)
+        )
+      }).length,
     }
   }, [timetables, shifts, assignments, holidays, employees])
 
@@ -1004,7 +1140,12 @@ export function SchedulesPage({ initialTab }: { initialTab?: string }) {
 
       <UtamaTabs
         active={tab}
-        onChange={(id) => setTab(id as ScheduleTabId)}
+        onChange={(id) => {
+          const next = id as ScheduleTabId
+          setTab(next)
+          // Tulis ?tab= agar deep-link, refresh, dan tombol back jalan.
+          void navigate({ to: "/admin/schedules", search: { tab: next } })
+        }}
         tabs={TAB_ITEMS.map((t) => ({ id: t.id, label: t.label }))}
       />
 
@@ -1062,6 +1203,42 @@ export function SchedulesPage({ initialTab }: { initialTab?: string }) {
               </CardContent>
             </Card>
           </div>
+          {(summary.withoutGroup > 0 ||
+            summary.withoutOffice > 0 ||
+            summary.incompleteShifts > 0) && (
+            <div className="flex flex-col gap-2">
+              {summary.withoutGroup > 0 && (
+                <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-800/50 dark:bg-amber-900/10 dark:text-amber-300">
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                  <span>
+                    <b>{summary.withoutGroup} karyawan belum masuk grup.</b>{" "}
+                    Karyawan tanpa grup tidak bisa menerima penerapan jadwal
+                    berbasis grup.
+                  </span>
+                </div>
+              )}
+              {summary.withoutOffice > 0 && (
+                <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-800/50 dark:bg-amber-900/10 dark:text-amber-300">
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                  <span>
+                    <b>{summary.withoutOffice} karyawan belum punya kantor.</b>{" "}
+                    Karyawan tanpa kantor tidak bisa absen (lokasi/radius
+                    belum aktif).
+                  </span>
+                </div>
+              )}
+              {summary.incompleteShifts > 0 && (
+                <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-800/50 dark:bg-amber-900/10 dark:text-amber-300">
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                  <span>
+                    <b>{summary.incompleteShifts} pola shift belum lengkap.</b>{" "}
+                    Ada hari aktif tanpa jam kerja — lengkapi di tab Pola
+                    Shift (tombol "Set Senin–Minggu").
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
           <Card>
             <CardHeader>
               <CardTitle>
@@ -1211,6 +1388,15 @@ export function SchedulesPage({ initialTab }: { initialTab?: string }) {
                                   ? "Aktifkan"
                                   : "Nonaktifkan"}
                               </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() =>
+                                  setDeleteTarget({ tab: "timetable", item: t })
+                                }
+                              >
+                                Hapus
+                              </Button>
                             </span>
                           </td>
                         </tr>
@@ -1340,6 +1526,11 @@ export function SchedulesPage({ initialTab }: { initialTab?: string }) {
                       const activeDays = SHIFT_DAY_KEYS.filter((d) =>
                         isActiveValue(days[d]?.active, false)
                       )
+                      // Pola tidak lengkap bila tidak ada hari aktif atau
+                      // ada hari aktif tanpa jam kerja.
+                      const incompleteShift =
+                        activeDays.length === 0 ||
+                        activeDays.some((d) => !days[d]?.timetable_id)
                       return (
                         <tr key={s.id}>
                           <td className="px-4 py-3">
@@ -1347,9 +1538,13 @@ export function SchedulesPage({ initialTab }: { initialTab?: string }) {
                               {String(s.name || "-")}
                             </div>
                             <div className="text-xs text-muted-foreground">
-                              {activeDays
-                                .map((d) => dayLabelMap[d])
-                                .join(", ") || "Tidak ada hari aktif"}
+                              {incompleteShift ? (
+                                <span className="text-amber-600">
+                                  Pola shift belum lengkap
+                                </span>
+                              ) : (
+                                activeDays.map((d) => dayLabelMap[d]).join(", ")
+                              )}
                             </div>
                           </td>
                           <td className="px-4 py-3">
@@ -1363,13 +1558,42 @@ export function SchedulesPage({ initialTab }: { initialTab?: string }) {
                             {targetSummary}
                           </td>
                           <td className="px-4 py-3 text-right">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => openForm("shift", s)}
-                            >
-                              Edit
-                            </Button>
+                            <span className="inline-flex gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => openForm("shift", s)}
+                              >
+                                Edit
+                              </Button>
+                              {incompleteShift && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() =>
+                                    void repairShiftToFullWeek({
+                                      shift: s,
+                                      companyId,
+                                      userData,
+                                      timetables: lists.timetables,
+                                    }).catch((err: Error) =>
+                                      toast.error(err.message)
+                                    )
+                                  }
+                                >
+                                  Set Senin–Minggu
+                                </Button>
+                              )}
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() =>
+                                  setDeleteTarget({ tab: "shift", item: s })
+                                }
+                              >
+                                Hapus
+                              </Button>
+                            </span>
                           </td>
                         </tr>
                       )
@@ -1498,6 +1722,9 @@ export function SchedulesPage({ initialTab }: { initialTab?: string }) {
                       <th className="px-4 py-3 font-medium">Tanggal</th>
                       <th className="px-4 py-3 font-medium">Keterangan</th>
                       <th className="px-4 py-3 font-medium">Sumber</th>
+                      <th className="px-4 py-3 font-medium">
+                        Status Pembayaran
+                      </th>
                       <th className="px-4 py-3 text-right font-medium">Aksi</th>
                     </tr>
                   </thead>
@@ -1513,18 +1740,34 @@ export function SchedulesPage({ initialTab }: { initialTab?: string }) {
                           </td>
                           <td className="px-4 py-3 font-medium">
                             {String(h.title || h.name || "-")}
+                            {h.note ? (
+                              <div className="text-xs font-normal text-muted-foreground">
+                                {String(h.note)}
+                              </div>
+                            ) : null}
                           </td>
                           <td className="px-4 py-3">
                             <StatusBadge
                               tone={
                                 h.source === "google_calendar"
                                   ? "info"
-                                  : "neutral"
+                                  : h.manual_override
+                                    ? "warning"
+                                    : "neutral"
                               }
                             >
                               {h.source === "google_calendar"
                                 ? "Google Calendar"
-                                : "Manual"}
+                                : h.manual_override
+                                  ? "Override Manual"
+                                  : "Manual"}
+                            </StatusBadge>
+                          </td>
+                          <td className="px-4 py-3">
+                            <StatusBadge tone={h.paid === true ? "success" : "neutral"}>
+                              {h.paid === true
+                                ? "Dibayar (Paid)"
+                                : "Tidak Dibayar (Unpaid)"}
                             </StatusBadge>
                           </td>
                           <td className="px-4 py-3 text-right">
@@ -1659,6 +1902,25 @@ export function SchedulesPage({ initialTab }: { initialTab?: string }) {
                                 variant="outline"
                                 size="sm"
                                 onClick={() =>
+                                  void toggleScheduleActive({
+                                    tab: "special",
+                                    item: s,
+                                    companyId,
+                                    userData,
+                                    lists,
+                                  }).catch((err: Error) =>
+                                    toast.error(err.message)
+                                  )
+                                }
+                              >
+                                {s.active === false
+                                  ? "Aktifkan"
+                                  : "Nonaktifkan"}
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() =>
                                   setDeleteTarget({ tab: "special", item: s })
                                 }
                               >
@@ -1716,22 +1978,88 @@ export function SchedulesPage({ initialTab }: { initialTab?: string }) {
                       const dates = sortDateKeys(
                         (o.dates as Record<string, boolean>) || {}
                       )
-                      const dateLabel =
-                        dates.length === 0
-                          ? o.date
-                            ? formatTanggal(String(o.date))
-                            : `${o.date_start ? formatTanggal(String(o.date_start)) : "—"}`
-                          : dates.length === 1
-                            ? formatTanggal(dates[0])
-                            : `${formatTanggal(dates[0])} – ${formatTanggal(dates[dates.length - 1])}`
+                      // Karyawan lembur: dari peta target_uids (atau
+                      // type/target_id lama), tampilkan nama s.d. 3 orang.
+                      const rawTargetUids = Array.isArray(o.target_uids)
+                        ? (o.target_uids as unknown[]).map(String)
+                        : Object.keys(
+                            (o.target_uids as Record<string, unknown>) || {}
+                          ).filter(
+                            (k) =>
+                              (o.target_uids as Record<string, unknown>)[k] ===
+                                true ||
+                              (o.target_uids as Record<string, unknown>)[k] ===
+                                "true"
+                          )
+                      const targetUids =
+                        rawTargetUids.length > 0
+                          ? rawTargetUids
+                          : resolveTargetUids(
+                              employees,
+                              String(o.type || o.target_type || "individual"),
+                              String(o.target_id || "")
+                            )
+                      const targetNames = targetUids
+                        .map((uid) => {
+                          const e = employees.find((x) => x.uid === uid)
+                          return e ? employeeName(e) : null
+                        })
+                        .filter((n): n is string => n !== null)
+                      const workHours =
+                        o.work_start && o.work_end
+                          ? `${String(o.work_start).slice(0, 5)}–${String(o.work_end).slice(0, 5)}`
+                          : ""
                       return (
                         <tr key={String(o.schedule_id || o.id)}>
                           <td className="px-4 py-3 font-medium">
                             {String(o.name || "-")}
+                            {o.note ? (
+                              <div className="text-xs font-normal text-muted-foreground">
+                                {String(o.note)}
+                              </div>
+                            ) : null}
+                            {workHours ? (
+                              <div className="text-xs font-normal text-muted-foreground">
+                                Jam kerja {workHours}
+                              </div>
+                            ) : null}
                           </td>
-                          <td className="px-4 py-3 font-mono">{dateLabel}</td>
                           <td className="px-4 py-3">
-                            {Number(o.target_count || 0)} karyawan
+                            {dates.length > 0 ? (
+                              <span className="flex flex-wrap gap-1">
+                                {dates.slice(0, 4).map((d) => (
+                                  <span
+                                    key={d}
+                                    className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs"
+                                  >
+                                    {formatTanggal(d)}
+                                  </span>
+                                ))}
+                                {dates.length > 4 ? (
+                                  <span className="text-xs text-muted-foreground">
+                                    +{dates.length - 4} tanggal
+                                  </span>
+                                ) : null}
+                              </span>
+                            ) : (
+                              <span className="font-mono">
+                                {o.date
+                                  ? formatTanggal(String(o.date))
+                                  : `${o.date_start ? formatTanggal(String(o.date_start)) : "—"}${o.date_end ? ` – ${formatTanggal(String(o.date_end))}` : ""}`}
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3">
+                            {targetNames.length > 0 ? (
+                              <span>
+                                {targetNames.slice(0, 3).join(", ")}
+                                {targetNames.length > 3
+                                  ? ` +${targetNames.length - 3} lainnya`
+                                  : ""}
+                              </span>
+                            ) : (
+                              `${Number(o.target_count || 0)} karyawan`
+                            )}
                           </td>
                           <td className="px-4 py-3">
                             <StatusBadge
@@ -1788,7 +2116,7 @@ export function SchedulesPage({ initialTab }: { initialTab?: string }) {
                     <SelectValue placeholder="Pilih karyawan" />
                   </SelectTrigger>
                   <SelectContent>
-                    {getActiveEmployees(employees).map((e) => (
+                    {employees.map((e) => (
                       <SelectItem key={String(e.uid)} value={String(e.uid)}>
                         {employeeName(e)}
                         {e.nip ? ` · ${String(e.nip)}` : ""}
@@ -1813,18 +2141,29 @@ export function SchedulesPage({ initialTab }: { initialTab?: string }) {
               <>
                 <div
                   className={
-                    diagnosticResult.ok
+                    diagnosticResult.canAttend
                       ? "flex items-start gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800 dark:border-emerald-800/50 dark:bg-emerald-900/10 dark:text-emerald-300"
-                      : "flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-800/50 dark:bg-amber-900/10 dark:text-amber-300"
+                      : diagnosticResult.ok
+                        ? "flex items-start gap-3 rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm text-sky-800 dark:border-sky-800/50 dark:bg-sky-900/10 dark:text-sky-300"
+                        : "flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-800/50 dark:bg-red-900/10 dark:text-red-300"
                   }
                 >
-                  {diagnosticResult.ok ? (
+                  {diagnosticResult.canAttend ? (
                     <BadgeCheck className="mt-0.5 h-4 w-4 shrink-0" />
+                  ) : diagnosticResult.ok ? (
+                    <Info className="mt-0.5 h-4 w-4 shrink-0" />
                   ) : (
                     <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
                   )}
                   <span>
-                    <b>{diagnosticResult.status}.</b>{" "}
+                    <b>
+                      {diagnosticResult.canAttend
+                        ? "Siap digunakan untuk absen"
+                        : diagnosticResult.ok
+                          ? diagnosticResult.status
+                          : "Belum bisa digunakan untuk absen"}
+                      .
+                    </b>{" "}
                     {diagnosticResult.reason}
                   </span>
                 </div>
@@ -1837,6 +2176,14 @@ export function SchedulesPage({ initialTab }: { initialTab?: string }) {
                     {diagnosticResult.groupName
                       ? ` · ${diagnosticResult.groupName}`
                       : ""}
+                  </dd>
+                  <dt className="text-muted-foreground">Kantor</dt>
+                  <dd>{diagnosticResult.officeName || "—"}</dd>
+                  <dt className="text-muted-foreground">Hari</dt>
+                  <dd>
+                    {diagnosticResult.dayKey
+                      ? `${dayLabelMap[diagnosticResult.dayKey as keyof typeof dayLabelMap] || diagnosticResult.dayKey} · ${formatTanggal(diagnosticDate)}`
+                      : formatTanggal(diagnosticDate)}
                   </dd>
                   <dt className="text-muted-foreground">Sumber</dt>
                   <dd>{diagnosticResult.details?.source || "—"}</dd>
@@ -1864,9 +2211,15 @@ export function SchedulesPage({ initialTab }: { initialTab?: string }) {
                   </dd>
                   <dt className="text-muted-foreground">Hari libur?</dt>
                   <dd>
-                    {diagnosticResult.status === "Hari Libur"
-                      ? `Ya — ${formatTanggal(diagnosticDate)} hari libur`
-                      : `Tidak — ${formatTanggal(diagnosticDate)} hari kerja biasa`}
+                    {diagnosticHoliday
+                      ? `Ya — ${formatTanggal(diagnosticDate)} hari libur${
+                          diagnosticResult.status === "Jadwal Lembur Aktif"
+                            ? " (lembur tetap berlaku)"
+                            : ""
+                        }`
+                      : diagnosticResult.status === "Hari Libur Rutin"
+                        ? `Tidak — hari libur rutin (pola shift), bukan hari kerja`
+                        : `Tidak — ${formatTanggal(diagnosticDate)} hari kerja biasa`}
                   </dd>
                 </dl>
               </>

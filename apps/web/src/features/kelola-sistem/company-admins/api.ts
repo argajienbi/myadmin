@@ -61,13 +61,16 @@ export async function assignCompanyAdmin(
   updates[`${paths.userIndex(adminUid)}/status_akun`] = "active"
   updates[`${paths.company(companyId)}/admin_uid`] = adminUid
   if (targetUser) {
-    updates[paths.companyUser(companyId, adminUid)] = {
-      ...targetUser,
-      role: "admin",
-      position: "ADMIN",
-      company_id: companyId,
-      status_akun: "active",
-    }
+    // Per-field (bukan menimpa node): field khusus company_users
+    // (qr_token, last_transfer_*) tetap utuh — sama pola perbaikan #1/#2.
+    const cu = paths.companyUser(companyId, adminUid)
+    updates[`${cu}/uid`] = adminUid
+    updates[`${cu}/nama_lengkap`] = targetUser.nama_lengkap ?? ""
+    updates[`${cu}/email`] = targetUser.email ?? ""
+    updates[`${cu}/role`] = "admin"
+    updates[`${cu}/position`] = "ADMIN"
+    updates[`${cu}/company_id`] = companyId
+    updates[`${cu}/status_akun`] = "active"
   }
   await update(ref(db), updates)
   try {

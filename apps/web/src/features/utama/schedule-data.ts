@@ -296,7 +296,7 @@ export async function resolveScheduleForUser(params: {
   }
   const holidaySnap = await get(ref(db, paths.holiday(companyId, date)))
   const isHoliday =
-    holidaySnap.exists() && holidaySnap.val()?.active === true
+    holidaySnap.exists() && isActiveValue(holidaySnap.val()?.active, true)
 
   const overtimeSnap = await get(ref(db, paths.overtimeSchedules(companyId)))
   let selectedOvertime: Record<string, unknown> | null = null
@@ -307,7 +307,8 @@ export async function resolveScheduleForUser(params: {
     >
     for (const id of Object.keys(overtimes)) {
       const item = overtimes[id]
-      if (!item.active) continue
+      if (!isActiveValue(item.active, true) || item.status === "inactive")
+        continue
       if (!dateExistsInSchedule(item, date)) continue
       // Format simpan lembur (aplikasi lama & baru): peta `dates` + `target_uids`
       // tanpa `type`/`target_id` — pakai helper yang sama dengan diagnostik.
@@ -335,7 +336,7 @@ export async function resolveScheduleForUser(params: {
     >
     for (const id of Object.keys(specials)) {
       const item = specials[id]
-      if (!item.active || item.date !== date) continue
+      if (!isActiveValue(item.active, true) || item.date !== date) continue
       const matchUser =
         item.type === "user" &&
         (item.target_id === uid || item.user_id === uid || item.uid === uid)
@@ -455,7 +456,7 @@ export async function resolveScheduleForUser(params: {
     >
     for (const id of Object.keys(assignments)) {
       const item = assignments[id]
-      if (!item.active) continue
+      if (!isActiveValue(item.active, true)) continue
       if (
         !dateInRange(
           date,
@@ -680,6 +681,7 @@ export async function diagnoseEmployeeSchedule(
         employee,
         groupName,
         officeName,
+        dayKey,
         details: { source: "Hari Libur" },
       }
     }
@@ -748,6 +750,7 @@ export async function diagnoseEmployeeSchedule(
           employee,
           groupName,
           officeName,
+          dayKey,
         }
       }
       shiftId = String(matchedAssignment.shift_id || "")
@@ -764,6 +767,7 @@ export async function diagnoseEmployeeSchedule(
         employee,
         groupName,
         officeName,
+        dayKey,
         details: { source },
       }
     }
@@ -777,6 +781,7 @@ export async function diagnoseEmployeeSchedule(
         employee,
         groupName,
         officeName,
+        dayKey,
         details: { source, assignment: assignmentDetails ?? undefined },
       }
     }

@@ -11,6 +11,8 @@ import {
 } from "@workspace/ui/components/dropdown-menu"
 import { Link } from "@tanstack/react-router"
 import { useAuth } from "@/lib/auth-context"
+import { useCompanyScope } from "@/lib/use-company"
+import { isOwnerLike } from "@/lib/role-access"
 import {
   listRecentNotifications,
   markAllNotificationsRead,
@@ -20,7 +22,10 @@ import {
 export function NotificationBell() {
   const queryClient = useQueryClient()
   const { profile } = useAuth()
-  const companyId = profile?.company_id ?? ""
+  // Perusahaan efektif (bukan company_id mentah di profil): owner
+  // bootstrap punya company_id "" sehingga query inbox tidak pernah
+  // jalan dan lonceng owner selalu kosong.
+  const { companyId } = useCompanyScope()
   const uid = profile?.uid ?? ""
   const enabled = Boolean(companyId && uid)
 
@@ -106,12 +111,19 @@ export function NotificationBell() {
             Tidak ada notifikasi.
           </p>
         )}
-        <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
-          <Link to="/admin/notification-logs" className="justify-center">
-            Lihat semua
-          </Link>
-        </DropdownMenuItem>
+        {/* "Lihat semua" menuju /admin/notification-logs yang ownerOnly —
+            sembunyikan untuk non-owner agar tidak mendarat di "Akses
+            ditolak". */}
+        {isOwnerLike(profile) && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link to="/admin/notification-logs" className="justify-center">
+                Lihat semua
+              </Link>
+            </DropdownMenuItem>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   )

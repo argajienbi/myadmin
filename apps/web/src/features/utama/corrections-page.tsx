@@ -8,8 +8,8 @@
 // Lampiran pada form manual adalah tambahan mockup (kode lama tidak punya):
 // file diunggah ke Storage dan disimpan di correction_attachment_url/path —
 // TIDAK PERNAH ke photo_url (inti fix bug 2b).
-import { useCallback, useEffect, useMemo, useState } from "react"
-import { get, push, ref, set } from "firebase/database"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { get, push, ref, update } from "firebase/database"
 import { getDownloadURL, ref as storageRef, uploadBytes } from "firebase/storage"
 import { Paperclip, ShieldCheck } from "lucide-react"
 import { toast } from "sonner"
@@ -30,7 +30,6 @@ import { db, storage } from "@/lib/firebase"
 import { paths } from "@/lib/firebase-paths"
 import { manualListen } from "@/lib/rtdb-data-gate"
 import { todayKey } from "@/lib/rtdb-lean-service"
-import { writeAuditLog } from "@/lib/firebase-audit"
 import { createNotification } from "@/lib/firebase-notify"
 import { resolveScheduleForUser } from "./schedule-data"
 import { EmptyState, Field, StatusBadge } from "./ui"
@@ -91,6 +90,9 @@ export function CorrectionsPage() {
   const [formReason, setFormReason] = useState("")
   const [formFile, setFormFile] = useState<File | null>(null)
   const [saving, setSaving] = useState(false)
+  // D3: masalah yang di-prefill — dipakai untuk menghapusnya dari daftar
+  // setelah simpan, walau admin mengubah teks alasan di form.
+  const prefillIssueRef = useRef<string | null>(null)
 
   const employeeByUid = useMemo(() => {
     const map = new Map<string, EmployeeRow>()
@@ -238,6 +240,12 @@ export function CorrectionsPage() {
           }
         })
       )
+      // D5: urutkan deterministik (uid, lalu masalah) — Promise.all +
+      // push sebelumnya membuat urutan daftar tak tentu.
+      found.sort(
+        (a, b) =>
+          a.uid.localeCompare(b.uid) || a.issue.localeCompare(b.issue)
+      )
       setProblems(found)
     } catch (err) {
       toast.error(
@@ -283,7 +291,17 @@ export function CorrectionsPage() {
     setFormUid(problem.uid)
     setFormDate(today)
     setFormActionType(problem.actionType)
+    // D3: isi waktu/status yang masuk akal konteksnya — pulang bukan 07:58.
+    setFormTime(problem.actionType === "check_out" ? "17:00" : "07:58")
+    setFormStatus(
+      problem.issue === "Terlambat"
+        ? "terlambat"
+        : problem.issue.toLowerCase().includes("luar radius")
+          ? "luar_radius"
+          : "hadir"
+    )
     setFormReason(problem.issue)
+    prefillIssueRef.current = problem.issue
     document
       .getElementById("kr-nama")
       ?.scrollIntoView({ behavior: "smooth", block: "center" })
@@ -333,7 +351,15 @@ export function CorrectionsPage() {
         ref(db, paths.attendanceCorrections(companyId))
       )
       const correctionId = correctionRef.key || ""
-      await set(correctionRef, {
+      const auditRef = push(ref(db, paths.auditLogs(companyId)))
+      // D1: koreksi + record absensi + audit log dalam SATU update()
+      // multi-path atomik, seperti aplikasi lama (saveCorrection) — bila
+      // satu gagal, tidak ada yang tertulis setengah. Notifikasi tetap
+      // terpisah sesudahnya, seperti lama.
+      const updates: Record<string, unknown> = {}
+      updates[`${paths.attendanceCorrections(companyId)}/${correctionId}`] = {
+        // D6: correction_id di dalam record koreksi (seperti lama).
+        correction_id: correctionId,
         uid: formUid,
         company_id: companyId,
         date: formDate,
@@ -350,8 +376,8 @@ export function CorrectionsPage() {
         correction_attachment_path: attachmentPath,
         created_at: Date.now(),
         updated_at: Date.now(),
-      })
-      await set(ref(db, recordPath), {
+      }
+      updates[recordPath] = {
         ...existing,
         company_id: companyId,
         uid: formUid,
@@ -368,8 +394,8 @@ export function CorrectionsPage() {
         corrected_by_name: userData.nama_lengkap || "",
         corrected_at: Date.now(),
         updated_at: Date.now(),
-      })
-      await writeAuditLog(companyId, {
+      }
+      updates[`${paths.auditLogs(companyId)}/${auditRef.key}`] = {
         action: "MANUAL_CORRECTION",
         details: `Koreksi manual ${formUid} ${formDate} ${formActionType}: ${oldValue || "-"} → ${formTime}. Alasan: ${formReason.trim()}`,
         user_uid: userData.uid,
@@ -377,7 +403,9 @@ export function CorrectionsPage() {
         target_path: recordPath,
         old_value: oldValue,
         new_value: formTime,
-      })
+        created_at: Date.now(),
+      }
+      await update(ref(db), updates)
       await createNotification(formUid, {
         company_id: companyId,
         title: "Koreksi Presensi",
@@ -386,17 +414,28 @@ export function CorrectionsPage() {
         ref_type: "attendance_correction",
         ref_id: correctionId,
       })
+      // D3: hapus masalah yang di-prefill — pakai issue saat prefill,
+      // bukan teks alasan yang mungkin sudah diubah admin di form.
+      const appliedIssue = prefillIssueRef.current ?? formReason.trim()
+      prefillIssueRef.current = null
       setProblems((prev) =>
         prev.filter(
           (p) =>
             !(
               p.uid === formUid &&
               p.actionType === formActionType &&
-              p.issue === formReason.trim()
+              p.issue === appliedIssue
             )
         )
       )
       toast.success("Koreksi berhasil disimpan.")
+      // D4: kosongkan seluruh form setelah simpan (lama: setFormData({})),
+      // supaya klik Simpan kedua tidak menduplikasi riwayat koreksi.
+      setFormUid("")
+      setFormDate(today)
+      setFormActionType("check_in")
+      setFormStatus("hadir")
+      setFormTime("07:58")
       setFormReason("")
       setFormFile(null)
     } catch (err) {
@@ -619,6 +658,10 @@ export function CorrectionsPage() {
                   <SelectContent>
                     <SelectItem value="hadir">Hadir</SelectItem>
                     <SelectItem value="terlambat">Terlambat</SelectItem>
+                    {/* D2: Izin/Sakit/Cuti seperti form lama (6 opsi). */}
+                    <SelectItem value="izin">Izin</SelectItem>
+                    <SelectItem value="sakit">Sakit</SelectItem>
+                    <SelectItem value="cuti">Cuti</SelectItem>
                     <SelectItem value="luar_radius">Luar Radius</SelectItem>
                   </SelectContent>
                 </Select>

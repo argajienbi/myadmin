@@ -22,6 +22,7 @@ export type RtdbGateKey =
   | "schedule_change_logs"
   | "timetables"
   | "shifts"
+  | "employee_groups"
   | "storage_index"
   | "report_cache"
   | "database_health"
