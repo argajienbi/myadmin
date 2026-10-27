@@ -18,17 +18,17 @@ import { getDb, auth, isFirebaseConfigured } from "@/lib/firebase"
 import { mirrorUserToFirestore } from "@/lib/firebase-user-mirror"
 import { readList, readValue } from "@/lib/rtdb-read"
 import { paths } from "@/lib/firebase-paths"
-import type { Company, UserIndex } from "@/lib/firebase-types"
+import type { Company, CompanyUser } from "@/lib/firebase-types"
 
 export interface SettingsData {
-  firebaseUser: UserIndex | null
+  firebaseUser: CompanyUser | null
   company: Company | null
 }
 
 export async function findUserByEmail(
   email: string,
-): Promise<UserIndex | null> {
-  const users = await readList<UserIndex>("users")
+): Promise<CompanyUser | null> {
+  const users = await readList<CompanyUser>("users")
   const lower = email.trim().toLowerCase()
   return (
     users.find((u) => (u.email ?? "").toLowerCase() === lower) ?? null

@@ -1,16 +1,16 @@
 /**
  * Halaman Laporan — mengikuti mockup reports.html: filter (Perusahaan,
  * Jenis Laporan, Dari/Sampai, Kantor, Departemen, Grup, Jabatan, Status),
- * Ambil Data, Export Excel/PDF, strip peringatan Legacy Load, tab
- * Laporan Presensi + Laporan Perizinan/Cuti, ringkasan. Logika mengikuti
- * Reports.tsx myadmin lama (lean load maks 31 hari; mode normal tidak
- * memuat leave/qr/lembur; Legacy Load baca root besar).
+ * Ambil Data, Export Excel/PDF, tab Laporan Presensi + Laporan
+ * Perizinan/Cuti, ringkasan. Data dibuka LANGSUNG dari RTDB saat halaman
+ * dibuka (tanpa mode Legacy): presensi lean per tanggal (maks 31 hari) +
+ * perizinan/QR/lembur langsung dari root perusahaan.
  *
  * Deviasi dari mockup: tabel Presensi dikelompokkan per karyawan per
  * tanggal (Jam In–Out dalam satu baris) karena record presensi lama
  * tersimpan per aksi (check-in / check-out terpisah).
  */
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useMutation } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { Badge } from "@workspace/ui/components/badge"
@@ -45,8 +45,7 @@ import {
   auditExport,
   exportToExcel,
   exportToPdf,
-  fetchReportDataLegacy,
-  fetchReportDataNormal,
+  fetchReportData,
   useReportsMeta,
   type AttendanceRow,
   type LeaveRequestRow,
@@ -129,38 +128,31 @@ export function ReportsPage() {
   const [statusFilter, setStatusFilter] = useState(ANY)
   const [reportData, setReportData] = useState<ReportData | null>(null)
   const [hasFetched, setHasFetched] = useState(false)
-  const [isLegacy, setIsLegacy] = useState(false)
 
   const metaQuery = useReportsMeta(companyId)
   const meta = metaQuery.data
 
-  const fetchNormal = useMutation({
+  const fetchData = useMutation({
     mutationFn: async () => {
       if (!meta) throw new Error("Metadata belum dimuat.")
-      return fetchReportDataNormal(companyId, startDate, endDate, meta)
+      return fetchReportData(companyId, startDate, endDate, meta)
     },
     onSuccess: (data) => {
       setReportData(data)
       setHasFetched(true)
-      setIsLegacy(false)
       toast.success(`${data.attendances.length} record presensi dimuat.`)
     },
     onError: (e: Error) => toast.error(e.message),
   })
-  const fetchLegacy = useMutation({
-    mutationFn: async () => {
-      if (!meta) throw new Error("Metadata belum dimuat.")
-      return fetchReportDataLegacy(companyId, meta)
-    },
-    onSuccess: (data) => {
-      setReportData(data)
-      setHasFetched(true)
-      setIsLegacy(true)
-      toast.success(`${data.attendances.length} record presensi dimuat (legacy).`)
-    },
-    onError: (e: Error) => toast.error(e.message),
-  })
-  const loading = fetchNormal.isPending || fetchLegacy.isPending
+  const loading = fetchData.isPending
+
+  // Data dibuka langsung saat halaman siap (tanpa mode Legacy).
+  useEffect(() => {
+    if (!meta || hasFetched || loading) return
+    fetchData.mutate()
+    // Sekali saat meta siap; refresh berikutnya lewat tombol Ambil Data.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [meta, hasFetched])
 
   const grouped = useMemo<GroupedRow[]>(() => {
     if (!reportData) return []
@@ -519,7 +511,7 @@ export function ReportsPage() {
           </div>
           <div className="flex flex-wrap gap-2">
             <Button
-              onClick={() => fetchNormal.mutate()}
+              onClick={() => fetchData.mutate()}
               disabled={loading || !startDate || !endDate}
             >
               {loading ? "Memuat..." : "Ambil Data"}
@@ -537,24 +529,6 @@ export function ReportsPage() {
               disabled={!hasFetched}
             >
               Export PDF
-            </Button>
-          </div>
-          <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
-            <p className="font-medium">Legacy Load — mode berisiko</p>
-            <p>
-              Membaca root besar RTDB dan bisa meningkatkan biaya bandwidth.
-              Gunakan hanya untuk data lama yang belum dibackfill. Mode normal
-              (Ambil Data) hanya memuat presensi per tanggal (maks 31 hari)
-              dan tidak memuat data perizinan/lembur.
-            </p>
-            <Button
-              variant="outline"
-              size="sm"
-              className="mt-2"
-              onClick={() => fetchLegacy.mutate()}
-              disabled={loading}
-            >
-              Legacy Load
             </Button>
           </div>
         </CardContent>
@@ -581,7 +555,6 @@ export function ReportsPage() {
             Lembur disetujui: {summary.lemburApproved} (
             {formatDuration(summary.totalOTMin)})
           </Badge>
-          {isLegacy && <Badge variant="outline">Mode Legacy</Badge>}
         </div>
       )}
 
@@ -664,9 +637,7 @@ export function ReportsPage() {
                   empty={filteredLeave.length === 0 && overtimeRows.length === 0}
                   emptyText={
                     hasFetched
-                      ? isLegacy
-                        ? "Tidak ada data perizinan/cuti pada periode ini."
-                        : "Mode normal tidak memuat perizinan/lembur — gunakan Legacy Load untuk data ini."
+                      ? "Tidak ada data perizinan/cuti pada periode ini."
                       : "Klik Ambil Data untuk memuat laporan."
                   }
                 />

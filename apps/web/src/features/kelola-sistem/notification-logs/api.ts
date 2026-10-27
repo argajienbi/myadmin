@@ -362,13 +362,14 @@ function normalizeToken(
   } as FcmToken
 }
 
-/** Nonaktifkan token secara manual (merge ke dokumen Firestore). */
+/** Nonaktifkan token secara manual (Firestore + mirror RTDB). */
 export async function deactivateToken(
   companyId: string,
   token: FcmToken,
 ): Promise<void> {
   const fs = getFirestoreDb()
-  if (!fs) throw new Error("Firebase belum dikonfigurasi.")
+  const db = getDb()
+  if (!fs || !db) throw new Error("Firebase belum dikonfigurasi.")
   const now = Date.now()
   await setDoc(
     doc(fs, firestorePaths.userFcmToken(companyId, token.uid, token.token_id)),
@@ -379,6 +380,17 @@ export async function deactivateToken(
       invalid_reason: "manual_deactivation_by_admin",
     },
     { merge: true },
+  )
+  // Mirror RTDB WAJIB ikut ditulis: pipeline push (Worker FCM) membaca
+  // dari RTDB — tanpa ini token yang dinonaktifkan tetap menerima push.
+  await update(
+    ref(db, `companies/${companyId}/users/${token.uid}/fcm_tokens/${token.token_id}`),
+    {
+      active: false,
+      invalidated_at: now,
+      updated_at: now,
+      invalid_reason: "manual_deactivation_by_admin",
+    },
   )
 }
 

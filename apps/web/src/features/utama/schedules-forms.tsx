@@ -19,6 +19,7 @@ import {
   resolveTargetUids,
   resolveUsersImpactedByShift,
   resolveUsersImpactedByTimetable,
+  getActiveEmployees,
   sendScheduleChangeNotifications,
   sortDateKeys,
   targetUidExistsInSchedule,
@@ -787,13 +788,155 @@ function scheduleItemPath(
   throw new Error("Tab tidak mendukung operasi ini.")
 }
 
+// Isi notifikasi toggle/hapus per tab — pesan sama persis dengan aplikasi lama
+// (pages/Schedules.tsx: handleToggle & handleDelete). `item.active` adalah
+// status SEBELUM toggle, jadi isActive=true berarti sedang dinonaktifkan.
+function scheduleToggleDeleteNotification(
+  kind: "toggle" | "delete",
+  tab: ScheduleTabId,
+  item: ScheduleRow,
+  lists: Pick<
+    ScheduleLists,
+    "shifts" | "assignments" | "specials" | "employees"
+  >,
+): {
+  uids: string[]
+  title: string
+  message: string
+  extra: Record<string, unknown>
+} | null {
+  const id = String(item.id)
+  const isActive = item.active !== false
+  const onOff = isActive ? "dinonaktifkan" : "diaktifkan kembali"
+  const onOffTitle = isActive ? "Dinonaktifkan" : "Diaktifkan"
+  if (tab === "timetable") {
+    return {
+      uids: resolveUsersImpactedByTimetable(
+        lists.shifts,
+        lists.assignments,
+        lists.specials,
+        lists.employees,
+        id
+      ),
+      title:
+        kind === "delete" ? "Jam Kerja Dihapus" : `Jam Kerja ${onOffTitle}`,
+      message:
+        kind === "delete"
+          ? "Jam kerja yang jadwal Anda gunakan telah dihapus oleh Admin. Silakan hubungi admin untuk info lebih lanjut."
+          : `Jam kerja Anda telah ${onOff} oleh Admin. Silakan cek detail jadwal Anda.`,
+      extra: { schedule_change_type: "timetable", timetable_id: id },
+    }
+  }
+  if (tab === "shift") {
+    return {
+      uids: resolveUsersImpactedByShift(
+        lists.assignments,
+        lists.specials,
+        lists.employees,
+        id
+      ),
+      title:
+        kind === "delete" ? "Pola Shift Dihapus" : `Pola Shift ${onOffTitle}`,
+      message:
+        kind === "delete"
+          ? "Pola shift yang jadwal Anda gunakan telah dihapus oleh Admin. Silakan hubungi admin untuk info lebih lanjut."
+          : `Pola shift Anda telah ${onOff} oleh Admin. Silakan cek detail jadwal Anda.`,
+      extra: { schedule_change_type: "shift", shift_id: id },
+    }
+  }
+  if (tab === "assignment") {
+    return {
+      uids: resolveTargetUids(
+        lists.employees,
+        String(item.type || "individual"),
+        String(item.target_id || "")
+      ),
+      title:
+        kind === "delete"
+          ? "Penerapan Jadwal Dihapus"
+          : `Penerapan Jadwal ${onOffTitle}`,
+      message:
+        kind === "delete"
+          ? "Penerapan jadwal kerja Anda telah dibatalkan oleh Admin."
+          : `Penerapan jadwal kerja Anda telah ${onOff} oleh Admin.`,
+      extra: {
+        schedule_change_type: "assignment",
+        assignment_id: id,
+        target_type: String(item.type || ""),
+        target_id: String(item.target_id || ""),
+      },
+    }
+  }
+  if (tab === "special") {
+    return {
+      uids: resolveTargetUids(
+        lists.employees,
+        String(item.type || "individual"),
+        String(item.target_id || "")
+      ),
+      title:
+        kind === "delete"
+          ? "Jadwal Khusus Dihapus"
+          : `Jadwal Khusus ${onOffTitle}`,
+      message:
+        kind === "delete"
+          ? `Jadwal khusus Anda pada tanggal ${String(item.date || "")} telah dibatalkan oleh Admin.`
+          : `Jadwal khusus Anda pada tanggal ${String(item.date || "")} telah ${onOff} oleh Admin.`,
+      extra: {
+        schedule_change_type: "special",
+        special_id: id,
+        date: String(item.date || ""),
+        target_type: String(item.type || ""),
+        target_id: String(item.target_id || ""),
+      },
+    }
+  }
+  if (tab === "overtime") {
+    return {
+      uids: Object.keys(
+        (item.target_uids as Record<string, unknown>) || {}
+      ),
+      title:
+        kind === "delete"
+          ? "Jadwal Lembur Dihapus"
+          : `Jadwal Lembur ${onOffTitle}`,
+      message:
+        kind === "delete"
+          ? `Jadwal lembur '${String(item.name || "")}' Anda telah dibatalkan oleh Admin.`
+          : `Jadwal lembur '${String(item.name || "")}' Anda telah ${onOff} oleh Admin.`,
+      extra: { schedule_change_type: "overtime", overtime_schedule_id: id },
+    }
+  }
+  if (tab === "holiday") {
+    return {
+      uids: getActiveEmployees(lists.employees).map((emp) =>
+        String(emp.uid)
+      ),
+      title:
+        kind === "delete"
+          ? "Hari Libur Dihapus"
+          : `Hari Libur ${onOffTitle}`,
+      message:
+        kind === "delete"
+          ? "Hari libur yang sebelumnya ditetapkan telah dibatalkan oleh Admin."
+          : `Hari libur yang sebelumnya ditetapkan telah ${onOff} oleh Admin.`,
+      extra: { schedule_change_type: "holiday", holiday_id: id },
+    }
+  }
+  return null
+}
+
 export async function toggleScheduleActive(params: {
   tab: ScheduleTabId
   item: ScheduleRow
   companyId: string
   userData: FirebaseUserData | null
+  lists: Pick<
+    ScheduleLists,
+    "shifts" | "assignments" | "specials" | "employees"
+  >
 }): Promise<void> {
-  const { tab, item, companyId, userData } = params
+  const { tab, item, companyId, userData, lists } = params
   const itemPath = scheduleItemPath(tab, item, companyId)
   const nextActive = !(item.active !== false)
   await update(ref(db, itemPath), {
@@ -808,6 +951,23 @@ export async function toggleScheduleActive(params: {
     ref_id: String(item.id),
     new_value: String(item.name || item.title || item.id || ""),
   })
+  const notification = scheduleToggleDeleteNotification(
+    "toggle",
+    tab,
+    item,
+    lists
+  )
+  if (notification) {
+    await sendScheduleChangeNotifications({
+      companyId,
+      uids: notification.uids,
+      title: notification.title,
+      message: notification.message,
+      refId: String(item.id),
+      userData,
+      extraData: notification.extra,
+    })
+  }
   toast.success(
     `${createLabel(tab)} ${nextActive ? "diaktifkan" : "dinonaktifkan"}.`
   )
@@ -818,8 +978,12 @@ export async function deleteScheduleItem(params: {
   item: ScheduleRow
   companyId: string
   userData: FirebaseUserData | null
+  lists: Pick<
+    ScheduleLists,
+    "shifts" | "assignments" | "specials" | "employees"
+  >
 }): Promise<void> {
-  const { tab, item, companyId, userData } = params
+  const { tab, item, companyId, userData, lists } = params
   const itemPath = scheduleItemPath(tab, item, companyId)
   await set(ref(db, itemPath), null)
   await writeScheduleChangeLog(companyId, {
@@ -830,6 +994,23 @@ export async function deleteScheduleItem(params: {
     ref_id: String(item.schedule_id || item.id),
     new_value: String(item.name || item.title || item.id || ""),
   })
+  const notification = scheduleToggleDeleteNotification(
+    "delete",
+    tab,
+    item,
+    lists
+  )
+  if (notification) {
+    await sendScheduleChangeNotifications({
+      companyId,
+      uids: notification.uids,
+      title: notification.title,
+      message: notification.message,
+      refId: String(item.id),
+      userData,
+      extraData: notification.extra,
+    })
+  }
   toast.success(`${createLabel(tab)} dihapus.`)
 }
 

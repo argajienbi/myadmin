@@ -15,13 +15,26 @@ import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/componen
 import { Checkbox } from "@workspace/ui/components/checkbox"
 import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@workspace/ui/components/select"
 import { Skeleton } from "@workspace/ui/components/skeleton"
+import { Textarea } from "@workspace/ui/components/textarea"
 import { PageHeader } from "@/components/page"
 import { useCompanyScope, useCurrentActor } from "@/lib/use-company"
 import { isFirebaseConfigured } from "@/lib/firebase"
+import { createUserNotificationAndPush } from "@/lib/firebase-notify"
 import { CompanySelect, FirebaseNotConfigured } from "../shared"
 import type { NotificationSettings } from "@/lib/firebase-types"
-import { saveNotificationSettings, useNotificationSettings } from "./api"
+import {
+  saveNotificationSettings,
+  useInstalledUsers,
+  useNotificationSettings,
+} from "./api"
 
 function ToggleRow({
   label,
@@ -81,6 +94,125 @@ function MinutesInput({
       />
       mnt
     </label>
+  )
+}
+
+/**
+ * Kirim Push Langsung — kartu di luar form pengaturan (tombolnya tidak
+ * ikut submit). Penerima hanya karyawan yang sudah menginstal aplikasi
+ * (punya token FCM aktif); pesan masuk inbox + antrean push, lalu
+ * Worker FCM mengirimkannya (biasanya < 1 menit). Status pengiriman
+ * bisa dicek di Log Notifikasi.
+ */
+function DirectPushCard({
+  companyId,
+  actor,
+}: {
+  companyId: string
+  actor: { uid: string; name: string }
+}) {
+  const installedQuery = useInstalledUsers(companyId)
+  const installed = installedQuery.data ?? []
+  const [targetUid, setTargetUid] = useState("")
+  const [pushTitle, setPushTitle] = useState("")
+  const [pushBody, setPushBody] = useState("")
+  const send = useMutation({
+    mutationFn: async () => {
+      if (!targetUid) throw new Error("Pilih dulu karyawan penerima.")
+      if (!pushTitle.trim() || !pushBody.trim())
+        throw new Error("Judul dan pesan wajib diisi.")
+      const queueId = await createUserNotificationAndPush(
+        companyId,
+        targetUid,
+        {
+          title: pushTitle.trim(),
+          message: pushBody.trim(),
+          type: "info",
+          ref_type: "manual",
+          skipSettingsCheck: true,
+          created_by: actor.uid,
+          created_by_name: actor.name,
+        },
+      )
+      if (!queueId) throw new Error("Firebase belum dikonfigurasi.")
+      return queueId
+    },
+    onSuccess: () => {
+      toast.success(
+        "Push masuk antrean. Cek Log Notifikasi untuk status pengiriman.",
+      )
+      setPushBody("")
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Kirim Push Langsung</CardTitle>
+      </CardHeader>
+      <CardContent className="grid gap-4">
+        <p className="text-sm text-muted-foreground">
+          Kirim notifikasi push ke satu karyawan yang sudah menginstal
+          aplikasi (punya token FCM aktif). Pesan masuk inbox karyawan dan
+          antrean push; Worker FCM mengirimkannya, biasanya kurang dari 1
+          menit.
+        </p>
+        <div className="grid gap-1.5">
+          <Label htmlFor="push-target">Penerima (sudah menginstal)</Label>
+          <Select
+            value={targetUid}
+            onValueChange={setTargetUid}
+            disabled={installedQuery.isLoading}
+          >
+            <SelectTrigger id="push-target">
+              <SelectValue
+                placeholder={
+                  installedQuery.isLoading
+                    ? "Memuat..."
+                    : installed.length === 0
+                      ? "Belum ada karyawan yang menginstal"
+                      : "Pilih karyawan"
+                }
+              />
+            </SelectTrigger>
+            <SelectContent>
+              {installed.map((u) => (
+                <SelectItem key={u.uid} value={u.uid}>
+                  {u.name} ({u.tokenCount} perangkat)
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="grid gap-1.5">
+          <Label htmlFor="push-title">Judul</Label>
+          <Input
+            id="push-title"
+            value={pushTitle}
+            onChange={(e) => setPushTitle(e.target.value)}
+            placeholder="cth. Pengumuman"
+          />
+        </div>
+        <div className="grid gap-1.5">
+          <Label htmlFor="push-body">Pesan</Label>
+          <Textarea
+            id="push-body"
+            value={pushBody}
+            onChange={(e) => setPushBody(e.target.value)}
+            placeholder="Tulis pesan push..."
+          />
+        </div>
+        <div>
+          <Button
+            type="button"
+            onClick={() => send.mutate()}
+            disabled={send.isPending || !targetUid}
+          >
+            {send.isPending ? "Mengirim..." : "Kirim Push"}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   )
 }
 
@@ -153,6 +285,7 @@ export function NotificationSettingsPage() {
       {!settings || settingsQuery.isLoading ? (
         <Skeleton className="h-64 w-full" />
       ) : (
+        <>
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="flex justify-end">
             <Button type="submit" disabled={save.isPending}>
@@ -390,6 +523,8 @@ export function NotificationSettingsPage() {
             </CardContent>
           </Card>
         </form>
+        <DirectPushCard companyId={companyId} actor={actor} />
+        </>
       )}
     </div>
   )

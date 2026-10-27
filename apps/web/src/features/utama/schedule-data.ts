@@ -308,13 +308,10 @@ export async function resolveScheduleForUser(params: {
     for (const id of Object.keys(overtimes)) {
       const item = overtimes[id]
       if (!item.active) continue
-      const isSameDate = item.date === date
-      const isInRange = dateInRange(
-        date,
-        String(item.date_start || item.start_date || ""),
-        String(item.date_end || item.end_date || "")
-      )
-      if (!isSameDate && !isInRange) continue
+      if (!dateExistsInSchedule(item, date)) continue
+      // Format simpan lembur (aplikasi lama & baru): peta `dates` + `target_uids`
+      // tanpa `type`/`target_id` — pakai helper yang sama dengan diagnostik.
+      const matchTargetUids = targetUidExistsInSchedule(item, uid)
       const matchUser =
         item.type === "user" &&
         (item.target_id === uid || item.user_id === uid || item.uid === uid)
@@ -322,7 +319,7 @@ export async function resolveScheduleForUser(params: {
         item.type === "group" &&
         (item.target_id === employee.group_id ||
           item.group_id === employee.group_id)
-      if (matchUser || matchGroup) {
+      if (matchTargetUids || matchUser || matchGroup) {
         selectedOvertime = { ...item, id }
         break
       }

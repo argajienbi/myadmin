@@ -1,9 +1,10 @@
 /**
  * Data Laporan — port logika Reports.tsx myadmin lama.
- * Mode normal: lean load per tanggal (maks 31 hari); leave/qr/lembur
- * sengaja tidak dimuat demi hemat bandwidth (seperti lama).
- * Mode Legacy: baca root besar RTDB (confirm + ketik LEGACY) — dipakai
- * hanya untuk data lama yang belum dibackfill.
+ * Data dibuka LANGSUNG dari RTDB (tanpa mode Legacy / tanpa confirm +
+ * ketik LEGACY): proyek sudah Spark tanpa billing, jadi baca mentah
+ * tidak lagi berisiko biaya. Presensi dibatasi rentang tanggal
+ * (maks 31 hari, lean per tanggal); perizinan/QR/lembur dibaca
+ * langsung dari root perusahaan lalu disaring periode di halaman.
  * Export: port exportService.ts lama (xlsx + jsPDF landscape).
  */
 import { useQuery } from "@tanstack/react-query"
@@ -136,13 +137,20 @@ function enrichAttendance(
   } as AttendanceRow
 }
 
-export async function fetchReportDataNormal(
+export async function fetchReportData(
   companyId: string,
   startDate: string,
   endDate: string,
   meta: ReportsMeta,
 ): Promise<ReportData> {
-  const rawRows = await loadAttendanceByDateRange({ companyId, startDate, endDate })
+  const db = getDb()
+  if (!db) throw new Error("Firebase belum dikonfigurasi.")
+  const [rawRows, leaveSnap, qrSnap, overtimeSnap] = await Promise.all([
+    loadAttendanceByDateRange({ companyId, startDate, endDate }),
+    get(ref(db, paths.leaveRequests(companyId))),
+    get(ref(db, paths.qrRequests(companyId))),
+    get(ref(db, paths.overtimeSchedules(companyId))),
+  ])
   const attendances = rawRows
     .map((rec) => enrichAttendance(rec, meta))
     .sort((a, b) => {
@@ -150,66 +158,13 @@ export async function fetchReportDataNormal(
       const d2 = new Date(`${b.record_date}T${b.record_time}`)
       return d2.getTime() - d1.getTime()
     })
-  // Seperti kode lama: mode normal tidak memuat leave/qr/lembur.
-  return { attendances, leaveRequests: [], qrRequests: [], overtimeSchedules: [] }
-}
-
-/**
- * Legacy Load — membaca root besar RTDB. Wajib confirm + ketik LEGACY.
- * Teks confirm sama persis dengan kode lama.
- */
-export async function fetchReportDataLegacy(
-  companyId: string,
-  meta: ReportsMeta,
-): Promise<ReportData> {
-  const confirmed = window.confirm(
-    "PERINGATAN: Legacy Load membaca root besar RTDB dan bisa meningkatkan biaya bandwidth. Gunakan hanya untuk data lama yang belum dibackfill. Lanjutkan?",
-  )
-  if (!confirmed) throw new Error("Legacy Load dibatalkan.")
-  const typed = window.prompt("Ketik LEGACY untuk melanjutkan mode berisiko:")
-  if (typed !== "LEGACY") throw new Error("Legacy Load dibatalkan.")
-  const db = getDb()
-  if (!db) throw new Error("Firebase belum dikonfigurasi.")
-  const [attSnap, leaveSnap, qrSnap, overtimeSnap] = await Promise.all([
-    get(ref(db, paths.attendanceRoot(companyId))),
-    get(ref(db, paths.leaveRequests(companyId))),
-    get(ref(db, paths.qrRequests(companyId))),
-    get(ref(db, paths.overtimeSchedules(companyId))),
-  ])
   const leaveRequests = snapshotToArray<LeaveRequestRow>(leaveSnap).map(
     (a) => ({ ...a, request_id: a.id }),
   )
   const qrRequests = snapshotToArray<Record<string, unknown>>(qrSnap)
   const overtimeSchedules =
     snapshotToArray<Record<string, unknown>>(overtimeSnap)
-  const allRecords: AttendanceRow[] = []
-  if (attSnap.exists()) {
-    const data = attSnap.val() as Record<
-      string,
-      Record<string, Record<string, Record<string, unknown>>>
-    >
-    for (const uid of Object.keys(data)) {
-      const datesObj = data[uid]
-      for (const date of Object.keys(datesObj)) {
-        const actionObj = datesObj[date]
-        for (const actionType of Object.keys(actionObj)) {
-          const rec = actionObj[actionType]
-          allRecords.push(
-            enrichAttendance(
-              { ...rec, record_uid: uid, record_date: date, action_type: actionType },
-              meta,
-            ),
-          )
-        }
-      }
-    }
-  }
-  allRecords.sort((a, b) => {
-    const d1 = new Date(`${a.record_date}T${a.record_time}`)
-    const d2 = new Date(`${b.record_date}T${b.record_time}`)
-    return d2.getTime() - d1.getTime()
-  })
-  return { attendances: allRecords, leaveRequests, qrRequests, overtimeSchedules }
+  return { attendances, leaveRequests, qrRequests, overtimeSchedules }
 }
 
 // --- Export (port exportService.ts lama) -----------------------------------

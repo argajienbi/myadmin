@@ -1,10 +1,13 @@
 // Dashboard Presensi — halaman Utama (Dewi).
 // Mengikuti mockup dashboard.html + logika Dashboard.tsx lama.
-// Data gate dipertahankan (logika lama menang atas mockup): ringkasan hanya
-// dimuat setelah "Ambil Ringkasan" — atau otomatis bila summary hari itu
-// sudah ada. Kartu "Terlambat Hari Ini" mengikuti mockup (di kode lama
-// tempat ini masih placeholder "Papan Kedisiplinan").
-import { useCallback, useEffect, useMemo, useState } from "react"
+// Ringkasan dibaca LANGSUNG dari RTDB dan dihitung di klien saat halaman
+// dibuka (tanpa node pre-computed dashboard_summary /
+// pending_approval_summary dan tanpa tombol "Ambil Ringkasan"): proyek
+// sudah Spark tanpa billing, jadi baca mentah tidak lagi berisiko biaya.
+// Kartu "Terlambat Hari Ini" mengikuti mockup (di kode lama tempat ini
+// masih placeholder "Papan Kedisiplinan").
+import { useEffect, useMemo, useRef, useState } from "react"
+import { useMutation } from "@tanstack/react-query"
 import { Link, useNavigate } from "@tanstack/react-router"
 import { format, isSameMonth, parseISO, subDays } from "date-fns"
 import { id as idLocale } from "date-fns/locale"
@@ -46,10 +49,11 @@ import { useCompany } from "@/lib/use-company"
 import { companyDisplayName } from "@/lib/display-utils"
 import { getAttendanceStatus, getLateMinutes, isCheckIn } from "@/lib/attendance-utils"
 import { manualGet } from "@/lib/rtdb-data-gate"
-import { loadAttendanceByDateRange, loadDashboardSummary, todayKey } from "@/lib/rtdb-lean-service"
+import { loadAttendanceByDateRange, todayKey } from "@/lib/rtdb-lean-service"
 import { type AttendanceRow } from "@/lib/rtdb-lean-service"
+import { paths } from "@/lib/firebase-paths"
 import { AvatarInitials, EmptyState, StatCard } from "./ui"
-import { employeeName } from "./format"
+import { employeeName, leaveTypeValue } from "./format"
 
 type MasterRow = Record<string, unknown> & { id?: string; uid?: string }
 
@@ -62,6 +66,109 @@ function toMasterList(
     ...((val[k] as Record<string, unknown>) || {}),
     [keyField]: k,
   }))
+}
+
+interface DashboardData {
+  employees: MasterRow[]
+  offices: MasterRow[]
+  departments: MasterRow[]
+  groups: MasterRow[]
+  holidays: MasterRow[]
+  specials: MasterRow[]
+  dayRows: AttendanceRow[]
+  rangeRows: AttendanceRow[]
+  recentLogs: AttendanceRow[]
+  leaves: MasterRow[]
+  pendingCount: number
+}
+
+// Baca LANGSUNG dari data mentah RTDB (tanpa node pre-computed):
+// presensi tanggal terpilih + tren 30 hari (satu range read) + daftar
+// pengajuan mentah (izin/QR/koreksi). Fungsi murni — tanpa setState —
+// supaya bisa dipanggil dari mutation maupun effect.
+async function loadDashboardData(
+  companyId: string,
+  selectedDate: string
+): Promise<DashboardData> {
+  const [usersSnap, officesSnap, deptsSnap, groupsSnap, holidaysSnap, specialsSnap] =
+    await Promise.all([
+      manualGet<Record<string, unknown>>({
+        key: "company_users",
+        path: `company_users/${companyId}`,
+      }),
+      manualGet<Record<string, unknown>>({
+        key: "companies",
+        path: `offices/${companyId}`,
+      }),
+      manualGet<Record<string, unknown>>({
+        key: "companies",
+        path: `departments/${companyId}`,
+      }),
+      manualGet<Record<string, unknown>>({
+        key: "companies",
+        path: `employee_groups/${companyId}`,
+      }),
+      manualGet<Record<string, unknown>>({
+        key: "holidays",
+        path: `holidays/${companyId}`,
+      }),
+      manualGet<Record<string, unknown>>({
+        key: "companies",
+        path: `schedule_specials/${companyId}`,
+      }),
+    ])
+  const trendStart = format(subDays(new Date(), 29), "yyyy-MM-dd")
+  const [dayRows, rangeRows, leaveSnap, qrSnap, corrSnap] =
+    await Promise.all([
+      loadAttendanceByDateRange({
+        companyId,
+        startDate: selectedDate,
+        endDate: selectedDate,
+      }),
+      loadAttendanceByDateRange({
+        companyId,
+        startDate: trendStart,
+        endDate: todayKey(),
+      }),
+      manualGet<Record<string, unknown>>({
+        key: "leave_requests",
+        path: paths.leaveRequests(companyId),
+      }),
+      manualGet<Record<string, unknown>>({
+        key: "qr_requests",
+        path: paths.qrRequests(companyId),
+      }),
+      manualGet<Record<string, unknown>>({
+        key: "attendance_corrections",
+        path: paths.attendanceCorrections(companyId),
+      }),
+    ])
+  const recentLogs = [...rangeRows]
+    .sort((a, b) => Number(b.created_at || 0) - Number(a.created_at || 0))
+    .slice(0, 10)
+  const leaves = toMasterList(leaveSnap, "id")
+  const pendingLeaves = leaves.filter((r) =>
+    ["pending", "pending_admin", "processing"].includes(String(r.status || ""))
+  ).length
+  const pendingQr = toMasterList(qrSnap, "id").filter(
+    (r) => r.status === "pending_admin" || r.status === "pending"
+  ).length
+  const pendingCorr = toMasterList(corrSnap, "id").filter(
+    (r) => r.status === "pending" || !r.status
+  ).length
+  return {
+    employees: toMasterList(usersSnap, "uid"),
+    offices: toMasterList(officesSnap, "id"),
+    departments: toMasterList(deptsSnap, "id"),
+    groups: toMasterList(groupsSnap, "id"),
+    holidays: toMasterList(holidaysSnap, "id"),
+    specials: toMasterList(specialsSnap, "id"),
+    dayRows,
+    rangeRows,
+    recentLogs,
+    leaves,
+    pendingCount: pendingLeaves + pendingQr + pendingCorr,
+  }
 }
 
 export function DashboardPage() {
@@ -85,20 +192,15 @@ export function DashboardPage() {
   const [departments, setDepartments] = useState<MasterRow[]>([])
   const [groups, setGroups] = useState<MasterRow[]>([])
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRow[]>([])
+  const [trendRows, setTrendRows] = useState<AttendanceRow[]>([])
   const [recentLogs, setRecentLogs] = useState<AttendanceRow[]>([])
-  const [dashboardSummary, setDashboardSummary] = useState<Record<
-    string,
-    unknown
-  > | null>(null)
-  const [trendSummaryData, setTrendSummaryData] = useState<
-    Record<string, unknown>[]
-  >([])
+  const [leaveRequests, setLeaveRequests] = useState<MasterRow[]>([])
   const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0)
-  const [pendingApprovalMessage, setPendingApprovalMessage] = useState("")
   const [holidays, setHolidays] = useState<MasterRow[]>([])
   const [specials, setSpecials] = useState<MasterRow[]>([])
-  const [hasRunScan, setHasRunScan] = useState(false)
-  const [summaryLoading, setSummaryLoading] = useState(false)
+  // Penanda request terakhir: bila perusahaan/tanggal berganti sebelum
+  // fetch selesai, hasil basi dibuang.
+  const requestIdRef = useRef(0)
 
   const companyName = useMemo(() => {
     const company = companies.find((c) => c.id === companyId)
@@ -126,209 +228,47 @@ export function DashboardPage() {
     [filteredEmployees]
   )
 
-  const fetchDashboardData = useCallback(async () => {
-    if (!companyId) return
-    setSummaryLoading(true)
-    setPendingApprovalMessage("")
-    try {
-      const [summaryData, approvalData] = await Promise.all([
-        manualGet<Record<string, unknown>>({
-          key: "dashboard_summary",
-          path: `dashboard_summary/${companyId}/${selectedDate}`,
-        }),
-        manualGet<Record<string, unknown>>({
-          key: "leave_requests",
-          path: `pending_approval_summary/${companyId}`,
-        }),
-      ])
-      setDashboardSummary(summaryData)
-      if (approvalData) {
-        setPendingApprovalsCount(
-          Number(
-            approvalData.total || approvalData.pending_total || 0
-          )
-        )
-        setPendingApprovalMessage(
-          String(
-            approvalData.message || approvalData.info || ""
-          )
-        )
-      } else {
-        setPendingApprovalsCount(0)
-      }
-      const [usersSnap, officesSnap, deptsSnap, groupsSnap, holidaysSnap, specialsSnap] =
-        await Promise.all([
-          manualGet<Record<string, unknown>>({
-            key: "company_users",
-            path: `company_users/${companyId}`,
-          }),
-          manualGet<Record<string, unknown>>({
-            key: "companies",
-            path: `offices/${companyId}`,
-          }),
-          manualGet<Record<string, unknown>>({
-            key: "companies",
-            path: `departments/${companyId}`,
-          }),
-          manualGet<Record<string, unknown>>({
-            key: "companies",
-            path: `employee_groups/${companyId}`,
-          }),
-          manualGet<Record<string, unknown>>({
-            key: "holidays",
-            path: `holidays/${companyId}`,
-          }),
-          manualGet<Record<string, unknown>>({
-            key: "companies",
-            path: `schedule_specials/${companyId}`,
-          }),
-        ])
-      setEmployees(toMasterList(usersSnap, "uid"))
-      setOffices(toMasterList(officesSnap, "id"))
-      setDepartments(toMasterList(deptsSnap, "id"))
-      setGroups(toMasterList(groupsSnap, "id"))
-      setHolidays(toMasterList(holidaysSnap, "id"))
-      setSpecials(toMasterList(specialsSnap, "id"))
-      const recent = await manualGet<Record<string, Record<string, unknown>>>({
-        key: "attendance",
-        path: `attendance_recent/${companyId}`,
-      })
-      if (recent) {
-        const rows: AttendanceRow[] = Object.keys(recent).map((id) => ({
-          id,
-          ...recent[id],
-        }))
-        rows.sort(
-          (a, b) => Number(b.created_at || 0) - Number(a.created_at || 0)
-        )
-        setRecentLogs(rows.slice(0, 10))
-      } else {
-        setRecentLogs([])
-      }
-      setHasRunScan(true)
-      toast.success("Ringkasan dashboard berhasil dimuat.")
-    } catch (err) {
-      toast.error(
-        (err as Error)?.message || "Gagal memuat ringkasan."
-      )
-    } finally {
-      setSummaryLoading(false)
-    }
-  }, [companyId, selectedDate])
+  // Muat ringkasan lewat mutation (pola yang sama dengan halaman
+  // Laporan): data dibaca langsung dari RTDB oleh loadDashboardData,
+  // lalu diterapkan ke state di onSuccess.
+  const dashboardMutation = useMutation({
+    mutationFn: async (vars: { silent?: boolean }) => {
+      const requestId = ++requestIdRef.current
+      const data = await loadDashboardData(companyId, selectedDate)
+      return { ...data, requestId, silent: vars.silent ?? false }
+    },
+    onSuccess: (result) => {
+      if (requestIdRef.current !== result.requestId) return
+      setEmployees(result.employees)
+      setOffices(result.offices)
+      setDepartments(result.departments)
+      setGroups(result.groups)
+      setHolidays(result.holidays)
+      setSpecials(result.specials)
+      setAttendanceRecords(result.dayRows)
+      setTrendRows(result.rangeRows)
+      setRecentLogs(result.recentLogs)
+      setLeaveRequests(result.leaves)
+      setPendingApprovalsCount(result.pendingCount)
+      if (!result.silent) toast.success("Ringkasan dashboard berhasil dimuat.")
+    },
+    onError: (e: Error) =>
+      toast.error(e.message || "Gagal memuat ringkasan."),
+  })
+  const summaryLoading = dashboardMutation.isPending
 
-  // Auto-load ala kode lama: bila summary / approval hari itu sudah ada,
-  // gate dianggap terbuka tanpa menekan tombol.
+  // Muat otomatis saat perusahaan/tanggal berubah.
   useEffect(() => {
     if (!companyId || !selectedDate) return
-    let cancelled = false
-    const tryAutoLoad = async () => {
-      try {
-        const [summaryData, approvalData] = await Promise.all([
-          manualGet<Record<string, unknown>>({
-            key: "dashboard_summary",
-            path: `dashboard_summary/${companyId}/${selectedDate}`,
-          }),
-          manualGet<Record<string, unknown>>({
-            key: "leave_requests",
-            path: `pending_approval_summary/${companyId}`,
-          }),
-        ])
-        if (cancelled) return
-        if (summaryData || approvalData) {
-          setDashboardSummary(summaryData)
-          if (approvalData) {
-            setPendingApprovalsCount(
-              Number(approvalData.total || approvalData.pending_total || 0)
-            )
-          }
-          setHasRunScan(true)
-        } else {
-          setDashboardSummary(null)
-          setPendingApprovalsCount(0)
-          setHasRunScan(false)
-        }
-      } catch {
-        if (!cancelled) setHasRunScan(false)
-      }
-    }
-    void tryAutoLoad()
-    return () => {
-      cancelled = true
-    }
+    dashboardMutation.mutate({ silent: true })
+    // Sekali per perusahaan/tanggal; refresh berikutnya lewat tombol.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [companyId, selectedDate])
 
-  // Setelah scan: ambil data harian tanggal terpilih — dipakai statistik
-  // fallback (bila tidak ada dashboard_summary) dan daftar Terlambat.
-  useEffect(() => {
-    if (!companyId || !selectedDate || !hasRunScan) return
-    let cancelled = false
-    loadAttendanceByDateRange({
-      companyId,
-      startDate: selectedDate,
-      endDate: selectedDate,
-    })
-      .then((rows) => {
-        if (!cancelled) setAttendanceRecords(rows)
-      })
-      .catch(() => {
-        if (!cancelled) setAttendanceRecords([])
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [companyId, selectedDate, hasRunScan])
-
-  // Tren 30 hari ala kode lama: satu baca dashboard_summary per hari.
-  useEffect(() => {
-    if (!companyId || filteredEmployees.length === 0 || !hasRunScan) return
-    let cancelled = false
-    const fetchTrend = async () => {
-      const data: Record<string, unknown>[] = []
-      for (let i = 29; i >= 0; i--) {
-        const d = subDays(new Date(), i)
-        const dayStr = format(d, "yyyy-MM-dd")
-        const dayLabel = format(d, "dd MMM", { locale: idLocale })
-        const sum = await loadDashboardSummary(companyId, dayStr).catch(
-          () => null
-        )
-        if (cancelled) return
-        if (sum) {
-          data.push({
-            name: dayLabel,
-            Hadir: sum.hadir || 0,
-            Terlambat: sum.telat || 0,
-            "Izin/Sakit/Cuti": sum.izin_sakit_cuti || 0,
-            "Belum Absen": sum.absen || 0,
-          })
-        } else {
-          data.push({
-            name: dayLabel,
-            Hadir: 0,
-            Terlambat: 0,
-            "Izin/Sakit/Cuti": 0,
-            "Belum Absen": 0,
-          })
-        }
-      }
-      if (!cancelled) setTrendSummaryData(data)
-    }
-    void fetchTrend()
-    return () => {
-      cancelled = true
-    }
-  }, [companyId, filteredEmployees.length, hasRunScan])
-
+  // Statistik hari ini — selalu dihitung dari data mentah: presensi
+  // tanggal terpilih + pengajuan izin yang disetujui dan mencakup tanggal
+  // tersebut. Tidak lagi memakai node dashboard_summary.
   const todayStats = useMemo(() => {
-    if (dashboardSummary) {
-      return {
-        hadir: Number(dashboardSummary.hadir || 0),
-        telat: Number(dashboardSummary.telat || 0),
-        absen: Number(dashboardSummary.absen || 0),
-        izin: Number(dashboardSummary.izin || 0),
-        sakit: Number(dashboardSummary.sakit || 0),
-        cuti: Number(dashboardSummary.cuti || 0),
-      }
-    }
     let telat = 0
     const presentUsers = new Set<string>()
     attendanceRecords
@@ -355,14 +295,77 @@ export function DashboardPage() {
     // "Belum Absen" belum sama dengan Alpa: tanpa resolver jadwal, jangan
     // tampilkan sebagai mangkir (catatan dari kode lama).
     const absen = Math.max(0, filteredEmployees.length - hadir)
-    return { hadir, telat, absen, izin: 0, sakit: 0, cuti: 0 }
+    let izin = 0
+    let sakit = 0
+    let cuti = 0
+    leaveRequests.forEach((r) => {
+      if (String(r.status || "") !== "approved") return
+      const start = String(r.tanggal_mulai ?? r.date ?? "")
+      if (!start) return
+      const end = String(r.tanggal_selesai ?? start)
+      if (selectedDate < start || selectedDate > end) return
+      const type = leaveTypeValue(r)
+      if (type === "sakit") sakit++
+      else if (type === "cuti") cuti++
+      else izin++
+    })
+    return { hadir, telat, absen, izin, sakit, cuti }
   }, [
-    dashboardSummary,
     attendanceRecords,
+    leaveRequests,
     activeEmployeeIds,
     selectedDate,
     filteredEmployees.length,
   ])
+
+  // Tren 30 hari — dihitung dari range read yang sama (trendRows) +
+  // pengajuan izin yang disetujui, per hari.
+  const trendSummaryData = useMemo(() => {
+    const data: Record<string, unknown>[] = []
+    for (let i = 29; i >= 0; i--) {
+      const d = subDays(new Date(), i)
+      const dayStr = format(d, "yyyy-MM-dd")
+      const dayLabel = format(d, "dd MMM", { locale: idLocale })
+      const presentUsers = new Set<string>()
+      let telat = 0
+      trendRows
+        .filter(
+          (r) =>
+            (String(r.dateKey) === dayStr ||
+              String(r.parsedDate) === dayStr) &&
+            activeEmployeeIds.has(String(r.uid))
+        )
+        .forEach((r) => {
+          if (isCheckIn(r)) {
+            presentUsers.add(String(r.uid))
+            const status = getAttendanceStatus(r)
+            if (
+              status.includes("late") ||
+              status.includes("terlambat") ||
+              status.includes("telat")
+            ) {
+              telat++
+            }
+          }
+        })
+      let izinSakitCuti = 0
+      leaveRequests.forEach((r) => {
+        if (String(r.status || "") !== "approved") return
+        const start = String(r.tanggal_mulai ?? r.date ?? "")
+        if (!start) return
+        const end = String(r.tanggal_selesai ?? start)
+        if (dayStr >= start && dayStr <= end) izinSakitCuti++
+      })
+      data.push({
+        name: dayLabel,
+        Hadir: presentUsers.size,
+        Terlambat: telat,
+        "Izin/Sakit/Cuti": izinSakitCuti,
+        "Belum Absen": Math.max(0, filteredEmployees.length - presentUsers.size),
+      })
+    }
+    return data
+  }, [trendRows, leaveRequests, activeEmployeeIds, filteredEmployees.length])
 
   const currentHolidays = useMemo(() => {
     const todayDate = new Date()
@@ -604,42 +607,14 @@ export function DashboardPage() {
               </div>
               <Button
                 type="button"
-                onClick={() => void fetchDashboardData()}
+                onClick={() => dashboardMutation.mutate({})}
                 disabled={summaryLoading}
               >
-                {summaryLoading
-                  ? "Memproses..."
-                  : hasRunScan
-                    ? "Refresh Ringkasan"
-                    : "Ambil Ringkasan"}
+                {summaryLoading ? "Memproses..." : "Refresh"}
               </Button>
             </CardContent>
           </Card>
 
-          {!hasRunScan ? (
-            <Card>
-              <EmptyState>
-                <FileText className="mb-3 h-12 w-12 text-muted-foreground/40" />
-                <p className="text-base font-semibold text-foreground">
-                  Ringkasan belum dimuat
-                </p>
-                <p className="max-w-md">
-                  Jalur database tertutup demi efisiensi bandwidth. Silakan
-                  klik &apos;Ambil Ringkasan&apos; untuk memproses dan membuka
-                  ringkasan data.
-                </p>
-                <Button
-                  type="button"
-                  className="mt-4"
-                  onClick={() => void fetchDashboardData()}
-                  disabled={summaryLoading}
-                >
-                  {summaryLoading ? "Memproses..." : "Ambil Ringkasan"}
-                </Button>
-              </EmptyState>
-            </Card>
-          ) : (
-            <>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-3 lg:grid-cols-5">
                 <StatCard
                   title="Hadir Hari Ini"
@@ -717,13 +692,6 @@ export function DashboardPage() {
                   }
                 />
               </div>
-
-              {pendingApprovalMessage && (
-                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700 dark:border-amber-800/50 dark:bg-amber-900/10 dark:text-amber-400">
-                  <span className="font-semibold">Info Approval:</span>{" "}
-                  {pendingApprovalMessage}
-                </div>
-              )}
 
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
                 <Card className="lg:col-span-2">
@@ -1038,8 +1006,6 @@ export function DashboardPage() {
                   </CardContent>
                 </Card>
               </div>
-            </>
-          )}
         </>
       )}
     </div>

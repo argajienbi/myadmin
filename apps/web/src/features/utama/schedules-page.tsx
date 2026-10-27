@@ -1201,6 +1201,7 @@ export function SchedulesPage({ initialTab }: { initialTab?: string }) {
                                     item: t,
                                     companyId,
                                     userData,
+                                    lists,
                                   }).catch((err: Error) =>
                                     toast.error(err.message)
                                   )
@@ -1527,15 +1528,43 @@ export function SchedulesPage({ initialTab }: { initialTab?: string }) {
                             </StatusBadge>
                           </td>
                           <td className="px-4 py-3 text-right">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() =>
-                                setDeleteTarget({ tab: "holiday", item: h })
-                              }
-                            >
-                              Hapus
-                            </Button>
+                            <span className="inline-flex gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => openForm("holiday", h)}
+                              >
+                                Edit
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() =>
+                                  void toggleScheduleActive({
+                                    tab: "holiday",
+                                    item: h,
+                                    companyId,
+                                    userData,
+                                    lists,
+                                  }).catch((err: Error) =>
+                                    toast.error(err.message)
+                                  )
+                                }
+                              >
+                                {h.active === false
+                                  ? "Aktifkan"
+                                  : "Nonaktifkan"}
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() =>
+                                  setDeleteTarget({ tab: "holiday", item: h })
+                                }
+                              >
+                                Hapus
+                              </Button>
+                            </span>
                           </td>
                         </tr>
                       ))}
@@ -2040,6 +2069,7 @@ export function SchedulesPage({ initialTab }: { initialTab?: string }) {
                   item: target.item,
                   companyId,
                   userData,
+                  lists,
                 }).catch((err: Error) => toast.error(err.message))
               }}
             >

@@ -180,9 +180,15 @@ export async function updateEmployee(
     group_id: form.group_id || "",
     updated_at: Date.now(),
   }
+  // Tulis PER FIELD: multi-path update() dengan nilai objek akan
+  // MENIMPA seluruh node (RTDB). Jangan pernah menaruh objek patch
+  // langsung sebagai nilai sebuah path — itu menghapus email, role,
+  // foto, data wajah, perangkat, dst. dari kedua node.
   const updates: Record<string, unknown> = {}
-  updates[paths.userIndex(uid)] = patch
-  updates[paths.companyUser(companyId, uid)] = patch
+  for (const [key, value] of Object.entries(patch)) {
+    updates[`${paths.userIndex(uid)}/${key}`] = value
+    updates[`${paths.companyUser(companyId, uid)}/${key}`] = value
+  }
   await update(ref(db), updates)
   try {
     await mirrorUserToFirestore({ uid, company_id: companyId, ...patch })
@@ -328,11 +334,19 @@ export async function transferEmployee(
     department_id: form.department_id,
     sub_department_id: form.sub_department_id,
     group_id: form.group_id,
+    last_transfer_id: logRef.key ?? "",
+    last_transfer_at: now,
+    last_transfer_reason: form.reason ?? "",
+    updated_by: actor.uid,
     updated_at: now,
   }
+  // Tulis PER FIELD (lihat updateEmployee): nilai objek langsung pada
+  // sebuah path akan menimpa seluruh node karyawan.
   const updates: Record<string, unknown> = {}
-  updates[paths.userIndex(uid)] = patch
-  updates[paths.companyUser(companyId, uid)] = patch
+  for (const [key, value] of Object.entries(patch)) {
+    updates[`${paths.userIndex(uid)}/${key}`] = value
+    updates[`${paths.companyUser(companyId, uid)}/${key}`] = value
+  }
   await update(ref(db), updates)
   await writeAuditLog(companyId, {
     action: "TRANSFER_EMPLOYEE",

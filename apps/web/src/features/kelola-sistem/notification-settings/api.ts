@@ -9,11 +9,12 @@
  * reminder_scheduler_active_at ("HH:MM").
  */
 import { useQuery } from "@tanstack/react-query"
-import { ref, set } from "firebase/database"
+import { get, ref, set } from "firebase/database"
 import { getDb, isFirebaseConfigured } from "@/lib/firebase"
-import { readValue } from "@/lib/rtdb-read"
+import { readList, readValue } from "@/lib/rtdb-read"
+import { paths } from "@/lib/firebase-paths"
 import { clampNumber } from "@/lib/display-utils"
-import type { NotificationSettings } from "@/lib/firebase-types"
+import type { CompanyUser, NotificationSettings } from "@/lib/firebase-types"
 
 export const NOTIFICATION_SETTINGS_PATH = (companyId: string) =>
   `companies/${companyId}/notification_settings/main`
@@ -112,6 +113,63 @@ export function useNotificationSettings(companyId: string) {
       )
       return mergeNotificationSettings(data)
     },
+    enabled: isFirebaseConfigured() && Boolean(companyId),
+  })
+}
+
+/** Karyawan yang sudah menginstal aplikasi (punya ≥1 token FCM aktif). */
+export interface InstalledUser {
+  uid: string
+  name: string
+  email: string
+  tokenCount: number
+}
+
+/**
+ * Daftar penerima push langsung: karyawan aktif yang punya token FCM
+ * aktif di mirror RTDB (`companies/{id}/users/{uid}/fcm_tokens`).
+ * Token yang sama juga dicerminkan di Firestore; RTDB saja cukup untuk
+ * pengecekan "sudah menginstal" karena Worker FCM membaca dari RTDB.
+ */
+export async function listInstalledUsers(
+  companyId: string,
+): Promise<InstalledUser[]> {
+  const db = getDb()
+  if (!db) throw new Error("Firebase belum dikonfigurasi.")
+  const users = await readList<CompanyUser>(paths.companyUsers(companyId))
+  const actives = users.filter(
+    (u) => (u.status_akun ?? "active") === "active",
+  )
+  const results = await Promise.all(
+    actives.map(async (u) => {
+      const uid = String(u.uid ?? u.id ?? "")
+      if (!uid) return null
+      const snap = await get(
+        ref(db, `companies/${companyId}/users/${uid}/fcm_tokens`),
+      )
+      const tokens = (snap.val() ?? {}) as Record<
+        string,
+        Record<string, unknown>
+      >
+      const count = Object.values(tokens).filter(
+        (t) => t && t.active !== false && t.token,
+      ).length
+      if (count === 0) return null
+      return {
+        uid,
+        name: String(u.nama_lengkap ?? u.email ?? uid),
+        email: String(u.email ?? ""),
+        tokenCount: count,
+      } satisfies InstalledUser
+    }),
+  )
+  return results.filter((x): x is InstalledUser => x !== null)
+}
+
+export function useInstalledUsers(companyId: string) {
+  return useQuery({
+    queryKey: ["ks", "notification-installed-users", companyId],
+    queryFn: () => listInstalledUsers(companyId),
     enabled: isFirebaseConfigured() && Boolean(companyId),
   })
 }

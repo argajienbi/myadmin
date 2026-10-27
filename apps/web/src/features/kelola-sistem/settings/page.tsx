@@ -72,7 +72,7 @@ export function SettingsPage() {
   if (firebaseUser !== prevFirebaseUser) {
     setPrevFirebaseUser(firebaseUser)
     setNamaLengkap(firebaseUser?.nama_lengkap ?? "")
-    setNoHp("")
+    setNoHp(firebaseUser?.no_hp ?? "")
   }
   const [prevSettingsCompany, setPrevSettingsCompany] =
     useState(settingsCompany)
