@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jadwal Kerja — MyPresence Admin (Mockup)</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-tile">M</div>
+      <div>
+        <div class="brand-name">MyPresence</div>
+        <div class="brand-sub">Admin</div>
+      </div>
+    </div>
+    <nav>
+      <div class="nav-group-label">Utama</div>
+      <a class="nav-item" href="dashboard.html"><i data-lucide="layout-dashboard"></i>Dashboard</a>
+      <a class="nav-item" href="approvals.html"><i data-lucide="check-square"></i>Persetujuan<span class="count">7</span></a>
+      <a class="nav-item" href="attendance.html"><i data-lucide="fingerprint"></i>Absensi</a>
+      <a class="nav-item" href="corrections.html"><i data-lucide="history"></i>Koreksi Absensi</a>
+      <div class="nav-group-label">Kelola</div>
+      <a class="nav-item" href="employees.html"><i data-lucide="users"></i>Karyawan</a>
+      <a class="nav-item active" href="schedules.html"><i data-lucide="calendar"></i>Jadwal Kerja</a>
+      <a class="nav-item" href="organization.html"><i data-lucide="building-2"></i>Organisasi</a>
+      <a class="nav-item" href="companies.html"><i data-lucide="briefcase"></i>Perusahaan</a>
+      <a class="nav-item" href="company-admins.html"><i data-lucide="shield"></i>Admin PT</a>
+      <a class="nav-item" href="announcements.html"><i data-lucide="megaphone"></i>Pengumuman</a>
+      <div class="nav-group-label">Sistem</div>
+      <a class="nav-item" href="reports.html"><i data-lucide="bar-chart-2"></i>Laporan</a>
+      <a class="nav-item" href="audit.html"><i data-lucide="scroll-text"></i>Audit Log</a>
+      <a class="nav-item" href="database-health.html"><i data-lucide="database"></i>Kesehatan Database</a>
+      <a class="nav-item" href="notification-settings.html"><i data-lucide="bell"></i>Pengaturan Notifikasi</a>
+      <a class="nav-item" href="notification-logs.html"><i data-lucide="file-text"></i>Log Notifikasi</a>
+      <a class="nav-item" href="settings.html"><i data-lucide="settings"></i>Pengaturan</a>
+      <a class="nav-item" href="admin-guide.html"><i data-lucide="book-open"></i>Buku Petunjuk</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-chip">
+        <span class="avatar av-3">AG</span>
+        <div class="meta">
+          <div class="name">Armin Gandi</div>
+          <div class="role">OWNER</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="icon-btn" aria-label="Toggle sidebar"><i data-lucide="panel-left"></i></button>
+      <nav class="crumbs"><span>Admin</span><i data-lucide="chevron-right"></i><b>Jadwal Kerja</b></nav>
+      <div class="spacer"></div>
+      <span class="mode-chip">Owner Mode</span>
+      <span class="bell-wrap">
+        <button class="icon-btn" aria-label="Notifikasi"><i data-lucide="bell"></i></button>
+        <span class="bell-dot">7</span>
+      </span>
+      <button class="icon-btn" data-theme-toggle aria-label="Ganti tema"><i data-lucide="sun"></i></button>
+    </header>
+
+    <main class="content">
+      <div class="page-head">
+        <div>
+          <h1>Jam Kerja &amp; Penjadwalan</h1>
+          <p>Jam kerja, pola shift, penerapan jadwal, hari libur, jadwal khusus, dan lembur — PT MyPresence Indonesia</p>
+        </div>
+        <div class="head-actions">
+          <div class="field" style="min-width:200px"><label for="f-perusahaan">Pilih Perusahaan</label>
+            <select class="select" id="f-perusahaan"><option>PT MyPresence Indonesia</option><option>PT Contoh Kedua</option></select></div>
+        </div>
+      </div>
+
+      <!-- Tab: sembilan tab seperti di Schedules.tsx -->
+      <div data-tabs="#sched-body">
+        <div class="tabs" style="flex-wrap:wrap">
+          <button class="active" data-tab="ringkasan">Ringkasan</button>
+          <button data-tab="timetable">Jam Kerja</button>
+          <button data-tab="shift">Pola Shift</button>
+          <button data-tab="assignment">Terapkan Jadwal</button>
+          <button data-tab="holiday">Hari Libur</button>
+          <button data-tab="special">Jadwal Khusus</button>
+          <button data-tab="overtime">Jadwal Lembur</button>
+          <button data-tab="diagnostic">Cek Jadwal Karyawan</button>
+          <button data-tab="logs">Riwayat Perubahan</button>
+        </div>
+      </div>
+
+      <div id="sched-body" style="display:flex;flex-direction:column;gap:16px">
+      <!-- Ringkasan -->
+      <div data-type="ringkasan" style="display:flex;flex-direction:column;gap:16px">
+        <section class="grid-stats" style="grid-template-columns:repeat(4,1fr)">
+          <div class="card stat"><div class="label">Jam Kerja Aktif</div><div class="value">6</div><div class="sub">Pagi, Siang, Malam, dan 3 lainnya</div></div>
+          <div class="card stat"><div class="label">Pola Shift Aktif</div><div class="value">4</div><div class="sub">Pagi&ndash;Siang, Malam, Libur Bergilir</div></div>
+          <div class="card stat"><div class="label">Karyawan Terjadwal</div><div class="value">203</div><div class="sub">Dari 217 karyawan</div></div>
+          <div class="card stat"><div class="label">Hari Libur Bulan Ini</div><div class="value">0</div><div class="sub">Oktober 2026</div></div>
+        </section>
+        <section class="card">
+          <div class="card-head"><h2>Status Penerapan Jadwal Hari Ini (27 Okt 2026)</h2><p>Jumlah karyawan per jam kerja yang berlaku hari ini</p></div>
+          <div class="card-body" style="padding-top:8px;padding-bottom:8px">
+            <ul class="list-plain">
+              <li><span class="avatar av-1">PG</span><span class="grow"><b>Pagi &middot; 08:00&ndash;17:00</b><br><span class="secondary">Check-in 07:00&ndash;08:15 &middot; toleransi 15 menit</span></span><span class="badge badge-primary">142 karyawan</span></li>
+              <li><span class="avatar av-3">SG</span><span class="grow"><b>Siang &middot; 14:00&ndash;22:00</b><br><span class="secondary">Check-in 13:00&ndash;14:15 &middot; toleransi 15 menit</span></span><span class="badge badge-primary">48 karyawan</span></li>
+              <li><span class="avatar av-0">ML</span><span class="grow"><b>Malam &middot; 22:00&ndash;06:00</b><br><span class="secondary">Check-in 21:00&ndash;22:15 &middot; toleransi 15 menit</span></span><span class="badge badge-primary">13 karyawan</span></li>
+            </ul>
+          </div>
+        </section>
+        <div class="notice"><i data-lucide="info"></i><span><b>Ringkasan operasional jadwal.</b> Angka di atas mengikuti penerapan jadwal yang aktif hari ini. Mengedit jam kerja atau pola shift memengaruhi jadwal aktif karyawan — aplikasi menampilkan peringatan dampak sebelum menyimpan.</span></div>
+      </div>
+
+      <!-- Jam Kerja -->
+      <div data-type="timetable" style="display:none;flex-direction:column;gap:16px">
+        <section class="card">
+          <div class="card-head" style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+            <div><h2>Jam Kerja</h2><p>Daftar jam kerja beserta jendela absennya</p></div>
+            <button class="btn btn-primary"><i data-lucide="plus"></i>Tambah Jam Kerja</button>
+          </div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Nama Jam Kerja</th><th>Waktu Kerja</th><th>Jendela Absen</th><th style="text-align:right">Aksi</th></tr></thead>
+            <tbody>
+              <tr><td><span class="primary">Pagi</span></td><td class="num">08:00 &ndash; 17:00</td><td>Masuk 07:00&ndash;08:15 &middot; Pulang 16:30&ndash;18:00</td><td><div class="row-actions"><button class="btn btn-outline btn-sm">Edit</button><button class="btn btn-outline btn-sm">Nonaktifkan</button></div></td></tr>
+              <tr><td><span class="primary">Siang</span></td><td class="num">14:00 &ndash; 22:00</td><td>Masuk 13:00&ndash;14:15 &middot; Pulang 21:30&ndash;23:00</td><td><div class="row-actions"><button class="btn btn-outline btn-sm">Edit</button><button class="btn btn-outline btn-sm">Nonaktifkan</button></div></td></tr>
+              <tr><td><span class="primary">Malam</span></td><td class="num">22:00 &ndash; 06:00</td><td>Masuk 21:00&ndash;22:15 &middot; Pulang 05:30&ndash;07:00</td><td><div class="row-actions"><button class="btn btn-outline btn-sm">Edit</button><button class="btn btn-outline btn-sm">Nonaktifkan</button></div></td></tr>
+            </tbody>
+          </table></div>
+        </section>
+        <section class="card"><div class="card-head"><h2>Tambah Jam Kerja</h2><p>Isi semua batas waktu — jendela absen menentukan kapan check-in/out dianggap valid</p></div>
+        <div class="card-body" style="display:flex;flex-direction:column;gap:12px">
+          <div class="two-col">
+            <div class="field"><label for="jk-nama">Nama Jam Kerja</label><input class="input" id="jk-nama" placeholder="mis. Pagi"></div>
+            <div class="field"><label for="jk-toleransi">Toleransi Telat (Menit)</label><input class="input" id="jk-toleransi" type="number" value="15"></div>
+          </div>
+          <div class="two-col">
+            <div class="field"><label for="jk-mulai">Jam Kerja Mulai</label><input class="input" id="jk-mulai" type="time" value="08:00"></div>
+            <div class="field"><label for="jk-selesai">Jam Kerja Selesai</label><input class="input" id="jk-selesai" type="time" value="17:00"></div>
+          </div>
+          <div class="two-col">
+            <div class="field"><label for="jk-ci-mulai">Batas Check In (Mulai)</label><input class="input" id="jk-ci-mulai" type="time" value="07:00"></div>
+            <div class="field"><label for="jk-ci-akhir">Batas Check In (Akhir)</label><input class="input" id="jk-ci-akhir" type="time" value="08:15"></div>
+          </div>
+          <div class="two-col">
+            <div class="field"><label for="jk-co-mulai">Batas Check Out (Mulai)</label><input class="input" id="jk-co-mulai" type="time" value="16:30"></div>
+            <div class="field"><label for="jk-co-akhir">Batas Check Out (Akhir)</label><input class="input" id="jk-co-akhir" type="time" value="18:00"></div>
+          </div>
+          <div><button class="btn btn-primary">Simpan</button></div>
+        </div></section>
+      </div>
+
+      <!-- Pola Shift -->
+      <div data-type="shift" style="display:none;flex-direction:column;gap:16px">
+        <section class="card">
+          <div class="card-head" style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+            <div><h2>Pola Shift</h2><p>Pola hari kerja Senin&ndash;Minggu per timetable</p></div>
+            <button class="btn btn-primary"><i data-lucide="plus"></i>Tambah Pola</button>
+          </div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Nama Pola Shift</th><th>Status</th><th>Target Penerapan</th><th style="text-align:right">Aksi</th></tr></thead>
+            <tbody>
+              <tr><td><span class="primary">Pagi&ndash;Siang</span><div class="secondary">Senin&ndash;Jumat Pagi, Sabtu Siang</div></td><td><span class="badge badge-success">Aktif</span></td><td>Grup A &middot; 142 karyawan</td><td><div class="row-actions"><button class="btn btn-outline btn-sm">Edit</button></div></td></tr>
+              <tr><td><span class="primary">Malam</span><div class="secondary">Senin&ndash;Sabtu Malam</div></td><td><span class="badge badge-success">Aktif</span></td><td>Grup C &middot; 13 karyawan</td><td><div class="row-actions"><button class="btn btn-outline btn-sm">Edit</button></div></td></tr>
+              <tr><td><span class="primary">Libur Bergilir</span><div class="secondary">Libur bergantian per grup</div></td><td><span class="badge badge-success">Aktif</span></td><td>Grup B &middot; 48 karyawan</td><td><div class="row-actions"><button class="btn btn-outline btn-sm">Edit</button></div></td></tr>
+            </tbody>
+          </table></div>
+        </section>
+      </div>
+
+      <!-- Terapkan Jadwal -->
+      <div data-type="assignment" style="display:none;flex-direction:column;gap:16px">
+        <section class="card">
+          <div class="card-head" style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+            <div><h2>Terapkan Jadwal</h2><p>Pasangkan pola shift ke karyawan atau grup, dengan periode berlaku</p></div>
+            <button class="btn btn-primary"><i data-lucide="plus"></i>Terapkan Jadwal</button>
+          </div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Target Penerapan</th><th>Pola Shift</th><th>Periode</th><th style="text-align:right">Aksi</th></tr></thead>
+            <tbody>
+              <tr><td><span class="primary">Grup A</span><div class="secondary">Housekeeping</div></td><td>Pagi&ndash;Siang</td><td class="num">1 &ndash; 31 Okt 2026</td><td><div class="row-actions"><button class="btn btn-outline btn-sm">Edit</button><button class="btn btn-outline btn-sm">Hapus</button></div></td></tr>
+              <tr><td><span class="primary">Grup B</span><div class="secondary">Gardener</div></td><td>Libur Bergilir</td><td class="num">1 &ndash; 31 Okt 2026</td><td><div class="row-actions"><button class="btn btn-outline btn-sm">Edit</button><button class="btn btn-outline btn-sm">Hapus</button></div></td></tr>
+              <tr><td><span class="primary">Andika Kurniawan</span><div class="secondary">EMP-1042 &middot; Security</div></td><td>Malam</td><td class="num">20 &ndash; 31 Okt 2026</td><td><div class="row-actions"><button class="btn btn-outline btn-sm">Edit</button><button class="btn btn-outline btn-sm">Hapus</button></div></td></tr>
+            </tbody>
+          </table></div>
+        </section>
+      </div>
+
+      <!-- Hari Libur -->
+      <div data-type="holiday" style="display:none;flex-direction:column;gap:16px">
+        <section class="card">
+          <div class="card-head" style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+            <div><h2>Hari Libur</h2><p>Libur nasional (bisa sinkron Google Calendar) dan libur perusahaan</p></div>
+            <button class="btn btn-primary"><i data-lucide="plus"></i>Tambah Hari Libur</button>
+          </div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Tanggal</th><th>Keterangan</th><th>Sumber</th><th style="text-align:right">Aksi</th></tr></thead>
+            <tbody>
+              <tr><td class="num">25 Des 2026</td><td><span class="primary">Hari Raya Natal</span></td><td><span class="badge badge-info">Nasional</span></td><td><div class="row-actions"><button class="btn btn-outline btn-sm">Hapus</button></div></td></tr>
+              <tr><td class="num">1 Jan 2027</td><td><span class="primary">Tahun Baru Masehi</span></td><td><span class="badge badge-info">Nasional</span></td><td><div class="row-actions"><button class="btn btn-outline btn-sm">Hapus</button></div></td></tr>
+            </tbody>
+          </table></div>
+          <div class="card-body"><div class="empty" style="padding:16px">Tidak ada hari libur di Oktober 2026.</div></div>
+        </section>
+      </div>
+
+      <!-- Jadwal Khusus -->
+      <div data-type="special" style="display:none;flex-direction:column;gap:16px">
+        <section class="card">
+          <div class="card-head" style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+            <div><h2>Jadwal Khusus</h2><p>Perubahan jam kerja satu kali untuk tanggal tertentu</p></div>
+            <button class="btn btn-primary"><i data-lucide="plus"></i>Tambah Jadwal Khusus</button>
+          </div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Nama</th><th>Tanggal</th><th>Jam Kerja</th><th>Status</th><th style="text-align:right">Aksi</th></tr></thead>
+            <tbody>
+              <tr><td><span class="primary">Jaga Malam Event</span><div class="secondary">Grup A &middot; 12 karyawan</div></td><td class="num">31 Okt 2026</td><td>22:00 &ndash; 06:00</td><td><span class="badge badge-success">Aktif</span></td><td><div class="row-actions"><button class="btn btn-outline btn-sm">Edit</button><button class="btn btn-outline btn-sm">Hapus</button></div></td></tr>
+              <tr><td><span class="primary">Shift Pagi Dipercepat</span><div class="secondary">Grup B &middot; 8 karyawan</div></td><td class="num">28 Okt 2026</td><td>07:00 &ndash; 16:00</td><td><span class="badge badge-success">Aktif</span></td><td><div class="row-actions"><button class="btn btn-outline btn-sm">Edit</button><button class="btn btn-outline btn-sm">Hapus</button></div></td></tr>
+            </tbody>
+          </table></div>
+        </section>
+      </div>
+
+      <!-- Jadwal Lembur -->
+      <div data-type="overtime" style="display:none;flex-direction:column;gap:16px">
+        <section class="card">
+          <div class="card-head" style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+            <div><h2>Jadwal Lembur</h2><p>Grup lembur terjadwal — berbeda dari lembur yang diajukan mandiri</p></div>
+            <button class="btn btn-primary"><i data-lucide="plus"></i>Tambah Jadwal Lembur</button>
+          </div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Nama Grup Lembur</th><th>Tanggal</th><th>Karyawan</th><th>Status</th><th style="text-align:right">Aksi</th></tr></thead>
+            <tbody>
+              <tr><td><span class="primary">Lembur IT Support</span></td><td class="num">27 Okt 2026</td><td>4 karyawan</td><td><span class="badge badge-success">Aktif</span></td><td><div class="row-actions"><button class="btn btn-outline btn-sm">Edit</button><button class="btn btn-outline btn-sm">Hapus</button></div></td></tr>
+              <tr><td><span class="primary">Lembur Persiapan Event</span></td><td class="num">30 &ndash; 31 Okt 2026</td><td>12 karyawan</td><td><span class="badge badge-success">Aktif</span></td><td><div class="row-actions"><button class="btn btn-outline btn-sm">Edit</button><button class="btn btn-outline btn-sm">Hapus</button></div></td></tr>
+            </tbody>
+          </table></div>
+        </section>
+      </div>
+
+      <!-- Cek Jadwal Karyawan -->
+      <div data-type="diagnostic" style="display:none;flex-direction:column;gap:16px">
+        <section class="card"><div class="card-head"><h2>Cek Jadwal Karyawan</h2><p>Diagnostik: jadwal aktif mana yang dipakai karyawan pada tanggal tertentu (overtime vs hari libur vs shift)</p></div>
+        <div class="card-body" style="display:flex;flex-direction:column;gap:12px">
+          <div class="filters">
+            <div class="field"><label for="ck-perusahaan">Pilih Perusahaan</label><select class="select" id="ck-perusahaan"><option>PT MyPresence Indonesia</option></select></div>
+            <div class="field"><label for="ck-karyawan">Pilih Karyawan</label><select class="select" id="ck-karyawan"><option>Andika Kurniawan &middot; EMP-1042</option><option>Siti Dahlia &middot; EMP-1018</option><option>Budi Santoso &middot; EMP-1007</option></select></div>
+            <div class="field"><label for="ck-tanggal">Tanggal</label><input class="input" id="ck-tanggal" type="date" value="2026-10-27"></div>
+            <button class="btn btn-primary" style="align-self:flex-end"><i data-lucide="search"></i>Cek Jadwal</button>
+          </div>
+          <div class="notice" style="border-style:solid;border-color:var(--success);background:var(--success-bg)"><i data-lucide="badge-check"></i><span><b>Siap digunakan untuk absen.</b> Jadwal aktif hari ini: <b>Pagi 08:00&ndash;17:00</b> — sumber: Pola Shift &ldquo;Pagi&ndash;Siang&rdquo;, jendela check-in 07:00&ndash;08:15.</span></div>
+          <dl class="kv">
+            <dt>Jadwal aktif</dt><dd>Pagi &middot; 08:00&ndash;17:00</dd>
+            <dt>Sumber</dt><dd>Pola Shift &ldquo;Pagi&ndash;Siang&rdquo; (Grup A)</dd>
+            <dt>Jendela check-in</dt><dd>07:00 &ndash; 08:15 (toleransi 15 menit)</dd>
+            <dt>Jendela check-out</dt><dd>16:30 &ndash; 18:00</dd>
+            <dt>Hari libur?</dt><dd>Tidak — 27 Okt 2026 hari kerja biasa</dd>
+          </dl>
+        </div></section>
+      </div>
+
+      <!-- Riwayat Perubahan -->
+      <div data-type="logs" style="display:none;flex-direction:column;gap:16px">
+        <section class="card">
+          <div class="card-head"><h2>Riwayat Perubahan</h2><p>Catatan perubahan jadwal — siapa mengubah apa dan kapan</p></div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Waktu</th><th>User</th><th>Perubahan</th><th>Detail</th></tr></thead>
+            <tbody>
+              <tr><td class="num">27 Okt 2026, 09:12</td><td>Armin Gandi</td><td><span class="badge badge-info">Pola Shift</span></td><td>Pola &ldquo;Pagi&ndash;Siang&rdquo; diterapkan ke Grup A</td></tr>
+              <tr><td class="num">26 Okt 2026, 16:40</td><td>Armin Gandi</td><td><span class="badge badge-warning">Jam Kerja</span></td><td>Toleransi telat &ldquo;Pagi&rdquo; diubah 10 &rarr; 15 menit</td></tr>
+              <tr><td class="num">25 Okt 2026, 11:03</td><td>Armin Gandi</td><td><span class="badge badge-primary">Jadwal Khusus</span></td><td>&ldquo;Jaga Malam Event&rdquo; dibuat untuk 31 Okt 2026</td></tr>
+            </tbody>
+          </table></div>
+        </section>
+      </div>
+      </div>
+
+      <p style="font-size:12px;color:var(--muted-foreground)">Mockup statis &mdash; semua angka dan nama di atas adalah data contoh, bukan data asli. Dibuat 27 Okt 2026.</p>
+    </main>
+  </div>
+</div>
+<script src="lucide.min.js"></script>
+<script src="mockup.js"></script>
+</body>
+</html>

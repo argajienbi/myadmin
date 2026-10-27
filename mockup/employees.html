@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Karyawan — MyPresence Admin (Mockup)</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-tile">M</div>
+      <div>
+        <div class="brand-name">MyPresence</div>
+        <div class="brand-sub">Admin</div>
+      </div>
+    </div>
+    <nav>
+      <div class="nav-group-label">Utama</div>
+      <a class="nav-item" href="dashboard.html"><i data-lucide="layout-dashboard"></i>Dashboard</a>
+      <a class="nav-item" href="approvals.html"><i data-lucide="check-square"></i>Persetujuan<span class="count">7</span></a>
+      <a class="nav-item" href="attendance.html"><i data-lucide="fingerprint"></i>Absensi</a>
+      <a class="nav-item" href="corrections.html"><i data-lucide="history"></i>Koreksi Absensi</a>
+      <div class="nav-group-label">Kelola</div>
+      <a class="nav-item active" href="employees.html"><i data-lucide="users"></i>Karyawan</a>
+      <a class="nav-item" href="schedules.html"><i data-lucide="calendar"></i>Jadwal Kerja</a>
+      <a class="nav-item" href="organization.html"><i data-lucide="building-2"></i>Organisasi</a>
+      <a class="nav-item" href="companies.html"><i data-lucide="briefcase"></i>Perusahaan</a>
+      <a class="nav-item" href="company-admins.html"><i data-lucide="shield"></i>Admin PT</a>
+      <a class="nav-item" href="announcements.html"><i data-lucide="megaphone"></i>Pengumuman</a>
+      <div class="nav-group-label">Sistem</div>
+      <a class="nav-item" href="reports.html"><i data-lucide="bar-chart-2"></i>Laporan</a>
+      <a class="nav-item" href="audit.html"><i data-lucide="scroll-text"></i>Audit Log</a>
+      <a class="nav-item" href="database-health.html"><i data-lucide="database"></i>Kesehatan Database</a>
+      <a class="nav-item" href="notification-settings.html"><i data-lucide="bell"></i>Pengaturan Notifikasi</a>
+      <a class="nav-item" href="notification-logs.html"><i data-lucide="file-text"></i>Log Notifikasi</a>
+      <a class="nav-item" href="settings.html"><i data-lucide="settings"></i>Pengaturan</a>
+      <a class="nav-item" href="admin-guide.html"><i data-lucide="book-open"></i>Buku Petunjuk</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-chip">
+        <span class="avatar av-3">AG</span>
+        <div class="meta">
+          <div class="name">Armin Gandi</div>
+          <div class="role">OWNER</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="icon-btn" aria-label="Toggle sidebar"><i data-lucide="panel-left"></i></button>
+      <nav class="crumbs"><span>Admin</span><i data-lucide="chevron-right"></i><b>Karyawan</b></nav>
+      <div class="spacer"></div>
+      <span class="mode-chip">Owner Mode</span>
+      <span class="bell-wrap">
+        <button class="icon-btn" aria-label="Notifikasi"><i data-lucide="bell"></i></button>
+        <span class="bell-dot">7</span>
+      </span>
+      <button class="icon-btn" data-theme-toggle aria-label="Ganti tema"><i data-lucide="sun"></i></button>
+    </header>
+
+    <main class="content">
+      <div class="page-head">
+        <div>
+          <h1>Karyawan</h1>
+          <p>217 karyawan &middot; 3 kantor &middot; 4 departemen</p>
+        </div>
+        <div class="head-actions">
+          <button class="btn btn-primary"><i data-lucide="plus"></i>Tambah Karyawan</button>
+        </div>
+      </div>
+
+      <section class="card"><div class="card-body filters">
+        <input class="input" type="search" placeholder="Cari nama, email, atau NIP..." aria-label="Cari karyawan">
+        <select class="select" aria-label="Kantor"><option>Semua Kantor</option><option>Kantor Pusat</option><option>Cabang MRP</option></select>
+        <select class="select" aria-label="Departemen"><option>Semua Departemen</option><option>Housekeeping</option><option>Gardener</option><option>Security</option><option>Admin</option></select>
+        <select class="select" aria-label="Status"><option>Semua Status</option><option>Aktif</option><option>Terverifikasi</option><option>Nonaktif</option></select>
+      </div></section>
+
+      <section class="card">
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>Nama / Email</th><th>Struktur Organisasi</th><th>Status</th><th style="text-align:right">Aksi</th>
+            </tr></thead>
+            <tbody>
+              <tr>
+                <td><div class="cell-user"><span class="avatar av-4">AK</span><div class="meta"><div class="name">Andika Kurniawan</div><div class="sub">andika@mypresence.id &middot; <span class="mono">EMP-1042</span></div></div></div></td>
+                <td><div class="primary">Kantor Pusat &middot; Housekeeping</div><div class="secondary">Grup A &middot; Shift Pagi</div></td>
+                <td><span class="badge badge-success">Aktif</span></td>
+                <td><div class="row-actions"><button class="btn btn-outline btn-sm">Ubah</button><button class="btn btn-outline btn-sm">Nonaktifkan</button></div></td>
+              </tr>
+              <tr>
+                <td><div class="cell-user"><span class="avatar av-2">SD</span><div class="meta"><div class="name">Siti Dahlia</div><div class="sub">siti@mypresence.id &middot; <span class="mono">EMP-1018</span></div></div></div></td>
+                <td><div class="primary">Kantor Pusat &middot; Housekeeping</div><div class="secondary">Grup B &middot; Shift Pagi</div></td>
+                <td><span class="badge badge-success">Aktif</span></td>
+                <td><div class="row-actions"><button class="btn btn-outline btn-sm">Ubah</button><button class="btn btn-outline btn-sm">Nonaktifkan</button></div></td>
+              </tr>
+              <tr>
+                <td><div class="cell-user"><span class="avatar av-0">BS</span><div class="meta"><div class="name">Budi Santoso</div><div class="sub">budi@mypresence.id &middot; <span class="mono">EMP-1007</span></div></div></div></td>
+                <td><div class="primary">Cabang MRP &middot; Gardener</div><div class="secondary">Grup A &middot; Shift Pagi</div></td>
+                <td><span class="badge badge-info">Terverifikasi</span></td>
+                <td><div class="row-actions"><button class="btn btn-outline btn-sm">Ubah</button><button class="btn btn-outline btn-sm">Nonaktifkan</button></div></td>
+              </tr>
+              <tr>
+                <td><div class="cell-user"><span class="avatar av-1">DL</span><div class="meta"><div class="name">Dewi Lestari</div><div class="sub">dewi@mypresence.id &middot; <span class="mono">EMP-1029</span></div></div></div></td>
+                <td><div class="primary">Kantor Pusat &middot; Admin</div><div class="secondary">Grup A &middot; Shift Pagi</div></td>
+                <td><span class="badge badge-success">Aktif</span></td>
+                <td><div class="row-actions"><button class="btn btn-outline btn-sm">Ubah</button><button class="btn btn-outline btn-sm">Nonaktifkan</button></div></td>
+              </tr>
+              <tr>
+                <td><div class="cell-user"><span class="avatar av-5">RM</span><div class="meta"><div class="name">Rina Marlina</div><div class="sub">rina@mypresence.id &middot; <span class="mono">EMP-1033</span></div></div></div></td>
+                <td><div class="primary">Cabang MRP &middot; Housekeeping</div><div class="secondary">Grup B &middot; Shift Sore</div></td>
+                <td><span class="badge badge-success">Aktif</span></td>
+                <td><div class="row-actions"><button class="btn btn-outline btn-sm">Ubah</button><button class="btn btn-outline btn-sm">Nonaktifkan</button></div></td>
+              </tr>
+              <tr>
+                <td><div class="cell-user"><span class="avatar av-3">AW</span><div class="meta"><div class="name">Agus Wijaya</div><div class="sub">agus@mypresence.id &middot; <span class="mono">EMP-1051</span></div></div></div></td>
+                <td><div class="primary">Kantor Pusat &middot; Security</div><div class="secondary">Grup C &middot; Shift Malam</div></td>
+                <td><span class="badge badge-success">Aktif</span></td>
+                <td><div class="row-actions"><button class="btn btn-outline btn-sm">Ubah</button><button class="btn btn-outline btn-sm">Nonaktifkan</button></div></td>
+              </tr>
+              <tr>
+                <td><div class="cell-user"><span class="avatar av-1">MP</span><div class="meta"><div class="name">Maya Putri</div><div class="sub">maya@mypresence.id &middot; <span class="mono">EMP-1012</span></div></div></div></td>
+                <td><div class="primary">Kantor Pusat &middot; Housekeeping</div><div class="secondary">Grup A &middot; Shift Pagi</div></td>
+                <td><span class="badge badge-neutral">Nonaktif</span></td>
+                <td><div class="row-actions"><button class="btn btn-outline btn-sm">Ubah</button><button class="btn btn-outline btn-sm">Aktifkan</button></div></td>
+              </tr>
+              <tr>
+                <td><div class="cell-user"><span class="avatar av-4">JP</span><div class="meta"><div class="name">Joko Prasetyo</div><div class="sub">joko@mypresence.id &middot; <span class="mono">EMP-1060</span></div></div></div></td>
+                <td><div class="primary">Cabang MRP &middot; Gardener</div><div class="secondary">Grup B &middot; Shift Pagi</div></td>
+                <td><span class="badge badge-success">Aktif</span></td>
+                <td><div class="row-actions"><button class="btn btn-outline btn-sm">Ubah</button><button class="btn btn-outline btn-sm">Nonaktifkan</button></div></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card-foot" style="display:flex;justify-content:space-between;align-items:center">
+          <span>Menampilkan 1&ndash;8 dari 217 karyawan</span>
+          <span style="display:flex;gap:6px">
+            <button class="btn btn-outline btn-sm" disabled>&larr; Sebelumnya</button>
+            <button class="btn btn-outline btn-sm">Berikutnya &rarr;</button>
+          </span>
+        </div>
+      </section>
+
+      <p style="font-size:12px;color:var(--muted-foreground)">Mockup statis &mdash; semua nama dan data di atas adalah data contoh, bukan data asli. Dibuat 27 Okt 2026.</p>
+    </main>
+  </div>
+</div>
+<script src="lucide.min.js"></script>
+<script src="mockup.js"></script>
+</body>
+</html>

@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Organisasi — MyPresence Admin (Mockup)</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-tile">M</div>
+      <div>
+        <div class="brand-name">MyPresence</div>
+        <div class="brand-sub">Admin</div>
+      </div>
+    </div>
+    <nav>
+      <div class="nav-group-label">Utama</div>
+      <a class="nav-item" href="dashboard.html"><i data-lucide="layout-dashboard"></i>Dashboard</a>
+      <a class="nav-item" href="approvals.html"><i data-lucide="check-square"></i>Persetujuan<span class="count">7</span></a>
+      <a class="nav-item" href="attendance.html"><i data-lucide="fingerprint"></i>Absensi</a>
+      <a class="nav-item" href="corrections.html"><i data-lucide="history"></i>Koreksi Absensi</a>
+      <div class="nav-group-label">Kelola</div>
+      <a class="nav-item" href="employees.html"><i data-lucide="users"></i>Karyawan</a>
+      <a class="nav-item" href="schedules.html"><i data-lucide="calendar"></i>Jadwal Kerja</a>
+      <a class="nav-item active" href="organization.html"><i data-lucide="building-2"></i>Organisasi</a>
+      <a class="nav-item" href="companies.html"><i data-lucide="briefcase"></i>Perusahaan</a>
+      <a class="nav-item" href="company-admins.html"><i data-lucide="shield"></i>Admin PT</a>
+      <a class="nav-item" href="announcements.html"><i data-lucide="megaphone"></i>Pengumuman</a>
+      <div class="nav-group-label">Sistem</div>
+      <a class="nav-item" href="reports.html"><i data-lucide="bar-chart-2"></i>Laporan</a>
+      <a class="nav-item" href="audit.html"><i data-lucide="scroll-text"></i>Audit Log</a>
+      <a class="nav-item" href="database-health.html"><i data-lucide="database"></i>Kesehatan Database</a>
+      <a class="nav-item" href="notification-settings.html"><i data-lucide="bell"></i>Pengaturan Notifikasi</a>
+      <a class="nav-item" href="notification-logs.html"><i data-lucide="file-text"></i>Log Notifikasi</a>
+      <a class="nav-item" href="settings.html"><i data-lucide="settings"></i>Pengaturan</a>
+      <a class="nav-item" href="admin-guide.html"><i data-lucide="book-open"></i>Buku Petunjuk</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-chip">
+        <span class="avatar av-3">AG</span>
+        <div class="meta">
+          <div class="name">Armin Gandi</div>
+          <div class="role">OWNER</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="icon-btn" aria-label="Toggle sidebar"><i data-lucide="panel-left"></i></button>
+      <nav class="crumbs"><span>Admin</span><i data-lucide="chevron-right"></i><b>Organisasi</b></nav>
+      <div class="spacer"></div>
+      <span class="mode-chip">Owner Mode</span>
+      <span class="bell-wrap">
+        <button class="icon-btn" aria-label="Notifikasi"><i data-lucide="bell"></i></button>
+        <span class="bell-dot">7</span>
+      </span>
+      <button class="icon-btn" data-theme-toggle aria-label="Ganti tema"><i data-lucide="sun"></i></button>
+    </header>
+
+    <main class="content">
+      <div class="page-head">
+        <div>
+          <h1>Organisasi</h1>
+          <p>Area, kantor dan radius presensi, departemen, sub departemen, grup karyawan, dan pola kerja — PT MyPresence Indonesia</p>
+        </div>
+        <div class="head-actions">
+          <div class="field" style="min-width:200px"><label for="f-perusahaan">Pilih Perusahaan</label>
+            <select class="select" id="f-perusahaan"><option>PT MyPresence Indonesia</option><option>PT Contoh Kedua</option></select></div>
+        </div>
+      </div>
+
+      <!-- Tab: enam entitas seperti di Organization.tsx -->
+      <div data-tabs="#org-body">
+        <div class="tabs" style="flex-wrap:wrap">
+          <button class="active" data-tab="area">Area</button>
+          <button data-tab="office">Kantor</button>
+          <button data-tab="department">Departemen</button>
+          <button data-tab="subdepartment">Sub Departemen</button>
+          <button data-tab="group">Grup Karyawan</button>
+          <button data-tab="pattern">Pola</button>
+        </div>
+      </div>
+
+      <div id="org-body" style="display:flex;flex-direction:column;gap:16px">
+      <!-- Area -->
+      <div data-type="area" style="display:flex;flex-direction:column;gap:16px">
+        <section class="card">
+          <div class="card-head" style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+            <div><h2>Area</h2><p>Area operasional perusahaan — kantor berada di dalam area</p></div>
+            <button class="btn btn-primary"><i data-lucide="plus"></i>Tambah Area</button>
+          </div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Nama</th><th>Kantor</th><th>Karyawan</th><th style="text-align:right">Aksi</th></tr></thead>
+            <tbody>
+              <tr><td><span class="primary">MSP</span></td><td>2 kantor</td><td>142 karyawan</td><td><div class="row-actions"><button class="btn btn-outline btn-sm">Edit</button></div></td></tr>
+              <tr><td><span class="primary">MRP</span></td><td>1 kantor</td><td>58 karyawan</td><td><div class="row-actions"><button class="btn btn-outline btn-sm">Edit</button></div></td></tr>
+              <tr><td><span class="primary">Dome</span></td><td>1 kantor</td><td>17 karyawan</td><td><div class="row-actions"><button class="btn btn-outline btn-sm">Edit</button></div></td></tr>
+            </tbody>
+          </table></div>
+        </section>
+      </div>
+
+      <!-- Kantor -->
+      <div data-type="office" style="display:none;flex-direction:column;gap:16px">
+        <section class="card">
+          <div class="card-head" style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+            <div><h2>Kantor</h2><p>Lokasi &amp; radius presensi — absensi di luar radius ditandai &ldquo;Luar Radius&rdquo;</p></div>
+            <button class="btn btn-primary"><i data-lucide="plus"></i>Tambah Kantor</button>
+          </div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Nama Kantor</th><th>Area</th><th>Lokasi &amp; Radius</th><th style="text-align:right">Aksi</th></tr></thead>
+            <tbody>
+              <tr><td><span class="primary">Kantor Pusat</span><div class="secondary">Jl. Contoh Raya No. 1, Jakarta</div></td><td>MSP</td><td><span class="mono">-6.1824, 106.8217</span> &middot; radius 150 m</td><td><div class="row-actions"><button class="btn btn-outline btn-sm">Edit</button><button class="btn btn-outline btn-sm">Lihat Peta</button></div></td></tr>
+              <tr><td><span class="primary">Cabang MRP</span><div class="secondary">Jl. Contoh Dua No. 8, Jakarta</div></td><td>MRP</td><td><span class="mono">-6.1901, 106.8302</span> &middot; radius 120 m</td><td><div class="row-actions"><button class="btn btn-outline btn-sm">Edit</button><button class="btn btn-outline btn-sm">Lihat Peta</button></div></td></tr>
+              <tr><td><span class="primary">Gudang Dome</span><div class="secondary">Kawasan Dome, Jakarta</div></td><td>Dome</td><td><span class="mono">-6.1750, 106.8150</span> &middot; radius 200 m</td><td><div class="row-actions"><button class="btn btn-outline btn-sm">Edit</button><button class="btn btn-outline btn-sm">Lihat Peta</button></div></td></tr>
+            </tbody>
+          </table></div>
+        </section>
+        <div class="notice"><i data-lucide="map-pin"></i><span><b>Lokasi &amp; radius presensi.</b> Titik koordinat dan radius diisi lewat pemilih peta (map picker). Karyawan yang absen di luar radius tetap tercatat, tapi berstatus &ldquo;Luar Radius&rdquo; dan masuk daftar perhatian di Dashboard.</span></div>
+      </div>
+
+      <!-- Departemen -->
+      <div data-type="department" style="display:none;flex-direction:column;gap:16px">
+        <section class="card">
+          <div class="card-head" style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+            <div><h2>Departemen</h2><p>Pengelompokan karyawan berdasarkan departemen</p></div>
+            <button class="btn btn-primary"><i data-lucide="plus"></i>Tambah Departemen</button>
+          </div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Nama</th><th>Kantor</th><th>Karyawan</th><th style="text-align:right">Aksi</th></tr></thead>
+            <tbody>
+              <tr><td><span class="primary">Housekeeping</span></td><td>Kantor Pusat</td><td>96 karyawan</td><td><div class="row-actions"><button class="btn btn-outline btn-sm">Edit</button></div></td></tr>
+              <tr><td><span class="primary">Gardener</span></td><td>Cabang MRP</td><td>34 karyawan</td><td><div class="row-actions"><button class="btn btn-outline btn-sm">Edit</button></div></td></tr>
+              <tr><td><span class="primary">Security</span></td><td>Kantor Pusat</td><td>52 karyawan</td><td><div class="row-actions"><button class="btn btn-outline btn-sm">Edit</button></div></td></tr>
+              <tr><td><span class="primary">Admin</span></td><td>Kantor Pusat</td><td>35 karyawan</td><td><div class="row-actions"><button class="btn btn-outline btn-sm">Edit</button></div></td></tr>
+            </tbody>
+          </table></div>
+        </section>
+      </div>
+
+      <!-- Sub Departemen -->
+      <div data-type="subdepartment" style="display:none;flex-direction:column;gap:16px">
+        <section class="card">
+          <div class="card-head" style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+            <div><h2>Sub Departemen</h2><p>Pembagian lebih rinci di dalam departemen (opsional)</p></div>
+            <button class="btn btn-primary"><i data-lucide="plus"></i>Tambah Sub Departemen</button>
+          </div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Nama</th><th>Departemen</th><th>Karyawan</th><th style="text-align:right">Aksi</th></tr></thead>
+            <tbody>
+              <tr><td><span class="primary">HK Lantai 1&ndash;5</span></td><td>Housekeeping</td><td>48 karyawan</td><td><div class="row-actions"><button class="btn btn-outline btn-sm">Edit</button></div></td></tr>
+              <tr><td><span class="primary">HK Lantai 6&ndash;10</span></td><td>Housekeeping</td><td>48 karyawan</td><td><div class="row-actions"><button class="btn btn-outline btn-sm">Edit</button></div></td></tr>
+              <tr><td><span class="primary">Taman &amp; Lansekap</span></td><td>Gardener</td><td>34 karyawan</td><td><div class="row-actions"><button class="btn btn-outline btn-sm">Edit</button></div></td></tr>
+            </tbody>
+          </table></div>
+        </section>
+      </div>
+
+      <!-- Grup Karyawan -->
+      <div data-type="group" style="display:none;flex-direction:column;gap:16px">
+        <section class="card">
+          <div class="card-head" style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+            <div><h2>Grup Karyawan</h2><p>Grup dipakai untuk penerapan jadwal massal</p></div>
+            <button class="btn btn-primary"><i data-lucide="plus"></i>Tambah Grup</button>
+          </div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Nama Grup</th><th>Departemen</th><th>Karyawan</th><th style="text-align:right">Aksi</th></tr></thead>
+            <tbody>
+              <tr><td><span class="primary">Grup A</span></td><td>Housekeeping</td><td>142 karyawan</td><td><div class="row-actions"><button class="btn btn-outline btn-sm">Edit</button></div></td></tr>
+              <tr><td><span class="primary">Grup B</span></td><td>Gardener</td><td>48 karyawan</td><td><div class="row-actions"><button class="btn btn-outline btn-sm">Edit</button></div></td></tr>
+              <tr><td><span class="primary">Grup C</span></td><td>Security</td><td>13 karyawan</td><td><div class="row-actions"><button class="btn btn-outline btn-sm">Edit</button></div></td></tr>
+            </tbody>
+          </table></div>
+        </section>
+      </div>
+
+      <!-- Pola -->
+      <div data-type="pattern" style="display:none;flex-direction:column;gap:16px">
+        <section class="card">
+          <div class="card-head" style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+            <div><h2>Pola</h2><p>Pola kerja: jam masuk/keluar dan hari kerja per grup</p></div>
+            <button class="btn btn-primary"><i data-lucide="plus"></i>Tambah Pola</button>
+          </div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Nama Pola</th><th>Jam Kerja</th><th>Hari Kerja</th><th style="text-align:right">Aksi</th></tr></thead>
+            <tbody>
+              <tr><td><span class="primary">Pagi</span></td><td class="num">08:00 &ndash; 17:00</td><td>Senin &ndash; Jumat</td><td><div class="row-actions"><button class="btn btn-outline btn-sm">Edit</button></div></td></tr>
+              <tr><td><span class="primary">Siang</span></td><td class="num">14:00 &ndash; 22:00</td><td>Senin &ndash; Sabtu</td><td><div class="row-actions"><button class="btn btn-outline btn-sm">Edit</button></div></td></tr>
+              <tr><td><span class="primary">Malam</span></td><td class="num">22:00 &ndash; 06:00</td><td>Senin &ndash; Sabtu</td><td><div class="row-actions"><button class="btn btn-outline btn-sm">Edit</button></div></td></tr>
+            </tbody>
+          </table></div>
+        </section>
+        <section class="card"><div class="card-head"><h2>Tambah Pola</h2><p>Nama pola mis. Pagi, Siang, Malam — lalu atur jam dan hari kerjanya</p></div>
+        <div class="card-body" style="display:flex;flex-direction:column;gap:12px">
+          <div class="field"><label for="pl-nama">Nama pola (mis. Pagi, Siang, Malam)</label><input class="input" id="pl-nama" placeholder="mis. Pagi"></div>
+          <div class="two-col">
+            <div class="field"><label for="pl-masuk">Jam masuk</label><input class="input" id="pl-masuk" type="time" value="08:00"></div>
+            <div class="field"><label for="pl-keluar">Jam keluar</label><input class="input" id="pl-keluar" type="time" value="17:00"></div>
+          </div>
+          <div class="field"><label>Hari kerja</label>
+            <div class="filters">
+              <label class="toggle"><input type="checkbox" checked>Senin</label>
+              <label class="toggle"><input type="checkbox" checked>Selasa</label>
+              <label class="toggle"><input type="checkbox" checked>Rabu</label>
+              <label class="toggle"><input type="checkbox" checked>Kamis</label>
+              <label class="toggle"><input type="checkbox" checked>Jumat</label>
+              <label class="toggle"><input type="checkbox">Sabtu</label>
+              <label class="toggle"><input type="checkbox">Minggu</label>
+            </div>
+          </div>
+          <div><button class="btn btn-primary">Simpan</button></div>
+        </div></section>
+      </div>
+      </div>
+
+      <p style="font-size:12px;color:var(--muted-foreground)">Mockup statis &mdash; semua angka dan nama di atas adalah data contoh, bukan data asli. Dibuat 27 Okt 2026.</p>
+    </main>
+  </div>
+</div>
+<script src="lucide.min.js"></script>
+<script src="mockup.js"></script>
+</body>
+</html>

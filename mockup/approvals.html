@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Persetujuan — MyPresence Admin (Mockup)</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-tile">M</div>
+      <div>
+        <div class="brand-name">MyPresence</div>
+        <div class="brand-sub">Admin</div>
+      </div>
+    </div>
+    <nav>
+      <div class="nav-group-label">Utama</div>
+      <a class="nav-item" href="dashboard.html"><i data-lucide="layout-dashboard"></i>Dashboard</a>
+      <a class="nav-item active" href="approvals.html"><i data-lucide="check-square"></i>Persetujuan<span class="count">7</span></a>
+      <a class="nav-item" href="attendance.html"><i data-lucide="fingerprint"></i>Absensi</a>
+      <a class="nav-item" href="corrections.html"><i data-lucide="history"></i>Koreksi Absensi</a>
+      <div class="nav-group-label">Kelola</div>
+      <a class="nav-item" href="employees.html"><i data-lucide="users"></i>Karyawan</a>
+      <a class="nav-item" href="schedules.html"><i data-lucide="calendar"></i>Jadwal Kerja</a>
+      <a class="nav-item" href="organization.html"><i data-lucide="building-2"></i>Organisasi</a>
+      <a class="nav-item" href="companies.html"><i data-lucide="briefcase"></i>Perusahaan</a>
+      <a class="nav-item" href="company-admins.html"><i data-lucide="shield"></i>Admin PT</a>
+      <a class="nav-item" href="announcements.html"><i data-lucide="megaphone"></i>Pengumuman</a>
+      <div class="nav-group-label">Sistem</div>
+      <a class="nav-item" href="reports.html"><i data-lucide="bar-chart-2"></i>Laporan</a>
+      <a class="nav-item" href="audit.html"><i data-lucide="scroll-text"></i>Audit Log</a>
+      <a class="nav-item" href="database-health.html"><i data-lucide="database"></i>Kesehatan Database</a>
+      <a class="nav-item" href="notification-settings.html"><i data-lucide="bell"></i>Pengaturan Notifikasi</a>
+      <a class="nav-item" href="notification-logs.html"><i data-lucide="file-text"></i>Log Notifikasi</a>
+      <a class="nav-item" href="settings.html"><i data-lucide="settings"></i>Pengaturan</a>
+      <a class="nav-item" href="admin-guide.html"><i data-lucide="book-open"></i>Buku Petunjuk</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-chip">
+        <span class="avatar av-3">AG</span>
+        <div class="meta">
+          <div class="name">Armin Gandi</div>
+          <div class="role">OWNER</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="icon-btn" aria-label="Toggle sidebar"><i data-lucide="panel-left"></i></button>
+      <nav class="crumbs"><span>Admin</span><i data-lucide="chevron-right"></i><b>Persetujuan</b></nav>
+      <div class="spacer"></div>
+      <span class="mode-chip">Owner Mode</span>
+      <span class="bell-wrap">
+        <button class="icon-btn" aria-label="Notifikasi"><i data-lucide="bell"></i></button>
+        <span class="bell-dot">7</span>
+      </span>
+      <button class="icon-btn" data-theme-toggle aria-label="Ganti tema"><i data-lucide="sun"></i></button>
+    </header>
+
+    <main class="content">
+      <div class="page-head">
+        <div>
+          <h1>Persetujuan</h1>
+          <p>7 pengajuan menunggu keputusan &mdash; izin, QR absensi, dan koreksi presensi</p>
+        </div>
+        <div class="head-actions">
+          <button class="btn btn-outline"><i data-lucide="download"></i>Ekspor CSV</button>
+        </div>
+      </div>
+
+      <!-- Tab: tiga jenis pengajuan seperti di Approvals.tsx (leave / qr / correction) -->
+      <div data-tabs="#approval-rows">
+        <div class="tabs">
+          <button class="active" data-tab="semua">Semua <span class="count">7</span></button>
+          <button data-tab="izin">Izin &amp; Cuti <span class="count">3</span></button>
+          <button data-tab="qr">QR Absensi <span class="count">1</span></button>
+          <button data-tab="koreksi">Koreksi <span class="count">3</span></button>
+        </div>
+      </div>
+
+      <section class="card">
+        <div class="table-wrap">
+          <table id="approval-rows">
+            <thead><tr>
+              <th>Pengaju</th><th>Jenis</th><th>Detail</th><th>Tanggal</th><th>Status</th><th style="text-align:right">Aksi</th>
+            </tr></thead>
+            <tbody>
+              <tr data-type="izin">
+                <td><div class="cell-user"><span class="avatar av-2">SD</span><div class="meta"><div class="name">Siti Dahlia</div><div class="sub mono">EMP-1018</div></div></div></td>
+                <td><span class="badge badge-info">Izin Sakit</span></td>
+                <td>Demam tinggi, surat dokter terlampir</td>
+                <td>28 Okt 2026</td>
+                <td><span class="badge badge-warning">Menunggu</span></td>
+                <td><div class="row-actions"><button class="btn btn-outline btn-sm" data-req="siti">Detail</button></div></td>
+              </tr>
+              <tr data-type="koreksi">
+                <td><div class="cell-user"><span class="avatar av-4">AK</span><div class="meta"><div class="name">Andika Kurniawan</div><div class="sub mono">EMP-1042</div></div></div></td>
+                <td><span class="badge badge-primary">Koreksi Masuk</span></td>
+                <td>Masuk <b>08:32 &rarr; 07:58</b> &middot; fingerprint lantai 2 error</td>
+                <td>27 Okt 2026</td>
+                <td><span class="badge badge-warning">Menunggu</span></td>
+                <td><div class="row-actions"><button class="btn btn-outline btn-sm" data-req="andika">Detail</button></div></td>
+              </tr>
+              <tr data-type="izin">
+                <td><div class="cell-user"><span class="avatar av-0">BS</span><div class="meta"><div class="name">Budi Santoso</div><div class="sub mono">EMP-1007</div></div></div></td>
+                <td><span class="badge badge-info">Cuti Tahunan</span></td>
+                <td>30 Okt &ndash; 1 Nov 2026 &middot; pengganti sudah diatur</td>
+                <td>30 Okt 2026</td>
+                <td><span class="badge badge-warning">Menunggu</span></td>
+                <td><div class="row-actions"><button class="btn btn-outline btn-sm" data-req="budi">Detail</button></div></td>
+              </tr>
+              <tr data-type="qr">
+                <td><div class="cell-user"><span class="avatar av-1">DL</span><div class="meta"><div class="name">Dewi Lestari</div><div class="sub mono">EMP-1029</div></div></div></td>
+                <td><span class="badge badge-neutral">QR Absensi</span></td>
+                <td>Check-in 07:55 &middot; di luar radius 120 m</td>
+                <td>27 Okt 2026</td>
+                <td><span class="badge badge-warning">Menunggu</span></td>
+                <td><div class="row-actions"><button class="btn btn-outline btn-sm" data-req="dewi">Detail</button></div></td>
+              </tr>
+              <tr data-type="koreksi">
+                <td><div class="cell-user"><span class="avatar av-5">RM</span><div class="meta"><div class="name">Rina Marlina</div><div class="sub mono">EMP-1033</div></div></div></td>
+                <td><span class="badge badge-primary">Koreksi Pulang</span></td>
+                <td>Pulang <b>17:05 &rarr; 17:30</b> &middot; lembur atas perintah supervisor</td>
+                <td>26 Okt 2026</td>
+                <td><span class="badge badge-warning">Menunggu</span></td>
+                <td><div class="row-actions"><button class="btn btn-outline btn-sm" data-req="rina">Detail</button></div></td>
+              </tr>
+              <tr data-type="izin">
+                <td><div class="cell-user"><span class="avatar av-3">AW</span><div class="meta"><div class="name">Agus Wijaya</div><div class="sub mono">EMP-1051</div></div></div></td>
+                <td><span class="badge badge-info">Izin Keluarga</span></td>
+                <td>Keperluan keluarga mendadak</td>
+                <td>27 Okt 2026</td>
+                <td><span class="badge badge-warning">Menunggu</span></td>
+                <td><div class="row-actions"><button class="btn btn-outline btn-sm" data-req="agus">Detail</button></div></td>
+              </tr>
+              <tr data-type="koreksi">
+                <td><div class="cell-user"><span class="avatar av-1">MP</span><div class="meta"><div class="name">Maya Putri</div><div class="sub mono">EMP-1012</div></div></div></td>
+                <td><span class="badge badge-primary">Koreksi Masuk &amp; Pulang</span></td>
+                <td>Tukar shift dengan Rina, disetujui supervisor</td>
+                <td>25 Okt 2026</td>
+                <td><span class="badge badge-warning">Menunggu</span></td>
+                <td><div class="row-actions"><button class="btn btn-outline btn-sm" data-req="maya">Detail</button></div></td>
+              </tr>
+              <tr data-empty style="display:none"><td colspan="6"><div class="empty">Tidak ada pengajuan pada tab ini.</div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <div class="notice">
+        <i data-lucide="triangle-alert"></i>
+        <div><b>Aturan tampilan foto &amp; lampiran (inti fix bug 2b).</b>
+        Foto absensi dan lampiran koreksi adalah dua dokumen berbeda dengan field penyimpanan berbeda.
+        Menyetujui koreksi <b>tidak pernah</b> menimpa foto absensi. Di modal detail, keduanya tampil di kartu terpisah dengan nama field-nya.</div>
+      </div>
+
+      <p style="font-size:12px;color:var(--muted-foreground)">Mockup statis &mdash; semua nama dan pengajuan di atas adalah data contoh, bukan data asli. Dibuat 27 Okt 2026.</p>
+    </main>
+  </div>
+</div>
+
+<!-- Modal detail: dua kartu bukti terpisah -->
+<div class="modal-backdrop" id="modal-detail" role="dialog" aria-modal="true" aria-labelledby="m-title">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <h2 id="m-title">Detail Pengajuan</h2>
+        <p id="m-sub"></p>
+      </div>
+      <button class="icon-btn" data-modal-close aria-label="Tutup"><i data-lucide="x"></i></button>
+    </div>
+    <div class="modal-body">
+      <dl class="kv">
+        <dt>Karyawan</dt><dd id="m-nama"></dd>
+        <dt>NIP</dt><dd class="mono" id="m-nip"></dd>
+        <dt>Departemen</dt><dd id="m-dept"></dd>
+        <dt>Jenis</dt><dd id="m-jenis"></dd>
+        <dt>Status</dt><dd><span class="badge badge-warning">Menunggu</span></dd>
+      </dl>
+
+      <div id="m-time-wrap" style="display:none">
+        <div class="time-compare">
+          <div class="time-box old"><div class="lbl" id="m-old-lbl">Tercatat</div><div class="val" id="m-old"></div></div>
+          <span class="time-arrow"><i data-lucide="arrow-right"></i></span>
+          <div class="time-box new"><div class="lbl" id="m-new-lbl">Diajukan</div><div class="val" id="m-new"></div></div>
+        </div>
+      </div>
+
+      <div>
+        <div class="field"><label>Alasan</label>
+        <p id="m-alasan" style="font-size:13.5px"></p></div>
+      </div>
+
+      <div class="proof-grid">
+        <!-- Kartu 1: FOTO ABSENSI (photo_url) — tidak pernah ditimpa -->
+        <div class="proof">
+          <div class="proof-head"><i data-lucide="image"></i><span class="t">Foto Absensi</span><span class="field-tag mono">photo_url</span></div>
+          <div class="proof-body" id="m-foto"></div>
+        </div>
+        <!-- Kartu 2: LAMPIRAN KOREKSI (correction_attachment_url) — field terpisah -->
+        <div class="proof">
+          <div class="proof-head"><i data-lucide="paperclip"></i><span class="t">Lampiran Koreksi</span><span class="field-tag mono" id="m-att-field">correction_attachment_url</span></div>
+          <div class="proof-body" id="m-lampiran"></div>
+        </div>
+      </div>
+
+      <div class="notice">
+        <i data-lucide="shield"></i>
+        <div>Lampiran disimpan di field <span class="mono">correction_attachment_url</span> &mdash; foto absensi di <span class="mono">photo_url</span> <b>tetap utuh</b> setelah koreksi disetujui.</div>
+      </div>
+
+      <div class="field"><label for="m-catatan">Catatan admin</label>
+        <textarea class="textarea" id="m-catatan" placeholder="Tulis catatan keputusan di sini (opsional)"></textarea></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" data-modal-close>Tutup</button>
+      <button class="btn btn-danger-outline">Tolak</button>
+      <button class="btn btn-primary"><i data-lucide="check"></i>Setujui</button>
+    </div>
+  </div>
+</div>
+
+<script src="lucide.min.js"></script>
+<script src="mockup.js"></script>
+<script>
+// Data contoh modal detail (statis, bukan data asli).
+var REQUESTS = {
+  andika: {
+    title: "Detail Pengajuan — Koreksi Presensi", sub: "Diajukan 27 Okt 2026, 08:35 WIB",
+    nama: "Andika Kurniawan", nip: "EMP-1042", dept: "Housekeeping · Kantor Pusat", jenis: "Koreksi Masuk",
+    alasan: "Mesin fingerprint lantai 2 error, sudah lapor ke IT pukul 08:05.",
+    time: { oldLbl: "Tercatat", old: "08:32", newLbl: "Diajukan", n: "07:58" },
+    foto: { ada: true, ket: "Foto selfie check-in, 27 Okt 2026 08:32", kualitas: "OK", specs: "1080 × 1440 · 86 KB" },
+    lampiran: { ada: true, nama: "surat-keterangan-it.pdf", ukuran: "148 KB · PDF", field: "correction_attachment_url" }
+  },
+  rina: {
+    title: "Detail Pengajuan — Koreksi Presensi", sub: "Diajukan 26 Okt 2026, 17:40 WIB",
+    nama: "Rina Marlina", nip: "EMP-1033", dept: "Housekeeping · Cabang MRP", jenis: "Koreksi Pulang",
+    alasan: "Lembur sampai 17:30 atas perintah supervisor.",
+    time: { oldLbl: "Tercatat", old: "17:05", newLbl: "Diajukan", n: "17:30" },
+    foto: { ada: true, ket: "Foto selfie pulang, 26 Okt 2026 17:05", kualitas: "OK", specs: "1080 × 1440 · 91 KB" },
+    lampiran: { ada: true, nama: "surat-lembur.pdf", ukuran: "96 KB · PDF", field: "correction_attachment_url" }
+  },
+  maya: {
+    title: "Detail Pengajuan — Koreksi Presensi", sub: "Diajukan 25 Okt 2026, 19:12 WIB",
+    nama: "Maya Putri", nip: "EMP-1012", dept: "Housekeeping · Kantor Pusat", jenis: "Koreksi Masuk & Pulang",
+    alasan: "Tukar shift dengan Rina Marlina, sudah disetujui supervisor.",
+    time: { oldLbl: "Tercatat masuk", old: "08:40", newLbl: "Diajukan masuk", n: "08:00" },
+    foto: { ada: true, ket: "Foto selfie, 25 Okt 2026 08:40", kualitas: "OK", specs: "1080 × 1440 · 88 KB" },
+    lampiran: { ada: true, nama: "persetujuan-tukar-shift.pdf", ukuran: "121 KB · PDF", field: "correction_attachment_url" }
+  },
+  siti: {
+    title: "Detail Pengajuan — Izin Sakit", sub: "Diajukan 27 Okt 2026, 06:20 WIB",
+    nama: "Siti Dahlia", nip: "EMP-1018", dept: "Housekeeping · Kantor Pusat", jenis: "Izin Sakit — 28 Okt 2026",
+    alasan: "Demam tinggi, surat dokter terlampir.",
+    time: null,
+    foto: { ada: false, ket: "Pengajuan izin tidak memerlukan foto absensi." },
+    lampiran: { ada: true, nama: "surat-dokter-siti.pdf", ukuran: "212 KB · PDF", field: "attachment_url" }
+  },
+  budi: {
+    title: "Detail Pengajuan — Cuti Tahunan", sub: "Diajukan 24 Okt 2026, 10:05 WIB",
+    nama: "Budi Santoso", nip: "EMP-1007", dept: "Gardener · Cabang MRP", jenis: "Cuti Tahunan — 30 Okt s.d. 1 Nov 2026",
+    alasan: "Cuti tahunan, pengganti sudah diatur dengan jadwal.",
+    time: null,
+    foto: { ada: false, ket: "Pengajuan cuti tidak memerlukan foto absensi." },
+    lampiran: { ada: false }
+  },
+  dewi: {
+    title: "Detail Pengajuan — QR Absensi", sub: "Diajukan 27 Okt 2026, 07:55 WIB",
+    nama: "Dewi Lestari", nip: "EMP-1029", dept: "Admin · Kantor Pusat", jenis: "QR Absensi — di luar radius",
+    alasan: "Check-in QR di gerbang, GPS menunjukkan posisi 120 m dari titik kantor.",
+    time: null,
+    foto: { ada: true, ket: "Foto check-in QR, 27 Okt 2026 07:55 · Jarak 120 m (radius 100 m)", kualitas: "OK", specs: "720 × 1280 · 64 KB" },
+    lampiran: { ada: false }
+  },
+  agus: {
+    title: "Detail Pengajuan — Izin Keluarga", sub: "Diajukan 27 Okt 2026, 07:10 WIB",
+    nama: "Agus Wijaya", nip: "EMP-1051", dept: "Security · Kantor Pusat", jenis: "Izin Keluarga — 27 Okt 2026",
+    alasan: "Keperluan keluarga mendadak.",
+    time: null,
+    foto: { ada: false, ket: "Pengajuan izin tidak memerlukan foto absensi." },
+    lampiran: { ada: false }
+  }
+};
+
+function isiModal(key) {
+  var r = REQUESTS[key];
+  if (!r) return;
+  document.getElementById("m-title").textContent = r.title;
+  document.getElementById("m-sub").textContent = r.sub;
+  document.getElementById("m-nama").textContent = r.nama;
+  document.getElementById("m-nip").textContent = r.nip;
+  document.getElementById("m-dept").textContent = r.dept;
+  document.getElementById("m-jenis").textContent = r.jenis;
+  document.getElementById("m-alasan").textContent = r.alasan;
+  var tw = document.getElementById("m-time-wrap");
+  if (r.time) {
+    tw.style.display = "";
+    document.getElementById("m-old-lbl").textContent = r.time.oldLbl;
+    document.getElementById("m-old").textContent = r.time.old;
+    document.getElementById("m-new-lbl").textContent = r.time.newLbl;
+    document.getElementById("m-new").textContent = r.time.n;
+  } else { tw.style.display = "none"; }
+  var foto = document.getElementById("m-foto");
+  if (r.foto.ada) {
+    foto.innerHTML =
+      '<div class="proof-photo"><i data-lucide="image"></i><span>Foto absensi (placeholder mockup)</span></div>' +
+      '<div style="font-size:13px">' + r.foto.ket + '</div>' +
+      '<div><span class="badge badge-success">Kualitas: ' + r.foto.kualitas + '</span> ' +
+      '<span class="num" style="color:var(--muted-foreground)">' + r.foto.specs + '</span></div>';
+  } else {
+    foto.innerHTML = '<div class="empty" style="padding:20px 8px">' + r.foto.ket + '</div>';
+  }
+  var lamp = document.getElementById("m-lampiran");
+  document.getElementById("m-att-field").textContent = r.lampiran.ada ? r.lampiran.field : "—";
+  if (r.lampiran.ada) {
+    lamp.innerHTML =
+      '<div class="doc-row"><span class="doc-ic"><i data-lucide="file-text"></i></span>' +
+      '<div style="min-width:0"><div class="doc-name">' + r.lampiran.nama + '</div>' +
+      '<div class="doc-meta">' + r.lampiran.ukuran + '</div></div></div>' +
+      '<div style="font-size:12.5px;color:var(--muted-foreground)">Dokumen pendukung &mdash; disimpan terpisah, bukan pengganti foto absensi.</div>';
+  } else {
+    lamp.innerHTML = '<div class="empty" style="padding:20px 8px">Tidak ada lampiran pada pengajuan ini.</div>';
+  }
+  if (window.lucide) window.lucide.createIcons();
+  document.getElementById("modal-detail").classList.add("open");
+}
+document.querySelectorAll("[data-req]").forEach(function (btn) {
+  btn.addEventListener("click", function () { isiModal(btn.getAttribute("data-req")); });
+});
+// Tautan "Koreksi Absensi" dari sidebar membuka tab Koreksi langsung.
+if (window.location.hash === "#koreksi") {
+  var tab = document.querySelector('[data-tab="koreksi"]');
+  if (tab) tab.click();
+}
+</script>
+</body>
+</html>
