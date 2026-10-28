@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pengaturan — MyPresence Admin (Mockup)</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-tile">M</div>
+      <div>
+        <div class="brand-name">MyPresence</div>
+        <div class="brand-sub">Admin</div>
+      </div>
+    </div>
+    <nav>
+      <div class="nav-group-label">Utama</div>
+      <a class="nav-item" href="dashboard.html"><i data-lucide="layout-dashboard"></i>Dashboard</a>
+      <a class="nav-item" href="approvals.html"><i data-lucide="check-square"></i>Persetujuan<span class="count">7</span></a>
+      <a class="nav-item" href="attendance.html"><i data-lucide="fingerprint"></i>Absensi</a>
+      <a class="nav-item" href="corrections.html"><i data-lucide="history"></i>Koreksi Absensi</a>
+      <div class="nav-group-label">Kelola</div>
+      <a class="nav-item" href="employees.html"><i data-lucide="users"></i>Karyawan</a>
+      <a class="nav-item" href="schedules.html"><i data-lucide="calendar"></i>Jadwal Kerja</a>
+      <a class="nav-item" href="organization.html"><i data-lucide="building-2"></i>Organisasi</a>
+      <a class="nav-item" href="companies.html"><i data-lucide="briefcase"></i>Perusahaan</a>
+      <a class="nav-item" href="company-admins.html"><i data-lucide="shield"></i>Admin PT</a>
+      <a class="nav-item" href="announcements.html"><i data-lucide="megaphone"></i>Pengumuman</a>
+      <div class="nav-group-label">Sistem</div>
+      <a class="nav-item" href="reports.html"><i data-lucide="bar-chart-2"></i>Laporan</a>
+      <a class="nav-item" href="audit.html"><i data-lucide="scroll-text"></i>Audit Log</a>
+      <a class="nav-item" href="database-health.html"><i data-lucide="database"></i>Kesehatan Database</a>
+      <a class="nav-item" href="notification-settings.html"><i data-lucide="bell"></i>Pengaturan Notifikasi</a>
+      <a class="nav-item" href="notification-logs.html"><i data-lucide="file-text"></i>Log Notifikasi</a>
+      <a class="nav-item active" href="settings.html"><i data-lucide="settings"></i>Pengaturan</a>
+      <a class="nav-item" href="admin-guide.html"><i data-lucide="book-open"></i>Buku Petunjuk</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-chip">
+        <span class="avatar av-3">AG</span>
+        <div class="meta">
+          <div class="name">Armin Gandi</div>
+          <div class="role">OWNER</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="icon-btn" aria-label="Toggle sidebar"><i data-lucide="panel-left"></i></button>
+      <nav class="crumbs"><span>Admin</span><i data-lucide="chevron-right"></i><b>Pengaturan</b></nav>
+      <div class="spacer"></div>
+      <span class="mode-chip">Owner Mode</span>
+      <span class="bell-wrap">
+        <button class="icon-btn" aria-label="Notifikasi"><i data-lucide="bell"></i></button>
+        <span class="bell-dot">7</span>
+      </span>
+      <button class="icon-btn" data-theme-toggle aria-label="Ganti tema"><i data-lucide="sun"></i></button>
+    </header>
+
+    <main class="content">
+      <div class="page-head">
+        <div>
+          <h1>Pengaturan</h1>
+          <p>Profil dan perusahaan</p>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <!-- Informasi Pribadi (dipertahankan dari Settings lama) -->
+        <section class="card">
+          <div class="card-head"><h2>Informasi Pribadi</h2><p>Data akun yang sedang masuk</p></div>
+          <div class="card-body" style="display:flex;flex-direction:column;gap:12px">
+            <div class="field"><label for="s-nama">Nama lengkap</label><input class="input" id="s-nama" value="Armin Gandi"></div>
+            <div class="field"><label for="s-email">Email</label><input class="input" id="s-email" type="email" value="armin.gandi@gmail.com"></div>
+            <div class="field"><label for="s-hp">No. HP</label><input class="input" id="s-hp" type="tel" value="0812-3456-7890"></div>
+            <div><button class="btn btn-primary">Simpan Perubahan</button></div>
+          </div>
+        </section>
+
+        <!-- Keamanan Akun -->
+        <section class="card">
+          <div class="card-head"><h2>Keamanan Akun</h2><p>Sandi dan verifikasi dua langkah</p></div>
+          <div class="card-body" style="display:flex;flex-direction:column;gap:12px">
+            <div class="field"><label for="s-pass">Sandi baru</label><input class="input" id="s-pass" type="password" placeholder="Minimal 6 karakter"></div>
+            <div class="field"><label for="s-pass2">Ulangi sandi baru</label><input class="input" id="s-pass2" type="password" placeholder="Ketik ulang sandi baru"></div>
+            <div class="toggle"><button class="switch" role="switch" aria-checked="true" aria-label="Verifikasi dua langkah"></button>Verifikasi dua langkah (TOTP) aktif</div>
+            <div><button class="btn btn-outline">Ubah Sandi</button></div>
+          </div>
+        </section>
+
+        <!-- Website Perusahaan -->
+        <section class="card">
+          <div class="card-head"><h2>Website Perusahaan</h2><p>Judul yang tampil di tab browser dan halaman login</p></div>
+          <div class="card-body" style="display:flex;flex-direction:column;gap:12px">
+            <div class="field"><label for="s-web">Judul website</label><input class="input" id="s-web" value="MyPresence — Absensi PT MyPresence Indonesia"></div>
+            <div><button class="btn btn-primary">Simpan</button></div>
+          </div>
+        </section>
+
+        <!-- Branding Perusahaan -->
+        <section class="card">
+          <div class="card-head"><h2>Branding Perusahaan</h2><p>Logo dan warna yang dipakai di aplikasi</p></div>
+          <div class="card-body" style="display:flex;flex-direction:column;gap:12px">
+            <div class="field"><label>Logo perusahaan</label>
+              <div style="display:flex;align-items:center;gap:12px">
+                <div class="brand-tile" style="width:48px;height:48px;font-size:22px;border-radius:10px">M</div>
+                <div><button class="btn btn-outline btn-sm">Unggah Logo</button><p class="hint" style="margin-top:6px">PNG atau SVG, maks 2 MB.</p></div>
+              </div>
+            </div>
+            <div class="field"><label>Warna primer</label>
+              <div style="display:flex;align-items:center;gap:10px">
+                <span style="width:32px;height:32px;border-radius:8px;background:#0b7a8c;border:1px solid var(--border)"></span>
+                <span class="mono" style="font-size:13px">#0b7a8c &mdash; Teal (dari template)</span>
+              </div>
+            </div>
+            <div><button class="btn btn-primary">Simpan Branding</button></div>
+          </div>
+        </section>
+      </div>
+
+      <p style="font-size:12px;color:var(--muted-foreground)">Mockup statis &mdash; semua isian di atas adalah data contoh, bukan data asli. Dibuat 27 Okt 2026.</p>
+    </main>
+  </div>
+</div>
+<script src="lucide.min.js"></script>
+<script src="mockup.js"></script>
+</body>
+</html>

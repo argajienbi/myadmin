@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pengumuman — MyPresence Admin (Mockup)</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-tile">M</div>
+      <div>
+        <div class="brand-name">MyPresence</div>
+        <div class="brand-sub">Admin</div>
+      </div>
+    </div>
+    <nav>
+      <div class="nav-group-label">Utama</div>
+      <a class="nav-item" href="dashboard.html"><i data-lucide="layout-dashboard"></i>Dashboard</a>
+      <a class="nav-item" href="approvals.html"><i data-lucide="check-square"></i>Persetujuan<span class="count">7</span></a>
+      <a class="nav-item" href="attendance.html"><i data-lucide="fingerprint"></i>Absensi</a>
+      <a class="nav-item" href="corrections.html"><i data-lucide="history"></i>Koreksi Absensi</a>
+      <div class="nav-group-label">Kelola</div>
+      <a class="nav-item" href="employees.html"><i data-lucide="users"></i>Karyawan</a>
+      <a class="nav-item" href="schedules.html"><i data-lucide="calendar"></i>Jadwal Kerja</a>
+      <a class="nav-item" href="organization.html"><i data-lucide="building-2"></i>Organisasi</a>
+      <a class="nav-item" href="companies.html"><i data-lucide="briefcase"></i>Perusahaan</a>
+      <a class="nav-item" href="company-admins.html"><i data-lucide="shield"></i>Admin PT</a>
+      <a class="nav-item active" href="announcements.html"><i data-lucide="megaphone"></i>Pengumuman</a>
+      <div class="nav-group-label">Sistem</div>
+      <a class="nav-item" href="reports.html"><i data-lucide="bar-chart-2"></i>Laporan</a>
+      <a class="nav-item" href="audit.html"><i data-lucide="scroll-text"></i>Audit Log</a>
+      <a class="nav-item" href="database-health.html"><i data-lucide="database"></i>Kesehatan Database</a>
+      <a class="nav-item" href="notification-settings.html"><i data-lucide="bell"></i>Pengaturan Notifikasi</a>
+      <a class="nav-item" href="notification-logs.html"><i data-lucide="file-text"></i>Log Notifikasi</a>
+      <a class="nav-item" href="settings.html"><i data-lucide="settings"></i>Pengaturan</a>
+      <a class="nav-item" href="admin-guide.html"><i data-lucide="book-open"></i>Buku Petunjuk</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-chip">
+        <span class="avatar av-3">AG</span>
+        <div class="meta">
+          <div class="name">Armin Gandi</div>
+          <div class="role">OWNER</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="icon-btn" aria-label="Toggle sidebar"><i data-lucide="panel-left"></i></button>
+      <nav class="crumbs"><span>Admin</span><i data-lucide="chevron-right"></i><b>Pengumuman</b></nav>
+      <div class="spacer"></div>
+      <span class="mode-chip">Owner Mode</span>
+      <span class="bell-wrap">
+        <button class="icon-btn" aria-label="Notifikasi"><i data-lucide="bell"></i></button>
+        <span class="bell-dot">7</span>
+      </span>
+      <button class="icon-btn" data-theme-toggle aria-label="Ganti tema"><i data-lucide="sun"></i></button>
+    </header>
+
+    <main class="content">
+      <div class="page-head">
+        <div>
+          <h1>Pengumuman</h1>
+          <p>Berita untuk karyawan — tampil di beranda aplikasi, dengan target penerima yang bisa dipilih</p>
+        </div>
+      </div>
+
+      <div class="two-col" style="grid-template-columns: 1.2fr 1fr; align-items:start">
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <!-- Daftar pengumuman: kartu, bukan tabel (seperti di Announcements.tsx) -->
+          <section class="card">
+            <div class="card-head"><h2>Daftar Pengumuman</h2><p>3 aktif &middot; 1 draf &middot; 1 diarsipkan</p></div>
+            <div class="card-body" style="padding-top:8px;padding-bottom:8px">
+              <ul class="list-plain">
+                <li>
+                  <span class="avatar av-1" style="border-radius:8px"><i data-lucide="megaphone"></i></span>
+                  <span class="grow"><b>Jadwal libur akhir tahun</b> <span class="badge badge-info">info</span> <span class="badge badge-neutral">published</span><br><span class="secondary">Libur Natal 25 Des 2026 dan Tahun Baru 1 Jan 2027. Jadwal piket menyusul. &middot; Semua karyawan &middot; 20 Okt 2026</span></span>
+                  <span class="row-actions"><button class="btn btn-outline btn-sm">Edit</button><button class="btn btn-outline btn-sm">Arsipkan</button></span>
+                </li>
+                <li>
+                  <span class="avatar av-3" style="border-radius:8px"><i data-lucide="alert-triangle"></i></span>
+                  <span class="grow"><b>Perubahan jam kerja selama event</b> <span class="badge badge-warning">warning</span> <span class="badge badge-neutral">published</span><br><span class="secondary">Grup A shift malam pada 31 Okt 2026. Cek jadwal masing-masing di aplikasi. &middot; Grup A &middot; 24 Okt 2026</span></span>
+                  <span class="row-actions"><button class="btn btn-outline btn-sm">Edit</button><button class="btn btn-outline btn-sm">Arsipkan</button></span>
+                </li>
+                <li>
+                  <span class="avatar av-5" style="border-radius:8px"><i data-lucide="check"></i></span>
+                  <span class="grow"><b>Aplikasi versi baru sudah tersedia</b> <span class="badge badge-success">success</span> <span class="badge badge-neutral">published</span><br><span class="secondary">Perbarui aplikasi ke versi terbaru untuk perbaikan absensi QR. &middot; Semua karyawan &middot; 18 Okt 2026</span></span>
+                  <span class="row-actions"><button class="btn btn-outline btn-sm">Edit</button><button class="btn btn-outline btn-sm">Arsipkan</button></span>
+                </li>
+                <li style="opacity:0.65">
+                  <span class="avatar av-0" style="border-radius:8px"><i data-lucide="file-text"></i></span>
+                  <span class="grow"><b>Draf: Pengingat pengajuan cuti akhir tahun</b> <span class="badge badge-info">info</span> <span class="badge badge-neutral">draft</span><br><span class="secondary">Belum diterbitkan — hanya terlihat oleh admin. &middot; Semua karyawan &middot; 27 Okt 2026</span></span>
+                  <span class="row-actions"><button class="btn btn-outline btn-sm">Edit</button><button class="btn btn-outline btn-sm">Terbitkan</button></span>
+                </li>
+              </ul>
+            </div>
+          </section>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <section class="card"><div class="card-head"><h2>Buat Pengumuman Baru</h2><p>Isi judul, tipe, isi, dan target penerima</p></div>
+          <div class="card-body" style="display:flex;flex-direction:column;gap:12px">
+            <div class="field"><label for="pg-judul">Judul</label><input class="input" id="pg-judul" placeholder="mis. Jadwal libur akhir tahun"></div>
+            <div class="field"><label for="pg-tipe">Tipe</label>
+              <select class="select" id="pg-tipe"><option>info — Informasi biasa</option><option>success — Kabar baik</option><option>warning — Perlu perhatian</option><option>danger — Mendesak</option></select></div>
+            <div class="field"><label for="pg-isi">Isi Pengumuman</label><textarea class="textarea" id="pg-isi" placeholder="Tulis isi pengumuman di sini..."></textarea></div>
+            <div class="field"><label>Target Penerima</label>
+              <div class="filters">
+                <label class="toggle"><input type="checkbox" checked>Semua Karyawan</label>
+                <label class="toggle"><input type="checkbox">Pilih Kantor</label>
+                <label class="toggle"><input type="checkbox">Pilih Departemen</label>
+                <label class="toggle"><input type="checkbox">Pilih Grup Karyawan</label>
+                <label class="toggle"><input type="checkbox">Pilih Karyawan</label>
+              </div>
+              <span class="hint">Centang target spesifik untuk membatasi penerima — kosongkan bila untuk semua karyawan.</span>
+            </div>
+            <div><button class="btn btn-primary">Simpan Pengumuman</button></div>
+          </div></section>
+
+          <section class="card"><div class="card-head"><h2>Pengaturan Pengiriman</h2><p>Apa yang terjadi saat pengumuman diterbitkan</p></div>
+          <div class="card-body" style="display:flex;flex-direction:column;gap:12px">
+            <label class="toggle"><span class="switch" aria-checked="true" role="switch"></span>Kirim push notification saat diterbitkan</label>
+            <label class="toggle"><span class="switch" aria-checked="true" role="switch"></span>Tampilkan di beranda aplikasi karyawan</label>
+            <label class="toggle"><span class="switch" aria-checked="false" role="switch"></span>Sematkan di atas daftar (pinned)</label>
+            <p class="hint" style="font-size:12.5px;color:var(--muted-foreground)">Pengiriman yang sedang berjalan bisa dipantau di <a href="notification-logs.html" style="color:var(--primary);font-weight:600">Log Notifikasi</a>.</p>
+          </div></section>
+        </div>
+      </div>
+
+      <p style="font-size:12px;color:var(--muted-foreground)">Mockup statis &mdash; semua angka dan nama di atas adalah data contoh, bukan data asli. Dibuat 27 Okt 2026.</p>
+    </main>
+  </div>
+</div>
+<script src="lucide.min.js"></script>
+<script src="mockup.js"></script>
+</body>
+</html>

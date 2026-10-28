@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kesehatan Database — MyPresence Admin (Mockup)</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-tile">M</div>
+      <div>
+        <div class="brand-name">MyPresence</div>
+        <div class="brand-sub">Admin</div>
+      </div>
+    </div>
+    <nav>
+      <div class="nav-group-label">Utama</div>
+      <a class="nav-item" href="dashboard.html"><i data-lucide="layout-dashboard"></i>Dashboard</a>
+      <a class="nav-item" href="approvals.html"><i data-lucide="check-square"></i>Persetujuan<span class="count">7</span></a>
+      <a class="nav-item" href="attendance.html"><i data-lucide="fingerprint"></i>Absensi</a>
+      <a class="nav-item" href="corrections.html"><i data-lucide="history"></i>Koreksi Absensi</a>
+      <div class="nav-group-label">Kelola</div>
+      <a class="nav-item" href="employees.html"><i data-lucide="users"></i>Karyawan</a>
+      <a class="nav-item" href="schedules.html"><i data-lucide="calendar"></i>Jadwal Kerja</a>
+      <a class="nav-item" href="organization.html"><i data-lucide="building-2"></i>Organisasi</a>
+      <a class="nav-item" href="companies.html"><i data-lucide="briefcase"></i>Perusahaan</a>
+      <a class="nav-item" href="company-admins.html"><i data-lucide="shield"></i>Admin PT</a>
+      <a class="nav-item" href="announcements.html"><i data-lucide="megaphone"></i>Pengumuman</a>
+      <div class="nav-group-label">Sistem</div>
+      <a class="nav-item" href="reports.html"><i data-lucide="bar-chart-2"></i>Laporan</a>
+      <a class="nav-item" href="audit.html"><i data-lucide="scroll-text"></i>Audit Log</a>
+      <a class="nav-item active" href="database-health.html"><i data-lucide="database"></i>Kesehatan Database</a>
+      <a class="nav-item" href="notification-settings.html"><i data-lucide="bell"></i>Pengaturan Notifikasi</a>
+      <a class="nav-item" href="notification-logs.html"><i data-lucide="file-text"></i>Log Notifikasi</a>
+      <a class="nav-item" href="settings.html"><i data-lucide="settings"></i>Pengaturan</a>
+      <a class="nav-item" href="admin-guide.html"><i data-lucide="book-open"></i>Buku Petunjuk</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-chip">
+        <span class="avatar av-3">AG</span>
+        <div class="meta">
+          <div class="name">Armin Gandi</div>
+          <div class="role">OWNER</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="icon-btn" aria-label="Toggle sidebar"><i data-lucide="panel-left"></i></button>
+      <nav class="crumbs"><span>Admin</span><i data-lucide="chevron-right"></i><b>Kesehatan Database</b></nav>
+      <div class="spacer"></div>
+      <span class="mode-chip">Owner Mode</span>
+      <span class="bell-wrap">
+        <button class="icon-btn" aria-label="Notifikasi"><i data-lucide="bell"></i></button>
+        <span class="bell-dot">7</span>
+      </span>
+      <button class="icon-btn" data-theme-toggle aria-label="Ganti tema"><i data-lucide="sun"></i></button>
+    </header>
+
+    <main class="content">
+      <div class="page-head">
+        <div>
+          <h1>Kesehatan Database</h1>
+          <p>Pindai ukuran dan kepadatan data Firebase — hanya owner yang bisa membuka halaman ini</p>
+        </div>
+        <div class="head-actions">
+          <div class="field" style="min-width:200px"><label for="db-perusahaan">Perusahaan</label>
+            <select class="select" id="db-perusahaan"><option>PT MyPresence Indonesia</option><option>Semua Perusahaan</option></select></div>
+          <button class="btn btn-primary" style="align-self:flex-end"><i data-lucide="refresh-cw"></i>Scan Database</button>
+        </div>
+      </div>
+
+      <section class="grid-stats" style="grid-template-columns:repeat(4,1fr)">
+        <div class="card stat"><div class="label">Path Terpindai</div><div class="value">17</div><div class="sub">RTDB + Firestore + Storage</div></div>
+        <div class="card stat"><div class="label">Total Children</div><div class="value">48.210</div><div class="sub">Semua node yang dipindai</div></div>
+        <div class="card stat"><div class="label">Estimasi Size</div><div class="value">86,4 MB</div><div class="sub">Terakhir dipindai 27 Okt 2026, 13:00</div></div>
+        <div class="card stat"><div class="label">Node Terbesar</div><div class="value">Attendance</div><div class="sub">31,2 MB &middot; 21.480 children</div></div>
+      </section>
+
+      <section class="card">
+        <div class="card-head"><h2>Ringkasan Path Database</h2><p>Centang path yang ingin dipindai ulang, lalu tekan Scan Database</p></div>
+        <div class="table-wrap"><table>
+          <thead><tr><th></th><th>Data</th><th>Path</th><th>Children</th><th>Estimasi Size</th></tr></thead>
+          <tbody>
+            <tr><td><input type="checkbox" checked></td><td><span class="primary">Attendance</span></td><td class="mono">attendance/</td><td class="num">21.480</td><td class="num">31,2 MB</td></tr>
+            <tr><td><input type="checkbox" checked></td><td><span class="primary">Attendance Corrections</span></td><td class="mono">attendance_corrections/</td><td class="num">1.204</td><td class="num">4,8 MB</td></tr>
+            <tr><td><input type="checkbox" checked></td><td><span class="primary">Leave Requests</span></td><td class="mono">leave_requests/</td><td class="num">2.310</td><td class="num">6,1 MB</td></tr>
+            <tr><td><input type="checkbox" checked></td><td><span class="primary">QR Attendance Requests</span></td><td class="mono">qr_attendance_requests/</td><td class="num">3.872</td><td class="num">8,4 MB</td></tr>
+            <tr><td><input type="checkbox" checked></td><td><span class="primary">Schedule Assignments</span></td><td class="mono">schedule_assignments/</td><td class="num">1.940</td><td class="num">3,2 MB</td></tr>
+            <tr><td><input type="checkbox" checked></td><td><span class="primary">Shifts</span></td><td class="mono">shifts/</td><td class="num">486</td><td class="num">0,9 MB</td></tr>
+            <tr><td><input type="checkbox" checked></td><td><span class="primary">Timetables</span></td><td class="mono">timetables/</td><td class="num">312</td><td class="num">0,6 MB</td></tr>
+            <tr><td><input type="checkbox" checked></td><td><span class="primary">Schedule Specials</span></td><td class="mono">schedule_specials/</td><td class="num">96</td><td class="num">0,2 MB</td></tr>
+            <tr><td><input type="checkbox" checked></td><td><span class="primary">Overtime Schedules</span></td><td class="mono">overtime_schedules/</td><td class="num">148</td><td class="num">0,4 MB</td></tr>
+            <tr><td><input type="checkbox" checked></td><td><span class="primary">Holidays</span></td><td class="mono">holidays/</td><td class="num">24</td><td class="num">0,1 MB</td></tr>
+            <tr><td><input type="checkbox" checked></td><td><span class="primary">Announcements</span></td><td class="mono">announcements/</td><td class="num">86</td><td class="num">0,5 MB</td></tr>
+            <tr><td><input type="checkbox" checked></td><td><span class="primary">Audit Logs</span></td><td class="mono">audit_logs/</td><td class="num">12.540</td><td class="num">18,7 MB</td></tr>
+            <tr><td><input type="checkbox" checked></td><td><span class="primary">Company</span></td><td class="mono">companies/</td><td class="num">12</td><td class="num">0,1 MB</td></tr>
+            <tr><td><input type="checkbox" checked></td><td><span class="primary">Company Users</span></td><td class="mono">company_users/</td><td class="num">1.380</td><td class="num">2,2 MB</td></tr>
+            <tr><td><input type="checkbox" checked></td><td><span class="primary">Schedule Change Logs</span></td><td class="mono">schedule_change_logs/</td><td class="num">2.104</td><td class="num">3,9 MB</td></tr>
+            <tr><td><input type="checkbox" checked></td><td><span class="primary">Report Cache</span></td><td class="mono">report_cache/</td><td class="num">214</td><td class="num">4,6 MB</td></tr>
+            <tr><td><input type="checkbox" checked></td><td><span class="primary">Storage Index</span></td><td class="mono">storage_index/</td><td class="num">102</td><td class="num">0,5 MB</td></tr>
+          </tbody>
+        </table></div>
+        <div class="card-foot">Estimasi size dihitung dari pemindaian terakhir — bukan ukuran tagihan Firebase.</div>
+      </section>
+
+      <section class="card">
+        <div class="card-head"><h2>Node Terbesar</h2><p>Node yang paling banyak memakan tempat — periksa dulu sebelum membersihkan</p></div>
+        <div class="card-body" style="padding-top:8px;padding-bottom:8px">
+          <ul class="list-plain">
+            <li><span class="avatar av-2">AT</span><span class="grow"><b>attendance/2026-10</b><br><span class="secondary">21.480 children &middot; 31,2 MB</span></span><span class="badge badge-warning">Terbesar</span></li>
+            <li><span class="avatar av-0">AL</span><span class="grow"><b>audit_logs/</b><br><span class="secondary">12.540 children &middot; 18,7 MB</span></span><span class="badge badge-neutral">Tumbuh cepat</span></li>
+            <li><span class="avatar av-4">QR</span><span class="grow"><b>qr_attendance_requests/</b><br><span class="secondary">3.872 children &middot; 8,4 MB</span></span><span class="badge badge-neutral">Normal</span></li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- Danger Zone seperti di DatabaseHealth.tsx -->
+      <section class="card" style="border-color:var(--danger)">
+        <div class="card-head"><h2 style="color:var(--danger)">Danger Zone: Reset Data Dummy</h2><p>Hanya hapus data dummy/pengujian. Data asli karyawan dan absensi tidak termasuk di sini.</p></div>
+        <div class="card-body" style="display:flex;flex-direction:column;gap:12px">
+          <div class="filters">
+            <label class="toggle"><input type="checkbox">Notifications per User</label>
+            <label class="toggle"><input type="checkbox">Firestore Notification Queue</label>
+            <label class="toggle"><input type="checkbox">Report Cache</label>
+            <label class="toggle"><input type="checkbox">Schedule Change Logs</label>
+          </div>
+          <div class="field"><label for="db-konfirmasi">Ketik RESET DATABASE untuk konfirmasi</label><input class="input mono" id="db-konfirmasi" placeholder="RESET DATABASE"></div>
+          <div><button class="btn btn-danger" disabled><i data-lucide="trash-2"></i>Reset Data Dummy</button></div>
+          <p class="hint" style="font-size:12.5px;color:var(--muted-foreground)">Tombol aktif hanya setelah memilih minimal satu kunci dan mengetik konfirmasi dengan benar. Reset tidak bisa dibatalkan.</p>
+        </div>
+      </section>
+
+      <p style="font-size:12px;color:var(--muted-foreground)">Mockup statis &mdash; semua angka dan nama di atas adalah data contoh, bukan data asli. Dibuat 27 Okt 2026.</p>
+    </main>
+  </div>
+</div>
+<script src="lucide.min.js"></script>
+<script src="mockup.js"></script>
+</body>
+</html>
