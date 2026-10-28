@@ -1,7 +1,7 @@
 // Regresi audit 28 Okt 2026: `attendance_by_date` tidak ada di RTDB,
 // halaman Absensi harus membaca jalur lama `attendance/{companyId}`.
 import { describe, expect, it } from "vitest"
-import { flattenAttendanceLegacyNode } from "./rtdb-lean-service"
+import { buildDateRange, flattenAttendanceLegacyNode } from "./rtdb-lean-service"
 
 // Bentuk node jalur lama (disederhanakan dari data live FMI):
 // {uid: {date: {actionType: rec}}}.
@@ -20,6 +20,32 @@ const legacyNode = {
     },
   },
 }
+
+describe("buildDateRange", () => {
+  // Kunci tanggal RTDB adalah tanggal kalender lokal (WIB) — bukan UTC:
+  // di zona UTC+7, `toISOString()` pada tengah malam lokal mundur sehari.
+  it("mengembalikan kunci yang sama persis dengan rentang yang diminta", () => {
+    expect(buildDateRange("2026-10-20", "2026-10-22")).toEqual([
+      "2026-10-20",
+      "2026-10-21",
+      "2026-10-22",
+    ])
+  })
+
+  it("tidak bergeser di batas bulan", () => {
+    expect(buildDateRange("2026-10-31", "2026-11-02")).toEqual([
+      "2026-10-31",
+      "2026-11-01",
+      "2026-11-02",
+    ])
+  })
+
+  it("satu hari mengembalikan satu kunci", () => {
+    expect(buildDateRange("2026-10-27", "2026-10-27")).toEqual([
+      "2026-10-27",
+    ])
+  })
+})
 
 describe("flattenAttendanceLegacyNode", () => {
   it("hanya mengembalikan tanggal dalam rentang yang diminta", () => {

@@ -11,13 +11,11 @@ export const RTDB_LEAN_LIMITS = {
 
 export type AttendanceRow = Record<string, unknown>;
 
-export function toDateKey(date: Date): string {
-  return date.toISOString().slice(0, 10);
-}
-
-// Tanggal lokal (komponen kalender perangkat, bukan UTC) — port
-// localDateString dari Organization.tsx myadmin lama. Dipakai untuk
-// tanggal tampilan/filter (bukan untuk key rentang RTDB — itu toDateKey).
+// Kunci tanggal RTDB adalah tanggal kalender LOKAL (seperti ditulis
+// aplikasi, WIB) — jangan lewat UTC: `toISOString()` pada tengah malam
+// lokal di UTC+7 mundur sehari (bug 28 Okt 2026: rentang 20–27 Okt
+// terbaca 19–26 Okt). Karena itu kunci rentang dan "hari ini" memakai
+// komponen kalender lokal.
 export function localDateString(date = new Date()): string {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, "0");
@@ -26,7 +24,7 @@ export function localDateString(date = new Date()): string {
 }
 
 export function todayKey(): string {
-  return toDateKey(new Date());
+  return localDateString(new Date());
 }
 
 export function daysBetween(startDate: string, endDate: string): number {
@@ -46,7 +44,7 @@ export function buildDateRange(startDate: string, endDate: string): string[] {
   for (let i = 0; i < total; i++) {
     const d = new Date(start);
     d.setDate(start.getDate() + i);
-    result.push(toDateKey(d));
+    result.push(localDateString(d));
   }
 
   return result;
