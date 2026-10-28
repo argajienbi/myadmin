@@ -113,22 +113,47 @@ export async function loadAttendanceByDateRange(params: {
   assertSafeDateRange(startDate, endDate);
 
   const dates = buildDateRange(startDate, endDate);
-  const snapshots = await Promise.all(
-    dates.map((date) => get(ref(db, paths.attendanceByDate(companyId, date))))
-  );
+  // `attendance_by_date` tidak pernah dibuat/diisi di RTDB (audit
+  // 28 Okt 2026) — baca jalur lama `attendance/{companyId}` yang memang
+  // ditulis aplikasi, lalu saring per tanggal yang diminta.
+  const snap = await get(ref(db, paths.attendanceRoot(companyId)));
+  if (!snap.exists()) return [];
 
-  const rows: AttendanceRow[] = [];
-
-  snapshots.forEach((snap, index) => {
-    if (!snap.exists()) return;
-    rows.push(...flattenAttendanceByDateNode(companyId, dates[index], snap.val()));
-  });
+  const rows = flattenAttendanceLegacyNode(companyId, dates, snap.val());
 
   rows.sort((a, b) => {
     const aTime = new Date(`${a.record_date || a.dateKey || ""}T${a.record_time || a.waktu || a.time || "00:00:00"}`).getTime();
     const bTime = new Date(`${b.record_date || b.dateKey || ""}T${b.record_time || b.waktu || b.time || "00:00:00"}`).getTime();
     return bTime - aTime;
   });
+
+  return rows;
+}
+
+// Ratakan node jalur lama `attendance/{companyId}` —
+// `{uid: {date: {actionType: rec}}}` — hanya untuk tanggal yang diminta.
+// Dipakai ulang flatten per tanggal yang sama dengan jalur indeks.
+export function flattenAttendanceLegacyNode(
+  companyId: string,
+  dates: string[],
+  data: unknown
+): AttendanceRow[] {
+  if (!data || typeof data !== "object") return [];
+
+  const node = data as Record<string, unknown>;
+  const rows: AttendanceRow[] = [];
+
+  for (const uid of Object.keys(node)) {
+    const userNode = node[uid];
+    if (!userNode || typeof userNode !== "object") continue;
+    for (const date of dates) {
+      const dateNode = (userNode as Record<string, unknown>)[date];
+      if (!dateNode || typeof dateNode !== "object") continue;
+      rows.push(
+        ...flattenAttendanceByDateNode(companyId, date, { [uid]: dateNode })
+      );
+    }
+  }
 
   return rows;
 }
