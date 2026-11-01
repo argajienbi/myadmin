@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Presensi — MyPresence Admin (Mockup)</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="shell">
+  <!-- Sidebar: pola AppSidebar template (variant inset, grup nav, footer user) -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-tile">M</div>
+      <div>
+        <div class="brand-name">MyPresence</div>
+        <div class="brand-sub">Admin</div>
+      </div>
+    </div>
+    <nav>
+      <div class="nav-group-label">Utama</div>
+      <a class="nav-item active" href="dashboard.html"><i data-lucide="layout-dashboard"></i>Dashboard</a>
+      <a class="nav-item" href="approvals.html"><i data-lucide="check-square"></i>Persetujuan<span class="count">7</span></a>
+      <a class="nav-item" href="attendance.html"><i data-lucide="fingerprint"></i>Absensi</a>
+      <a class="nav-item" href="corrections.html"><i data-lucide="history"></i>Koreksi Absensi</a>
+      <div class="nav-group-label">Kelola</div>
+      <a class="nav-item" href="employees.html"><i data-lucide="users"></i>Karyawan</a>
+      <a class="nav-item" href="schedules.html"><i data-lucide="calendar"></i>Jadwal Kerja</a>
+      <a class="nav-item" href="organization.html"><i data-lucide="building-2"></i>Organisasi</a>
+      <a class="nav-item" href="companies.html"><i data-lucide="briefcase"></i>Perusahaan</a>
+      <a class="nav-item" href="company-admins.html"><i data-lucide="shield"></i>Admin PT</a>
+      <a class="nav-item" href="announcements.html"><i data-lucide="megaphone"></i>Pengumuman</a>
+      <div class="nav-group-label">Sistem</div>
+      <a class="nav-item" href="reports.html"><i data-lucide="bar-chart-2"></i>Laporan</a>
+      <a class="nav-item" href="audit.html"><i data-lucide="scroll-text"></i>Audit Log</a>
+      <a class="nav-item" href="database-health.html"><i data-lucide="database"></i>Kesehatan Database</a>
+      <a class="nav-item" href="notification-settings.html"><i data-lucide="bell"></i>Pengaturan Notifikasi</a>
+      <a class="nav-item" href="notification-logs.html"><i data-lucide="file-text"></i>Log Notifikasi</a>
+      <a class="nav-item" href="settings.html"><i data-lucide="settings"></i>Pengaturan</a>
+      <a class="nav-item" href="admin-guide.html"><i data-lucide="book-open"></i>Buku Petunjuk</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-chip">
+        <span class="avatar av-3">AG</span>
+        <div class="meta">
+          <div class="name">Armin Gandi</div>
+          <div class="role">OWNER</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <!-- Topbar: pola admin.tsx template (trigger + breadcrumb + lonceng + tema) -->
+    <header class="topbar">
+      <button class="icon-btn" aria-label="Toggle sidebar"><i data-lucide="panel-left"></i></button>
+      <nav class="crumbs"><span>Admin</span><i data-lucide="chevron-right"></i><b>Dashboard</b></nav>
+      <div class="spacer"></div>
+      <span class="mode-chip">Owner Mode</span>
+      <span class="bell-wrap">
+        <button class="icon-btn" aria-label="Notifikasi"><i data-lucide="bell"></i></button>
+        <span class="bell-dot">7</span>
+      </span>
+      <button class="icon-btn" data-theme-toggle aria-label="Ganti tema"><i data-lucide="sun"></i></button>
+    </header>
+
+    <main class="content">
+      <div class="page-head">
+        <div>
+          <h1>Dashboard Presensi</h1>
+          <p>Selasa, 27 Oktober 2026 &middot; PT MyPresence Indonesia</p>
+        </div>
+        <div class="head-actions">
+          <button class="btn btn-outline"><i data-lucide="download"></i>Ekspor Laporan</button>
+        </div>
+      </div>
+
+      <!-- Filter: dipertahankan dari Dashboard lama -->
+      <section class="card"><div class="card-body filters">
+        <div class="field"><label for="f-tanggal">Tanggal</label><input class="input" id="f-tanggal" type="date" value="2026-10-27"></div>
+        <div class="field"><label for="f-kantor">Kantor</label>
+          <select class="select" id="f-kantor"><option>Semua Kantor</option><option>Kantor Pusat</option><option>Cabang MRP</option></select></div>
+        <div class="field"><label for="f-dept">Departemen</label>
+          <select class="select" id="f-dept"><option>Semua Departemen</option><option>Housekeeping</option><option>Gardener</option><option>Security</option><option>Admin</option></select></div>
+        <div class="field"><label for="f-grup">Grup Karyawan</label>
+          <select class="select" id="f-grup"><option>Semua Grup</option><option>Grup A</option><option>Grup B</option><option>Grup C</option></select></div>
+      </div></section>
+
+      <!-- 5 kartu ringkasan: dipertahankan dari Dashboard lama -->
+      <section class="grid-stats">
+        <div class="card stat"><div class="label">Hadir Hari Ini</div><div class="value">184</div><div class="sub">Dari 217 karyawan</div></div>
+        <div class="card stat alert"><div class="label">Terlambat</div><div class="value">12</div><div class="sub">Absen lewat jam kerja</div></div>
+        <div class="card stat"><div class="label">Belum Absen</div><div class="value">21</div><div class="sub">Belum ada data check-in</div></div>
+        <div class="card stat"><div class="label">Izin / Sakit / Cuti</div><div class="value">9</div><div class="sub">Izin 4 &middot; Sakit 3 &middot; Cuti 2</div></div>
+        <div class="card stat alert"><div class="label">Approval Pending</div><div class="value">7</div><div class="sub"><a class="link" href="approvals.html">Butuh aksi Admin/HR &rarr;</a></div></div>
+      </section>
+
+      <div class="two-col">
+        <!-- Grafik tren 30 hari -->
+        <section class="card">
+          <div class="card-head"><h2>Grafik Tren Presensi (30 Hari)</h2><p>28 Sep &ndash; 27 Okt 2026</p></div>
+          <div class="card-body">
+            <svg viewBox="0 0 680 160" width="100%" role="img" aria-label="Grafik tren presensi 30 hari" style="display:block">
+              <g stroke="var(--border)" stroke-width="1">
+                <line x1="34" y1="152" x2="672" y2="152"/><line x1="34" y1="116" x2="672" y2="116"/>
+                <line x1="34" y1="80" x2="672" y2="80"/><line x1="34" y1="44" x2="672" y2="44"/><line x1="34" y1="8" x2="672" y2="8"/>
+              </g>
+              <g fill="var(--muted-foreground)" font-size="10" font-family="JetBrains Mono, monospace">
+                <text x="8" y="148" dy="-4">0</text><text x="8" y="112" dy="-4">50</text>
+                <text x="8" y="76" dy="-4">100</text><text x="8" y="40" dy="-4">150</text><text x="8" y="14" dy="-4">200</text>
+              </g>
+              <polyline fill="none" stroke="var(--chart-1)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"
+                points="34,24 56,21 78,26 100,17 122,15 144,20 166,23 188,18 210,14 232,17 254,22 276,20 298,16 320,13 342,18 364,22 386,17 408,14 430,17 452,20 474,15 496,12 518,16 540,19 562,14 584,17 606,20 628,15 650,13 672,18"/>
+              <polyline fill="none" stroke="var(--chart-3)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"
+                points="34,66 56,87 78,44 100,94 122,109 144,73 166,51 188,102 210,116 232,87 254,58 276,80 298,109 320,123 342,94 364,66 386,102 408,116 430,87 452,73 474,109 496,123 518,94 540,80 562,116 584,102 606,73 628,109 650,123 672,87"/>
+              <circle cx="672" cy="18" r="4" fill="var(--chart-1)"/><circle cx="672" cy="87" r="4" fill="var(--chart-3)"/>
+            </svg>
+            <div class="legend" style="margin-top:12px">
+              <span><span class="dot" style="background:var(--chart-1)"></span>Hadir (hari ini: 184)</span>
+              <span><span class="dot" style="background:var(--chart-3)"></span>Terlambat (hari ini: 12)</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Terlambat hari ini -->
+        <section class="card">
+          <div class="card-head"><h2>Terlambat Hari Ini</h2><p>Diurutkan dari yang paling lama terlambat</p></div>
+          <div class="card-body" style="padding-top:8px;padding-bottom:8px">
+            <ul class="list-plain">
+              <li><span class="avatar av-2">RM</span><span class="grow"><b>Rina Marlina</b><br><span class="secondary">Jadwal 08:00 &middot; masuk 08:31</span></span><span class="badge badge-warning">Telat 31 mnt</span></li>
+              <li><span class="avatar av-0">SD</span><span class="grow"><b>Siti Dahlia</b><br><span class="secondary">Jadwal 08:00 &middot; masuk 08:12</span></span><span class="badge badge-warning">Telat 12 mnt</span></li>
+              <li><span class="avatar av-4">JP</span><span class="grow"><b>Joko Prasetyo</b><br><span class="secondary">Jadwal 08:00 &middot; masuk 08:05</span></span><span class="badge badge-warning">Telat 5 mnt</span></li>
+              <li><span class="avatar av-5">FA</span><span class="grow"><b>Fajar Nugroho</b><br><span class="secondary">Jadwal 08:00 &middot; masuk 08:04</span></span><span class="badge badge-warning">Telat 4 mnt</span></li>
+              <li><span class="avatar av-1">DL</span><span class="grow"><b>Dewi Lestari</b><br><span class="secondary">QR 07:55 &middot; di luar radius 120 m</span></span><span class="badge badge-danger">Luar Radius</span></li>
+            </ul>
+          </div>
+          <div class="card-foot"><a class="link" href="reports.html" style="color:var(--primary);font-weight:600">Lihat Laporan Disiplin &rarr;</a></div>
+        </section>
+      </div>
+
+      <!-- Hari libur: empty state yang jujur -->
+      <section class="card">
+        <div class="card-head"><h2>Hari Libur Bulan Ini</h2><p>Oktober 2026</p></div>
+        <div class="card-body"><div class="empty">Belum ada hari libur yang dijadwalkan bulan ini.</div></div>
+      </section>
+
+      <p style="font-size:12px;color:var(--muted-foreground)">Mockup statis &mdash; semua angka dan nama di atas adalah data contoh, bukan data asli. Dibuat 27 Okt 2026.</p>
+    </main>
+  </div>
+</div>
+<script src="lucide.min.js"></script>
+<script src="mockup.js"></script>
+</body>
+</html>

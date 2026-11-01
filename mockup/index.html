@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mockup Redesain MyPresence Admin — Hub</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+  .hub { max-width: 860px; margin: 0 auto; padding: 40px 20px 64px; display: flex; flex-direction: column; gap: 24px; }
+  .hub h1 { font-size: 30px; font-weight: 700; letter-spacing: -0.03em; line-height: 1.15; }
+  .hub h2 { font-size: 17px; font-weight: 600; letter-spacing: -0.01em; margin-bottom: 8px; }
+  .hub .lede { font-size: 15px; color: var(--muted-foreground); max-width: 62ch; }
+  .page-list { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 640px) { .page-list { grid-template-columns: 1fr; } }
+  .page-link { display: block; padding: 16px; }
+  .page-link:hover { border-color: var(--primary); }
+  .page-link b { display: block; font-size: 15px; }
+  .page-link span { font-size: 13px; color: var(--muted-foreground); }
+  .q-list { list-style: none; display: flex; flex-direction: column; gap: 8px; font-size: 14px; }
+  .q-list li { display: flex; gap: 10px; }
+  .q-list .n { font-family: "JetBrains Mono", monospace; font-weight: 600; color: var(--primary); flex-shrink: 0; }
+</style>
+</head>
+<body>
+<div class="hub">
+  <div>
+    <p class="mono" style="font-size:12px;color:var(--muted-foreground);margin-bottom:8px">MOCKUP STATIS &middot; 27 OKT 2026 &middot; TIM: SINTA (DESAIN)</p>
+    <h1>Redesain MyPresence Admin</h1>
+    <p class="lede">Mockup desain myadmin baru di atas template monorepo-vite-nestjs. Desain dikunci di sini dulu — belum ada kode React/TS, belum ada backend, semua data di halaman adalah data contoh.</p>
+  </div>
+
+  <section class="card"><div class="card-body">
+    <h2>Design read</h2>
+    <p style="font-size:14px">Redesign-preserve dashboard admin absensi HR untuk admin gudang Indonesia, dengan bahasa operasional yang mengutamakan kepercayaan — mengikuti shadcn/ui + token Tailwind dari template monorepo. Dial: <span class="mono">VARIANCE 4 &middot; MOTION 3 &middot; DENSITY 7</span> (rapat, fungsional, nyaris tanpa animasi).</p>
+  </div></section>
+
+  <section>
+    <h2>Halaman mockup</h2>
+    <div class="page-list">
+      <a class="card page-link" href="dashboard.html"><b>Dashboard Presensi</b><span>5 kartu ringkasan, filter, grafik tren 30 hari, daftar terlambat, hari libur (empty state)</span></a>
+      <a class="card page-link" href="approvals.html"><b>Persetujuan</b><span>Tab Izin / QR / Koreksi + modal detail. Foto absensi dan lampiran koreksi di kartu terpisah (inti fix bug 2b)</span></a>
+      <a class="card page-link" href="attendance.html"><b>Absensi</b><span>8 filter + tabel 7 kolom, badge status, radius &amp; jarak, paginasi</span></a>
+      <a class="card page-link" href="employees.html"><b>Karyawan</b><span>Tabel nama/email, struktur organisasi, status, aksi ubah/nonaktifkan</span></a>
+      <a class="card page-link" href="settings.html"><b>Pengaturan</b><span>Informasi Pribadi, Keamanan Akun, Website Perusahaan, Branding Perusahaan</span></a>
+      <a class="card page-link" href="schedules.html"><b>Jadwal Kerja</b><span>9 tab: Ringkasan, Jam Kerja, Pola Shift, Terapkan Jadwal, Hari Libur, Jadwal Khusus, Jadwal Lembur, Cek Jadwal, Riwayat Perubahan</span></a>
+      <a class="card page-link" href="organization.html"><b>Organisasi</b><span>6 tab: Area, Kantor + radius, Departemen, Sub Departemen, Grup Karyawan, Pola</span></a>
+      <a class="card page-link" href="reports.html"><b>Laporan</b><span>Presensi + Perizinan/Cuti, filter lengkap, Export Excel/PDF, peringatan Legacy Load</span></a>
+      <a class="card page-link" href="audit.html"><b>Audit Log</b><span>Tabel Waktu/User/Action/Details + filter + toggle ID teknis</span></a>
+      <a class="card page-link" href="companies.html"><b>Perusahaan</b><span>Tabel perusahaan, Invite Codes, Website, Branding</span></a>
+      <a class="card page-link" href="company-admins.html"><b>Admin PT</b><span>Tabel per perusahaan + form tunjuk admin</span></a>
+      <a class="card page-link" href="announcements.html"><b>Pengumuman</b><span>Daftar kartu + form buat pengumuman + pengaturan pengiriman</span></a>
+      <a class="card page-link" href="database-health.html"><b>Kesehatan Database</b><span>Scan 17 path, Node Terbesar, Danger Zone reset data dummy</span></a>
+      <a class="card page-link" href="notification-settings.html"><b>Pengaturan Notifikasi</b><span>Global, pengingat presensi otomatis (6), kategori, scheduler</span></a>
+      <a class="card page-link" href="corrections.html"><b>Koreksi Absensi</b><span>Masalah hari ini, riwayat koreksi, form input — lampiran terpisah dari foto (fix bug 2b)</span></a>
+      <a class="card page-link" href="notification-logs.html"><b>Log Notifikasi</b><span>Antrean push, log FCM per token, pusat tes (4 skenario), kesehatan token, log scheduler</span></a>
+      <a class="card page-link" href="admin-guide.html"><b>Buku Petunjuk</b><span>14 bagian panduan dengan langkah eksekusi, disalin dari AdminGuide lama</span></a>
+      <div class="card page-link" style="cursor:default"><b style="color:var(--muted-foreground)">Belum di-mockup</b><span>Login (sengaja dilewati) dan Setup Awal (alur satu kali, lihat Q6) — GenericPage di-drop per MAPPING.md</span></div>
+    </div>
+  </section>
+
+  <section class="card"><div class="card-body">
+    <h2>Token yang dipakai (dari template, bukan ditebak)</h2>
+    <p style="font-size:13.5px;color:var(--muted-foreground);margin-bottom:12px">Disalin dari <span class="mono">packages/ui/src/styles/globals.css</span>. Font Plus Jakarta Sans + JetBrains Mono. Satu aksen (teal), coral hanya di tile logo sidebar.</p>
+    <div class="swatch-row">
+      <div class="swatch"><div class="chip" style="background:#0b7a8c"></div><div class="cap"><b>Primary</b>#0b7a8c · teal</div></div>
+      <div class="swatch"><div class="chip" style="background:#f2523f"></div><div class="cap"><b>Brand</b>#f2523f · coral</div></div>
+      <div class="swatch"><div class="chip" style="background:#0b2b33"></div><div class="cap"><b>Sidebar</b>#0b2b33 · teal gelap</div></div>
+      <div class="swatch"><div class="chip" style="background:#f3f6f7;border-bottom:1px solid var(--border)"></div><div class="cap"><b>Background</b>#f3f6f7</div></div>
+      <div class="swatch"><div class="chip" style="background:#e7f7ee"></div><div class="cap"><b>Success</b>#0b7a3e / #e7f7ee</div></div>
+      <div class="swatch"><div class="chip" style="background:#fff4d6"></div><div class="cap"><b>Warning</b>#855600 / #fff4d6</div></div>
+      <div class="swatch"><div class="chip" style="background:#fdecec"></div><div class="cap"><b>Danger</b>#b8302f / #fdecec</div></div>
+      <div class="swatch"><div class="chip" style="background:#ecebfb"></div><div class="cap"><b>Info</b>#4b3fb5 / #ecebfb</div></div>
+    </div>
+    <p style="font-size:13px;margin-top:12px">Radius dasar <span class="mono">0.625rem (10px)</span>. Bayangan diwarnai sesuai latar (<span class="mono">rgba(11,43,51,…)</span>). Mode gelap tersedia lewat tombol tema di tiap halaman (token <span class="mono">.dark</span> template).</p>
+  </div></section>
+
+  <section class="card"><div class="card-body">
+    <h2>Keputusan desain utama</h2>
+    <ul class="q-list">
+      <li><span class="n">01</span><span><b>Shell = pola admin.tsx template.</b> Sidebar inset teal gelap + breadcrumb + lonceng + toggle tema. Sidebar lama (putih, daftar datar, aksen indigo) diganti — ini perubahan visual terbesar, dan disengaja: satu sistem, satu bahasa.</span></li>
+      <li><span class="n">02</span><span><b>Nav dikelompokkan.</b> Utama / Kelola / Sistem — 18 menu lama yang tadinya satu daftar panjang kini berkelompok, mengikuti pola NavMain template.</span></li>
+      <li><span class="n">03</span><span><b>Foto vs lampiran dipisah di desain, bukan cuma di kode.</b> Modal Persetujuan menampilkan dua kartu: &ldquo;Foto Absensi&rdquo; (<span class="mono">photo_url</span>) dan &ldquo;Lampiran Koreksi&rdquo; (<span class="mono">correction_attachment_url</span>), lengkap dengan nama field dan catatan bahwa foto tidak berubah saat koreksi disetujui. Ini yang membuat fix bug 2b terlihat dan tidak bisa terulang diam-diam.</span></li>
+      <li><span class="n">04</span><span><b>Semua fungsi lama dipertahankan.</b> 5 kartu Dashboard, 8 filter Absensi, 7 kolom tabel, form tambah karyawan, 4 blok Settings — tidak ada yang dihapus, hanya ditata ulang ke komponen template.</span></li>
+      <li><span class="n">05</span><span><b>Label &ldquo;Owner Mode&rdquo; dipertahankan</b> di topbar, dan avatar memakai rotasi warna avatar-0..5 dari template.</span></li>
+      <li><span class="n">06</span><span><b>Empty state jujur.</b> &ldquo;Hari Libur Bulan Ini&rdquo; menampilkan pesan kosong, bukan hari libur karangan.</span></li>
+      <li><span class="n">07</span><span><b>12 halaman baru mengikuti pola yang sama persis</b> (shell, token, komponen) — tidak ada komponen baru kecuali yang memang dibutuhkan halaman itu (mis. langkah bernomor di Buku Petunjuk, zona bahaya di Kesehatan Database). Sidebar di semua 17 halaman sekarang menautkan satu sama lain; &ldquo;Koreksi Absensi&rdquo; menunjuk halaman sendiri, dan dua menu baru ditambahkan: Log Notifikasi + Buku Petunjuk di grup Sistem.</span></li>
+    </ul>
+  </div></section>
+
+  <section class="card"><div class="card-body">
+    <h2>Pertanyaan terbuka untuk Arga</h2>
+    <ul class="q-list">
+      <li><span class="n">Q1</span><span>Sidebar gelap teal + aksen coral dari template — lanjut, atau mau tetap nuansa biru/indigo myadmin lama?</span></li>
+      <li><span class="n">Q2</span><span>Nav dikelompokkan jadi Utama / Kelola / Sistem — susunannya sudah pas, atau ada menu yang mau dipindah/digabung?</span></li>
+      <li><span class="n">Q3</span><span>Di Dashboard, kartu &ldquo;Approval Pending&rdquo; saya beri penekanan (angka kuning + tautan ke Persetujuan). Mau dibuat lebih menonjol lagi, atau samakan dengan kartu lain?</span></li>
+      <li><span class="n">Q4</span><span>Mode gelap: mockup sudah mendukung toggle tema. Mau gelap jadi default, atau tetap terang?</span></li>
+      <li><span class="n">Q5</span><span><b>DIJAWAB 27 Okt 2026 — mockup-kan semua dulu.</b> 12 halaman di atas adalah hasilnya; implementasi menunggu persetujuan mockup lengkap ini.</span></li>
+      <li><span class="n">Q6</span><span>Setup Awal (SetupWizard) belum di-mockup — itu alur satu kali saat pertama memasang aplikasi, bukan halaman harian. Mau di-mockup juga, atau tidak perlu?</span></li>
+      <li><span class="n">Q7</span><span>Nav &ldquo;Koreksi Absensi&rdquo; sekarang menunjuk halaman Koreksi Absensi sendiri (bukan lagi tab di Persetujuan). Tab Koreksi di Persetujuan tetap ada sebagai jalan pintas. Sudah pas?</span></li>
+    </ul>
+  </div></section>
+
+  <section class="card"><div class="card-body">
+    <h2>Catatan teknis (untuk tim implementasi)</h2>
+    <ul class="q-list">
+      <li><span class="n">—</span><span>File: <span class="mono">~/workspace/myadmin-redesign/mockup/</span> — <span class="mono">index.html</span> + 17 halaman (<span class="mono">dashboard, approvals, attendance, employees, settings, schedules, organization, reports, audit, companies, company-admins, announcements, database-health, notification-settings, corrections, notification-logs, admin-guide</span>), <span class="mono">styles.css</span>, <span class="mono">mockup.js</span>. Buka <span class="mono">index.html</span> di browser.</span></li>
+      <li><span class="n">—</span><span><b>Keputusan Arga, 27 Okt 2026: Auth tetap Firebase Auth</b> (bukan JWT NestJS) — tidak berpengaruh ke mockup; halaman login tetap tidak di-mockup.</span></li>
+      <li><span class="n">—</span><span>Font (Plus Jakarta Sans + JetBrains Mono, OFL) dan ikon lucide di-self-host di folder ini (<span class="mono">fonts/</span>, <span class="mono">lucide.min.js</span>) — mockup tampil benar tanpa internet.</span></li>
+      <li><span class="n">—</span><span>Yang TIDAK disentuh: <span class="mono">~/workspace/rekanara/*</span>, repo myadmin, GitHub. Tidak ada secret yang dipakai.</span></li>
+      <li><span class="n">—</span><span>Yang dilewati (ponytail): halaman login, Setup Awal (lihat Q6), dan interaksi tulis (semua tombol aksi hanya demo visual).</span></li>
+    </ul>
+  </div></section>
+</div>
+<script src="lucide.min.js"></script>
+<script src="mockup.js"></script>
+</body>
+</html>

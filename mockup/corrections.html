@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Koreksi Absensi — MyPresence Admin (Mockup)</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-tile">M</div>
+      <div>
+        <div class="brand-name">MyPresence</div>
+        <div class="brand-sub">Admin</div>
+      </div>
+    </div>
+    <nav>
+      <div class="nav-group-label">Utama</div>
+      <a class="nav-item" href="dashboard.html"><i data-lucide="layout-dashboard"></i>Dashboard</a>
+      <a class="nav-item" href="approvals.html"><i data-lucide="check-square"></i>Persetujuan<span class="count">7</span></a>
+      <a class="nav-item" href="attendance.html"><i data-lucide="fingerprint"></i>Absensi</a>
+      <a class="nav-item active" href="corrections.html"><i data-lucide="history"></i>Koreksi Absensi</a>
+      <div class="nav-group-label">Kelola</div>
+      <a class="nav-item" href="employees.html"><i data-lucide="users"></i>Karyawan</a>
+      <a class="nav-item" href="schedules.html"><i data-lucide="calendar"></i>Jadwal Kerja</a>
+      <a class="nav-item" href="organization.html"><i data-lucide="building-2"></i>Organisasi</a>
+      <a class="nav-item" href="companies.html"><i data-lucide="briefcase"></i>Perusahaan</a>
+      <a class="nav-item" href="company-admins.html"><i data-lucide="shield"></i>Admin PT</a>
+      <a class="nav-item" href="announcements.html"><i data-lucide="megaphone"></i>Pengumuman</a>
+      <div class="nav-group-label">Sistem</div>
+      <a class="nav-item" href="reports.html"><i data-lucide="bar-chart-2"></i>Laporan</a>
+      <a class="nav-item" href="audit.html"><i data-lucide="scroll-text"></i>Audit Log</a>
+      <a class="nav-item" href="database-health.html"><i data-lucide="database"></i>Kesehatan Database</a>
+      <a class="nav-item" href="notification-settings.html"><i data-lucide="bell"></i>Pengaturan Notifikasi</a>
+      <a class="nav-item" href="notification-logs.html"><i data-lucide="file-text"></i>Log Notifikasi</a>
+      <a class="nav-item" href="settings.html"><i data-lucide="settings"></i>Pengaturan</a>
+      <a class="nav-item" href="admin-guide.html"><i data-lucide="book-open"></i>Buku Petunjuk</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-chip">
+        <span class="avatar av-3">AG</span>
+        <div class="meta">
+          <div class="name">Armin Gandi</div>
+          <div class="role">OWNER</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="icon-btn" aria-label="Toggle sidebar"><i data-lucide="panel-left"></i></button>
+      <nav class="crumbs"><span>Admin</span><i data-lucide="chevron-right"></i><b>Koreksi Absensi</b></nav>
+      <div class="spacer"></div>
+      <span class="mode-chip">Owner Mode</span>
+      <span class="bell-wrap">
+        <button class="icon-btn" aria-label="Notifikasi"><i data-lucide="bell"></i></button>
+        <span class="bell-dot">7</span>
+      </span>
+      <button class="icon-btn" data-theme-toggle aria-label="Ganti tema"><i data-lucide="sun"></i></button>
+    </header>
+
+    <main class="content">
+      <div class="page-head">
+        <div>
+          <h1>Koreksi Absensi</h1>
+          <p>Perbaiki catatan absensi karyawan — admin menginput langsung, atau menindaklanjuti pengajuan karyawan</p>
+        </div>
+      </div>
+
+      <div class="notice"><i data-lucide="shield-check"></i><span><b>Lampiran koreksi tidak pernah menimpa foto absensi.</b> Saat koreksi disetujui, lampiran disimpan di field <span class="mono">correction_attachment_url</span> — foto absensi di <span class="mono">photo_url</span> tetap utuh. Ini inti fix bug 2b, dan desain halaman ini menjaganya: kartu foto dan kartu lampiran selalu terpisah (lihat <a href="approvals.html" style="color:var(--primary);font-weight:600">Persetujuan &rarr; Detail</a>).</span></div>
+
+      <!-- Daftar Masalah Hari Ini seperti di AttendanceCorrections.tsx -->
+      <section class="card">
+        <div class="card-head"><h2>Daftar Masalah Hari Ini</h2><p>27 Okt 2026 &middot; catatan absensi yang terdeteksi bermasalah dan butuh koreksi</p></div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Tanggal</th><th>Nama / UID</th><th>Masalah</th><th style="text-align:right">Aksi</th></tr></thead>
+          <tbody>
+            <tr><td class="num">27 Okt 2026</td><td><span class="primary">Andika Kurniawan</span><div class="secondary mono">EMP-1042</div></td><td><span class="badge badge-warning">Check-in tidak tercatat — fingerprint error</span></td><td><div class="row-actions"><button class="btn btn-outline btn-sm">Koreksi</button></div></td></tr>
+            <tr><td class="num">27 Okt 2026</td><td><span class="primary">Dewi Lestari</span><div class="secondary mono">EMP-1029</div></td><td><span class="badge badge-danger">Check-in di luar radius 120 m</span></td><td><div class="row-actions"><button class="btn btn-outline btn-sm">Koreksi</button></div></td></tr>
+            <tr><td class="num">27 Okt 2026</td><td><span class="primary">Rina Marlina</span><div class="secondary mono">EMP-1033</div></td><td><span class="badge badge-warning">Check-out tidak tercatat</span></td><td><div class="row-actions"><button class="btn btn-outline btn-sm">Koreksi</button></div></td></tr>
+          </tbody>
+        </table></div>
+      </section>
+
+      <div class="two-col" style="grid-template-columns: 1.2fr 1fr; align-items:start">
+        <!-- Riwayat Koreksi -->
+        <section class="card">
+          <div class="card-head"><h2>Riwayat Koreksi</h2><p>Koreksi yang sudah diinput admin</p></div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>User</th><th>Tgl &amp; Action</th><th>Perubahan Waktu</th><th>Alasan</th><th>Admin</th></tr></thead>
+            <tbody>
+              <tr><td><span class="primary">Andika Kurniawan</span></td><td class="num">27 Okt<br><span class="badge badge-primary">Masuk</span></td><td class="num">08:32 &rarr; <b>07:58</b></td><td>Fingerprint lantai 2 error</td><td>Armin Gandi</td></tr>
+              <tr><td><span class="primary">Rina Marlina</span></td><td class="num">26 Okt<br><span class="badge badge-primary">Pulang</span></td><td class="num">17:05 &rarr; <b>17:30</b></td><td>Lembur atas perintah supervisor</td><td>Armin Gandi</td></tr>
+              <tr><td><span class="primary">Maya Putri</span></td><td class="num">25 Okt<br><span class="badge badge-primary">Masuk &amp; Pulang</span></td><td class="num">08:05 &rarr; <b>08:00</b></td><td>Tukar shift dengan Rina, disetujui supervisor</td><td>Sinta Wijaya</td></tr>
+            </tbody>
+          </table></div>
+        </section>
+
+        <!-- Input Koreksi -->
+        <section class="card"><div class="card-head"><h2>Input Koreksi</h2><p>Isi form ini untuk memperbaiki satu catatan absensi</p></div>
+        <div class="card-body" style="display:flex;flex-direction:column;gap:12px">
+          <div class="field"><label for="kr-nama">Nama Karyawan</label>
+            <select class="select" id="kr-nama"><option>Andika Kurniawan &middot; EMP-1042</option><option>Siti Dahlia &middot; EMP-1018</option><option>Dewi Lestari &middot; EMP-1029</option><option>Rina Marlina &middot; EMP-1033</option></select></div>
+          <div class="two-col">
+            <div class="field"><label for="kr-tanggal">Tanggal</label><input class="input" id="kr-tanggal" type="date" value="2026-10-27"></div>
+            <div class="field"><label for="kr-tipe">Tipe (check_in / check_out)</label>
+              <select class="select" id="kr-tipe"><option>check_in — Masuk</option><option>check_out — Pulang</option></select></div>
+          </div>
+          <div class="two-col">
+            <div class="field"><label for="kr-status">Status Absensi</label>
+              <select class="select" id="kr-status"><option>Hadir</option><option>Terlambat</option><option>Luar Radius</option></select></div>
+            <div class="field"><label for="kr-waktu">Set Waktu Baru</label><input class="input" id="kr-waktu" type="time" value="07:58"></div>
+          </div>
+          <div class="field"><label for="kr-alasan">Alasan</label><textarea class="textarea" id="kr-alasan" placeholder="mis. Fingerprint lantai 2 error, ada foto bukti..."></textarea></div>
+          <div class="field"><label for="kr-lampiran">Lampiran pendukung (opsional)</label>
+            <div class="doc-row"><span class="doc-ic" style="background:var(--accent);color:var(--accent-foreground)"><i data-lucide="paperclip"></i></span>
+              <div style="min-width:0"><div class="doc-name">Pilih file lampiran...</div><div class="doc-meta">Disimpan di correction_attachment_url — bukan photo_url</div></div></div>
+          </div>
+          <div><button class="btn btn-primary">Simpan Koreksi</button></div>
+        </div></section>
+      </div>
+
+      <p style="font-size:12px;color:var(--muted-foreground)">Mockup statis &mdash; semua angka dan nama di atas adalah data contoh, bukan data asli. Dibuat 27 Okt 2026.</p>
+    </main>
+  </div>
+</div>
+<script src="lucide.min.js"></script>
+<script src="mockup.js"></script>
+</body>
+</html>

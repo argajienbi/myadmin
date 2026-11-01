@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Buku Petunjuk Admin Web — MyPresence Admin (Mockup)</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+  .guide-layout { display: grid; grid-template-columns: 240px 1fr; gap: 16px; align-items: start; }
+  @media (max-width: 900px) { .guide-layout { grid-template-columns: 1fr; } }
+  .guide-nav { position: sticky; top: 8px; }
+  .guide-nav a { display: block; padding: 8px 12px; border-radius: 8px; font-size: 13.5px; color: var(--muted-foreground); }
+  .guide-nav a:hover { background: var(--muted); color: var(--foreground); }
+  .guide-nav a.active { background: var(--accent); color: var(--accent-foreground); font-weight: 600; }
+  .guide-steps { list-style: none; display: flex; flex-direction: column; gap: 12px; counter-reset: step; }
+  .guide-steps li { display: flex; gap: 12px; }
+  .guide-steps .step-no { width: 24px; height: 24px; border-radius: 999px; background: var(--primary); color: #fff; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+  .guide-steps b { display: block; font-size: 13.5px; }
+  .guide-steps span { font-size: 13px; color: var(--muted-foreground); }
+  .guide-sec { scroll-margin-top: 16px; }
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-tile">M</div>
+      <div>
+        <div class="brand-name">MyPresence</div>
+        <div class="brand-sub">Admin</div>
+      </div>
+    </div>
+    <nav>
+      <div class="nav-group-label">Utama</div>
+      <a class="nav-item" href="dashboard.html"><i data-lucide="layout-dashboard"></i>Dashboard</a>
+      <a class="nav-item" href="approvals.html"><i data-lucide="check-square"></i>Persetujuan<span class="count">7</span></a>
+      <a class="nav-item" href="attendance.html"><i data-lucide="fingerprint"></i>Absensi</a>
+      <a class="nav-item" href="corrections.html"><i data-lucide="history"></i>Koreksi Absensi</a>
+      <div class="nav-group-label">Kelola</div>
+      <a class="nav-item" href="employees.html"><i data-lucide="users"></i>Karyawan</a>
+      <a class="nav-item" href="schedules.html"><i data-lucide="calendar"></i>Jadwal Kerja</a>
+      <a class="nav-item" href="organization.html"><i data-lucide="building-2"></i>Organisasi</a>
+      <a class="nav-item" href="companies.html"><i data-lucide="briefcase"></i>Perusahaan</a>
+      <a class="nav-item" href="company-admins.html"><i data-lucide="shield"></i>Admin PT</a>
+      <a class="nav-item" href="announcements.html"><i data-lucide="megaphone"></i>Pengumuman</a>
+      <div class="nav-group-label">Sistem</div>
+      <a class="nav-item" href="reports.html"><i data-lucide="bar-chart-2"></i>Laporan</a>
+      <a class="nav-item" href="audit.html"><i data-lucide="scroll-text"></i>Audit Log</a>
+      <a class="nav-item" href="database-health.html"><i data-lucide="database"></i>Kesehatan Database</a>
+      <a class="nav-item" href="notification-settings.html"><i data-lucide="bell"></i>Pengaturan Notifikasi</a>
+      <a class="nav-item" href="notification-logs.html"><i data-lucide="file-text"></i>Log Notifikasi</a>
+      <a class="nav-item" href="settings.html"><i data-lucide="settings"></i>Pengaturan</a>
+      <a class="nav-item active" href="admin-guide.html"><i data-lucide="book-open"></i>Buku Petunjuk</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-chip">
+        <span class="avatar av-3">AG</span>
+        <div class="meta">
+          <div class="name">Armin Gandi</div>
+          <div class="role">OWNER</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="icon-btn" aria-label="Toggle sidebar"><i data-lucide="panel-left"></i></button>
+      <nav class="crumbs"><span>Admin</span><i data-lucide="chevron-right"></i><b>Buku Petunjuk</b></nav>
+      <div class="spacer"></div>
+      <span class="mode-chip">Owner Mode</span>
+      <span class="bell-wrap">
+        <button class="icon-btn" aria-label="Notifikasi"><i data-lucide="bell"></i></button>
+        <span class="bell-dot">7</span>
+      </span>
+      <button class="icon-btn" data-theme-toggle aria-label="Ganti tema"><i data-lucide="sun"></i></button>
+    </header>
+
+    <main class="content">
+      <div class="page-head">
+        <div>
+          <h1>Buku Petunjuk Admin Web</h1>
+          <p>Panduan operasional admin — langkah eksekusi per menu, plus pengetahuan lanjutan owner</p>
+        </div>
+      </div>
+
+      <div class="guide-layout">
+        <nav class="card guide-nav"><div class="card-body" style="padding:12px 8px">
+          <a class="active" href="#alur-awal">Alur awal setelah login</a>
+          <a href="#perusahaan-admin">Profil Perusahaan</a>
+          <a href="#organisasi">Organisasi dan lokasi kantor</a>
+          <a href="#karyawan">Karyawan</a>
+          <a href="#jadwal-kerja">Jadwal kerja rutin dan khusus</a>
+          <a href="#jadwal-lembur">Jadwal lembur</a>
+          <a href="#absensi">Absensi</a>
+          <a href="#koreksi-absensi">Koreksi Absensi</a>
+          <a href="#persetujuan">Persetujuan Sakit / Cuti / Izin</a>
+          <a href="#pengumuman">Pengumuman</a>
+          <a href="#notifikasi">Notifikasi Perangkat</a>
+          <a href="#laporan">Laporan</a>
+          <a href="#menu-owner">Menu Owner dan Tools Lanjutan</a>
+          <a href="#troubleshooting">Troubleshooting Umum</a>
+        </div></nav>
+
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <section class="card guide-sec" id="alur-awal"><div class="card-head"><h2>Alur awal setelah login</h2><p>Urutan dasar sebelum admin mulai mengelola presensi</p></div>
+          <div class="card-body"><ol class="guide-steps">
+            <li><span class="step-no">1</span><div><b>Cek mode akun</b><span>Owner bisa memilih perusahaan aktif. Admin PT hanya mengelola perusahaan yang terhubung dengan akunnya.</span></div></li>
+            <li><span class="step-no">2</span><div><b>Buka Setup Awal</b><span>Pastikan data dasar siap.</span></div></li>
+            <li><span class="step-no">3</span><div><b>Lengkapi master data</b><span>Organisasi, kantor, radius, karyawan, jadwal kerja.</span></div></li>
+            <li><span class="step-no">4</span><div><b>Uji aplikasi karyawan</b><span>Login aplikasi karyawan, cek radius, cek jadwal, dan uji presensi.</span></div></li>
+          </ol></div></section>
+
+          <section class="card guide-sec" id="perusahaan-admin"><div class="card-head"><h2>Profil Perusahaan</h2><p>Nama, branding, website, dan kode undangan</p></div>
+          <div class="card-body"><ol class="guide-steps">
+            <li><span class="step-no">1</span><div><b>Buka menu Perusahaan</b><span>Admin PT hanya melihat perusahaan yang terhubung dengan akunnya.</span></div></li>
+            <li><span class="step-no">2</span><div><b>Edit nama perusahaan</b><span>Perbarui nama perusahaan jika ada koreksi penulisan atau perubahan identitas.</span></div></li>
+            <li><span class="step-no">3</span><div><b>Atur branding/logo</b><span>Upload atau ganti logo perusahaan untuk tampilan ID Card dan identitas aplikasi.</span></div></li>
+            <li><span class="step-no">4</span><div><b>Atur website</b><span>Isi URL website perusahaan dan domain yang diizinkan.</span></div></li>
+            <li><span class="step-no">5</span><div><b>Buat kode undangan</b><span>Bagikan kode ke karyawan baru untuk mendaftar ke perusahaan.</span></div></li>
+          </ol></div></section>
+
+          <section class="card guide-sec" id="organisasi"><div class="card-head"><h2>Organisasi dan lokasi kantor</h2><p>Area, kantor, departemen, dan grup karyawan</p></div>
+          <div class="card-body"><ol class="guide-steps">
+            <li><span class="step-no">1</span><div><b>Buat Area</b><span>Tentukan area operasional perusahaan.</span></div></li>
+            <li><span class="step-no">2</span><div><b>Buat Kantor</b><span>Isi latitude, longitude, radius meter, pakai map picker.</span></div></li>
+            <li><span class="step-no">3</span><div><b>Buat Departemen</b><span>Kelompokkan karyawan berdasarkan departemen.</span></div></li>
+            <li><span class="step-no">4</span><div><b>Buat Grup Karyawan</b><span>Untuk penerapan jadwal massal yang lebih mudah.</span></div></li>
+          </ol></div></section>
+
+          <section class="card guide-sec" id="karyawan"><div class="card-head"><h2>Karyawan</h2><p>Tambah, tempatkan, dan aktifkan akun karyawan</p></div>
+          <div class="card-body"><ol class="guide-steps">
+            <li><span class="step-no">1</span><div><b>Tambah karyawan</b><span>Isi nama, email, password awal, NIP, HP, jabatan.</span></div></li>
+            <li><span class="step-no">2</span><div><b>Lengkapi data penempatan</b><span>Pilih kantor, departemen, dan grup karyawan.</span></div></li>
+            <li><span class="step-no">3</span><div><b>Aktifkan akun</b><span>Aktifkan akun via toggle jika data sudah benar.</span></div></li>
+            <li><span class="step-no">4</span><div><b>Cek peringatan (badge)</b><span>Periksa badge: aktif, pending, belum ada kantor, belum ada grup, belum ada jadwal.</span></div></li>
+          </ol></div></section>
+
+          <section class="card guide-sec" id="jadwal-kerja"><div class="card-head"><h2>Jadwal kerja rutin dan khusus</h2><p>Jam kerja, pola shift, penerapan, dan hari libur</p></div>
+          <div class="card-body"><ol class="guide-steps">
+            <li><span class="step-no">1</span><div><b>Buat Jam Kerja</b><span>Tentukan work_start/end, check-in window, check-out window, toleransi.</span></div></li>
+            <li><span class="step-no">2</span><div><b>Buat Pola Shift</b><span>Tentukan hari kerja dan timetable tiap hari (Senin&ndash;Minggu).</span></div></li>
+            <li><span class="step-no">3</span><div><b>Terapkan Jadwal</b><span>Pilih target user/grup, pilih shift, tanggal mulai/selesai.</span></div></li>
+            <li><span class="step-no">4</span><div><b>Kelola Hari Libur</b><span>Bisa input manual atau sync Google Calendar jika tersedia.</span></div></li>
+          </ol></div></section>
+
+          <section class="card guide-sec" id="jadwal-lembur"><div class="card-head"><h2>Jadwal lembur</h2><p>Grup lembur terjadwal</p></div>
+          <div class="card-body"><ol class="guide-steps">
+            <li><span class="step-no">1</span><div><b>Buat grup lembur</b><span>Klik tambah jadwal lembur.</span></div></li>
+            <li><span class="step-no">2</span><div><b>Isi nama grup lembur</b><span>Berikan nama yang deskriptif, misalnya &lsquo;Lembur IT Support&rsquo;.</span></div></li>
+            <li><span class="step-no">3</span><div><b>Pilih karyawan</b><span>Centang satu atau banyak karyawan yang akan lembur.</span></div></li>
+            <li><span class="step-no">4</span><div><b>Pilih tanggal</b><span>Pilih satu atau banyak tanggal dari input kalender.</span></div></li>
+          </ol></div></section>
+
+          <section class="card guide-sec" id="absensi"><div class="card-head"><h2>Absensi</h2><p>Membaca data presensi harian</p></div>
+          <div class="card-body"><ol class="guide-steps">
+            <li><span class="step-no">1</span><div><b>Gunakan filter tanggal</b><span>Lihat data pada hari atau periode spesifik.</span></div></li>
+            <li><span class="step-no">2</span><div><b>Gunakan filter hierarki</b><span>Filter data per kantor, departemen, grup, atau karyawan.</span></div></li>
+            <li><span class="step-no">3</span><div><b>Cek lokasi absensi</b><span>Perhatikan status geofence (di dalam/di luar radius) dan jarak dari titik koordinat kantor (meter).</span></div></li>
+            <li><span class="step-no">4</span><div><b>Preview</b><span>Cek foto selfie atau lokasi peta jika perlu validasi manual.</span></div></li>
+          </ol></div></section>
+
+          <section class="card guide-sec" id="koreksi-absensi"><div class="card-head"><h2>Koreksi Absensi</h2><p>Menindaklanjuti catatan absensi yang bermasalah</p></div>
+          <div class="card-body"><ol class="guide-steps">
+            <li><span class="step-no">1</span><div><b>Buka daftar koreksi</b><span>Lihat data pengajuan yang perlu ditindaklanjuti.</span></div></li>
+            <li><span class="step-no">2</span><div><b>Periksa pengajuan</b><span>Cek karyawan, tanggal absensi, alasan, dan data koreksi yang diajukan.</span></div></li>
+            <li><span class="step-no">3</span><div><b>Tindak lanjut</b><span>Setujui atau tolak pengajuan (bisa menyertakan catatan tambahan).</span></div></li>
+            <li><span class="step-no">4</span><div><b>Cek laporan</b><span>Setelah disetujui, absensi akan diperbarui. Cek di menu Absensi dan Laporan.</span></div></li>
+          </ol></div></section>
+
+          <section class="card guide-sec" id="persetujuan"><div class="card-head"><h2>Persetujuan Sakit / Cuti / Izin</h2><p>Memutuskan pengajuan karyawan</p></div>
+          <div class="card-body"><ol class="guide-steps">
+            <li><span class="step-no">1</span><div><b>Pilih tab jenis persetujuan</b><span>Pilih tab pengajuan jadwal atau persetujuan dokumen pendukung.</span></div></li>
+            <li><span class="step-no">2</span><div><b>Cek detail</b><span>Periksa nama, tanggal, tipe pengajuan, alasan, dan file lampiran pendukung.</span></div></li>
+            <li><span class="step-no">3</span><div><b>Cek data lembur</b><span>Khusus pengajuan lembur, periksa kembali kecocokan durasi dan tanggal.</span></div></li>
+            <li><span class="step-no">4</span><div><b>Keputusan</b><span>Setujui atau tolak pengajuan, letakkan alasan jika ditolak.</span></div></li>
+          </ol></div></section>
+
+          <section class="card guide-sec" id="pengumuman"><div class="card-head"><h2>Pengumuman</h2><p>Berita untuk karyawan</p></div>
+          <div class="card-body"><ol class="guide-steps">
+            <li><span class="step-no">1</span><div><b>Buat pengumuman</b><span>Isi judul, isi berita, tipe pemberitahuan, target penerima, dan centang pilihan pengiriman notifikasi.</span></div></li>
+            <li><span class="step-no">2</span><div><b>Pilih target</b><span>Atur penerima apakah global ke seluruh entitas, atau spesifik grup tertentu.</span></div></li>
+            <li><span class="step-no">3</span><div><b>Publish</b><span>Simpan pengumuman untuk ditampilkan di beranda aplikasi karyawan.</span></div></li>
+            <li><span class="step-no">4</span><div><b>Pantau pengiriman</b><span>Lihat di Log Notifikasi jika pengiriman sedang berjalan.</span></div></li>
+          </ol></div></section>
+
+          <section class="card guide-sec" id="notifikasi"><div class="card-head"><h2>Notifikasi Perangkat</h2><p>Menguji dan menelusuri push notification</p></div>
+          <div class="card-body"><ol class="guide-steps">
+            <li><span class="step-no">1</span><div><b>Buka Log Notifikasi</b><span>Masuk ke menu Log Notifikasi (Settings).</span></div></li>
+            <li><span class="step-no">2</span><div><b>Pilih karyawan target</b><span>Ketik atau cari nama/email karyawan.</span></div></li>
+            <li><span class="step-no">3</span><div><b>Pilih jenis test</b><span>Pilih scenario test: Pengumuman, Pengajuan, Riwayat Presensi, Jadwal Kerja.</span></div></li>
+            <li><span class="step-no">4</span><div><b>Kirim Test Notifikasi</b><span>Eksekusi pengiriman notifikasi test.</span></div></li>
+          </ol></div></section>
+
+          <section class="card guide-sec" id="laporan"><div class="card-head"><h2>Laporan</h2><p>Rekap presensi dan perizinan</p></div>
+          <div class="card-body"><ol class="guide-steps">
+            <li><span class="step-no">1</span><div><b>Pilih periode</b><span>Tentukan rentang tanggal laporan.</span></div></li>
+            <li><span class="step-no">2</span><div><b>Atur Filter</b><span>Gunakan filter organisasi/karyawan untuk mempersempit jangkauan.</span></div></li>
+            <li><span class="step-no">3</span><div><b>Cek rekapan</b><span>Lihat status jumlah hari hadir, terlambat, pulang cepat, izin, sakit, cuti, serta akumulasi jam lembur.</span></div></li>
+            <li><span class="step-no">4</span><div><b>Cek perhitungan lembur</b><span>Pahami perbedaan rekapan lembur yang disetujui dari permohonan mandiri vs lembur terjadwal.</span></div></li>
+          </ol></div></section>
+
+          <section class="card guide-sec" id="menu-owner"><div class="card-head"><h2>Menu Owner dan Tools Lanjutan</h2><p>Pengetahuan lanjutan owner — menu ini tidak terlihat oleh Admin PT</p></div>
+          <div class="card-body"><ol class="guide-steps">
+            <li><span class="step-no">1</span><div><b>Kelola semua perusahaan</b><span>Owner dapat melihat semua perusahaan, menambah perusahaan baru, serta mengelola status perusahaan.</span></div></li>
+            <li><span class="step-no">2</span><div><b>Kelola Admin PT</b><span>Mendaftarkan dan mengatur akun admin untuk perusahaan tertentu.</span></div></li>
+            <li><span class="step-no">3</span><div><b>Cek Audit Log</b><span>Melihat riwayat aksi owner dan admin dalam sistem.</span></div></li>
+            <li><span class="step-no">4</span><div><b>Cek Kesehatan Data</b><span>Memantau kepadatan data dan penyimpanan aplikasi.</span></div></li>
+          </ol></div></section>
+
+          <section class="card guide-sec" id="troubleshooting"><div class="card-head"><h2>Troubleshooting Umum</h2><p>Masalah yang paling sering ditemui dan cara memeriksanya</p></div>
+          <div class="card-body"><ol class="guide-steps">
+            <li><span class="step-no">1</span><div><b>Data tidak muncul / Empty</b><span>Cek perusahaan aktif, pastikan akun admin terhubung ke perusahaan yang benar, dan pastikan role admin sesuai.</span></div></li>
+            <li><span class="step-no">2</span><div><b>Akun karyawan tidak bisa absen (nol jadwal)</b><span>Pastikan lokasi dalam radius (di menu Organisasi), cek status akun (aktif), user tergabung dalam grup, dan pastikan sudah di-assign jadwal kerja / tidak masuk hari libur.</span></div></li>
+            <li><span class="step-no">3</span><div><b>Jadwal yang tampil salah</b><span>Gunakan fitur Cek Jadwal Karyawan pada Jadwal Kerja untuk mendiagnostik sumber yang aktif (overtime vs holiday vs shift).</span></div></li>
+            <li><span class="step-no">4</span><div><b>Notifikasi tidak masuk HP</b><span>Di Log Notifikasi cek antrean pengiriman, status perangkat, jumlah berhasil/gagal. Cek juga izin notifikasi HP, koneksi internet, atau log layanan otomatis.</span></div></li>
+          </ol></div></section>
+        </div>
+      </div>
+
+      <p style="font-size:12px;color:var(--muted-foreground)">Mockup statis &mdash; isi panduan disalin dari Buku Petunjuk di aplikasi lama (AdminGuide.tsx), hanya ditata ulang. Dibuat 27 Okt 2026.</p>
+    </main>
+  </div>
+</div>
+<script src="lucide.min.js"></script>
+<script src="mockup.js"></script>
+</body>
+</html>

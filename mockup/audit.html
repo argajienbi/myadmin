@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Audit Log — MyPresence Admin (Mockup)</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-tile">M</div>
+      <div>
+        <div class="brand-name">MyPresence</div>
+        <div class="brand-sub">Admin</div>
+      </div>
+    </div>
+    <nav>
+      <div class="nav-group-label">Utama</div>
+      <a class="nav-item" href="dashboard.html"><i data-lucide="layout-dashboard"></i>Dashboard</a>
+      <a class="nav-item" href="approvals.html"><i data-lucide="check-square"></i>Persetujuan<span class="count">7</span></a>
+      <a class="nav-item" href="attendance.html"><i data-lucide="fingerprint"></i>Absensi</a>
+      <a class="nav-item" href="corrections.html"><i data-lucide="history"></i>Koreksi Absensi</a>
+      <div class="nav-group-label">Kelola</div>
+      <a class="nav-item" href="employees.html"><i data-lucide="users"></i>Karyawan</a>
+      <a class="nav-item" href="schedules.html"><i data-lucide="calendar"></i>Jadwal Kerja</a>
+      <a class="nav-item" href="organization.html"><i data-lucide="building-2"></i>Organisasi</a>
+      <a class="nav-item" href="companies.html"><i data-lucide="briefcase"></i>Perusahaan</a>
+      <a class="nav-item" href="company-admins.html"><i data-lucide="shield"></i>Admin PT</a>
+      <a class="nav-item" href="announcements.html"><i data-lucide="megaphone"></i>Pengumuman</a>
+      <div class="nav-group-label">Sistem</div>
+      <a class="nav-item" href="reports.html"><i data-lucide="bar-chart-2"></i>Laporan</a>
+      <a class="nav-item active" href="audit.html"><i data-lucide="scroll-text"></i>Audit Log</a>
+      <a class="nav-item" href="database-health.html"><i data-lucide="database"></i>Kesehatan Database</a>
+      <a class="nav-item" href="notification-settings.html"><i data-lucide="bell"></i>Pengaturan Notifikasi</a>
+      <a class="nav-item" href="notification-logs.html"><i data-lucide="file-text"></i>Log Notifikasi</a>
+      <a class="nav-item" href="settings.html"><i data-lucide="settings"></i>Pengaturan</a>
+      <a class="nav-item" href="admin-guide.html"><i data-lucide="book-open"></i>Buku Petunjuk</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-chip">
+        <span class="avatar av-3">AG</span>
+        <div class="meta">
+          <div class="name">Armin Gandi</div>
+          <div class="role">OWNER</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="icon-btn" aria-label="Toggle sidebar"><i data-lucide="panel-left"></i></button>
+      <nav class="crumbs"><span>Admin</span><i data-lucide="chevron-right"></i><b>Audit Log</b></nav>
+      <div class="spacer"></div>
+      <span class="mode-chip">Owner Mode</span>
+      <span class="bell-wrap">
+        <button class="icon-btn" aria-label="Notifikasi"><i data-lucide="bell"></i></button>
+        <span class="bell-dot">7</span>
+      </span>
+      <button class="icon-btn" data-theme-toggle aria-label="Ganti tema"><i data-lucide="sun"></i></button>
+    </header>
+
+    <main class="content">
+      <div class="page-head">
+        <div>
+          <h1>Audit Log</h1>
+          <p>Riwayat aksi owner dan admin dalam sistem — siapa melakukan apa dan kapan</p>
+        </div>
+        <div class="head-actions">
+          <button class="btn btn-outline"><i data-lucide="download"></i>Ekspor CSV</button>
+        </div>
+      </div>
+
+      <!-- Filter seperti di Audit.tsx -->
+      <section class="card"><div class="card-body filters">
+        <div class="field"><label for="au-perusahaan">Pilih Perusahaan</label>
+          <select class="select" id="au-perusahaan"><option>PT MyPresence Indonesia</option><option>PT Contoh Kedua</option></select></div>
+        <div class="field"><label for="au-cari">Cari user / aksi</label><input class="input" id="au-cari" placeholder="mis. APPROVE_CORRECTION"></div>
+        <div class="field"><label for="au-dari">Dari</label><input class="input" id="au-dari" type="date" value="2026-10-20"></div>
+        <div class="field"><label for="au-sampai">Sampai</label><input class="input" id="au-sampai" type="date" value="2026-10-27"></div>
+        <label class="toggle" style="align-self:flex-end"><input type="checkbox">Tampilkan ID teknis</label>
+      </div></section>
+
+      <section class="card">
+        <div class="table-wrap"><table>
+          <thead><tr><th>Waktu</th><th>User</th><th>Action</th><th>Details</th></tr></thead>
+          <tbody>
+            <tr><td class="num">27 Okt 2026, 14:02</td><td><span class="primary">Armin Gandi</span><div class="secondary">OWNER</div></td><td><span class="badge badge-success">APPROVE_CORRECTION</span></td><td>Koreksi request KOR-1042, status approved. Admin note: fingerprint error, foto terlampir.</td></tr>
+            <tr><td class="num">27 Okt 2026, 11:37</td><td><span class="primary">Armin Gandi</span><div class="secondary">OWNER</div></td><td><span class="badge badge-info">CREATE_SCHEDULE</span></td><td>Pola shift &ldquo;Pagi&ndash;Siang&rdquo; dibuat untuk Grup A, periode 1&ndash;31 Okt 2026.</td></tr>
+            <tr><td class="num">27 Okt 2026, 09:15</td><td><span class="primary">Sinta Wijaya</span><div class="secondary">ADMIN</div></td><td><span class="badge badge-warning">REJECT_CORRECTION</span></td><td>Koreksi request KOR-1038, status rejected. Admin note: alasan tidak disertai bukti.</td></tr>
+            <tr><td class="num">26 Okt 2026, 17:44</td><td><span class="primary">Armin Gandi</span><div class="secondary">OWNER</div></td><td><span class="badge badge-primary">UPDATE_COMPANY</span></td><td>Branding PT MyPresence Indonesia diperbarui: logo diganti.</td></tr>
+            <tr><td class="num">26 Okt 2026, 15:20</td><td><span class="primary">Armin Gandi</span><div class="secondary">OWNER</div></td><td><span class="badge badge-neutral">CREATE_ANNOUNCEMENT</span></td><td>Pengumuman &ldquo;Jadwal libur akhir tahun&rdquo; diterbitkan ke semua karyawan.</td></tr>
+            <tr><td class="num">26 Okt 2026, 08:03</td><td><span class="primary">Bima Prasetyo</span><div class="secondary">ADMIN</div></td><td><span class="badge badge-danger">DELETE_USER</span></td><td>Akun karyawan nonaktif dihapus dari daftar aktif (soft delete).</td></tr>
+          </tbody>
+        </table></div>
+        <div class="card-foot">Menampilkan 6 dari 1.284 entri &middot; 20&ndash;27 Okt 2026. ID teknis (UID, path database) disembunyikan kecuali toggle di atas diaktifkan.</div>
+      </section>
+
+      <p style="font-size:12px;color:var(--muted-foreground)">Mockup statis &mdash; semua angka dan nama di atas adalah data contoh, bukan data asli. Dibuat 27 Okt 2026.</p>
+    </main>
+  </div>
+</div>
+<script src="lucide.min.js"></script>
+<script src="mockup.js"></script>
+</body>
+</html>

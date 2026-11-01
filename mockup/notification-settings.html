@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pengaturan Notifikasi — MyPresence Admin (Mockup)</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-tile">M</div>
+      <div>
+        <div class="brand-name">MyPresence</div>
+        <div class="brand-sub">Admin</div>
+      </div>
+    </div>
+    <nav>
+      <div class="nav-group-label">Utama</div>
+      <a class="nav-item" href="dashboard.html"><i data-lucide="layout-dashboard"></i>Dashboard</a>
+      <a class="nav-item" href="approvals.html"><i data-lucide="check-square"></i>Persetujuan<span class="count">7</span></a>
+      <a class="nav-item" href="attendance.html"><i data-lucide="fingerprint"></i>Absensi</a>
+      <a class="nav-item" href="corrections.html"><i data-lucide="history"></i>Koreksi Absensi</a>
+      <div class="nav-group-label">Kelola</div>
+      <a class="nav-item" href="employees.html"><i data-lucide="users"></i>Karyawan</a>
+      <a class="nav-item" href="schedules.html"><i data-lucide="calendar"></i>Jadwal Kerja</a>
+      <a class="nav-item" href="organization.html"><i data-lucide="building-2"></i>Organisasi</a>
+      <a class="nav-item" href="companies.html"><i data-lucide="briefcase"></i>Perusahaan</a>
+      <a class="nav-item" href="company-admins.html"><i data-lucide="shield"></i>Admin PT</a>
+      <a class="nav-item" href="announcements.html"><i data-lucide="megaphone"></i>Pengumuman</a>
+      <div class="nav-group-label">Sistem</div>
+      <a class="nav-item" href="reports.html"><i data-lucide="bar-chart-2"></i>Laporan</a>
+      <a class="nav-item" href="audit.html"><i data-lucide="scroll-text"></i>Audit Log</a>
+      <a class="nav-item" href="database-health.html"><i data-lucide="database"></i>Kesehatan Database</a>
+      <a class="nav-item active" href="notification-settings.html"><i data-lucide="bell"></i>Pengaturan Notifikasi</a>
+      <a class="nav-item" href="notification-logs.html"><i data-lucide="file-text"></i>Log Notifikasi</a>
+      <a class="nav-item" href="settings.html"><i data-lucide="settings"></i>Pengaturan</a>
+      <a class="nav-item" href="admin-guide.html"><i data-lucide="book-open"></i>Buku Petunjuk</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-chip">
+        <span class="avatar av-3">AG</span>
+        <div class="meta">
+          <div class="name">Armin Gandi</div>
+          <div class="role">OWNER</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="icon-btn" aria-label="Toggle sidebar"><i data-lucide="panel-left"></i></button>
+      <nav class="crumbs"><span>Admin</span><i data-lucide="chevron-right"></i><b>Pengaturan Notifikasi</b></nav>
+      <div class="spacer"></div>
+      <span class="mode-chip">Owner Mode</span>
+      <span class="bell-wrap">
+        <button class="icon-btn" aria-label="Notifikasi"><i data-lucide="bell"></i></button>
+        <span class="bell-dot">7</span>
+      </span>
+      <button class="icon-btn" data-theme-toggle aria-label="Ganti tema"><i data-lucide="sun"></i></button>
+    </header>
+
+    <main class="content">
+      <div class="page-head">
+        <div>
+          <h1>Pengaturan Notifikasi</h1>
+          <p>Push, notifikasi dalam aplikasi, pengingat presensi otomatis, dan kategori notifikasi — hanya owner</p>
+        </div>
+        <div class="head-actions">
+          <button class="btn btn-primary"><i data-lucide="save"></i>Simpan Pengaturan</button>
+        </div>
+      </div>
+
+      <div class="two-col" style="align-items:start">
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <section class="card"><div class="card-head"><h2>Global Settings</h2><p>Saluran utama notifikasi ke karyawan</p></div>
+          <div class="card-body" style="display:flex;flex-direction:column;gap:16px">
+            <div>
+              <label class="toggle"><span class="switch" aria-checked="true" role="switch"></span><b>Push Notification</b></label>
+              <p class="hint" style="margin:6px 0 0 48px">Izinkan pengiriman notifikasi ke perangkat (Android/iOS) karyawan.</p>
+            </div>
+            <div>
+              <label class="toggle"><span class="switch" aria-checked="true" role="switch"></span><b>Notifikasi Dalam Aplikasi</b></label>
+              <p class="hint" style="margin:6px 0 0 48px">Munculkan notifikasi di dalam menu Inbox pada aplikasi.</p>
+            </div>
+          </div></section>
+
+          <section class="card"><div class="card-head"><h2>Pengingat Presensi Otomatis</h2><p>Kirim pengingat berdasarkan jadwal kerja karyawan (Cloud Functions)</p></div>
+          <div class="card-body" style="display:flex;flex-direction:column;gap:14px">
+            <label class="toggle"><span class="switch" aria-checked="true" role="switch"></span><b>Aktifkan Pengingat Presensi Otomatis</b></label>
+            <div style="display:flex;flex-direction:column;gap:10px;padding-left:48px">
+              <label class="toggle"><span class="switch" aria-checked="true" role="switch"></span>Pengingat Sebelum Masuk <span class="secondary">(30 menit sebelum jadwal)</span></label>
+              <label class="toggle"><span class="switch" aria-checked="true" role="switch"></span>Pengingat Tepat Waktu Masuk</label>
+              <label class="toggle"><span class="switch" aria-checked="true" role="switch"></span>Peringatan Telat Absen Masuk</label>
+              <label class="toggle"><span class="switch" aria-checked="true" role="switch"></span><span>Pengingat Sebelum Pulang <span class="secondary">(30 menit sebelum pulang)</span></span></label>
+              <label class="toggle"><span class="switch" aria-checked="true" role="switch"></span>Pengingat Tepat Waktu Pulang</label>
+              <label class="toggle"><span class="switch" aria-checked="false" role="switch"></span>Peringatan Lupa Absen Pulang</label>
+            </div>
+          </div></section>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <section class="card"><div class="card-head"><h2>Kategori Notifikasi Aktif</h2><p>Jenis notifikasi push yang boleh dikirim ke karyawan</p></div>
+          <div class="card-body" style="display:flex;flex-direction:column;gap:14px">
+            <label class="toggle"><span class="switch" aria-checked="true" role="switch"></span>Pengumuman &amp; Broadcast</label>
+            <label class="toggle"><span class="switch" aria-checked="true" role="switch"></span>Hasil Approval Cuti / Izin / Koreksi</label>
+            <label class="toggle"><span class="switch" aria-checked="true" role="switch"></span>Perubahan Jadwal &amp; Shift Kerja</label>
+            <label class="toggle"><span class="switch" aria-checked="true" role="switch"></span>Pengumuman Hari Libur</label>
+          </div></section>
+
+          <section class="card"><div class="card-head"><h2>Pengaturan Lanjutan Scheduler</h2><p>Jadwal kerja layanan pengingat otomatis</p></div>
+          <div class="card-body" style="display:flex;flex-direction:column;gap:12px">
+            <div class="field"><label for="ns-interval">Interval pengecekan scheduler (menit)</label><input class="input" id="ns-interval" type="number" value="5"></div>
+            <div class="field"><label for="ns-jam">Jam aktif scheduler</label><input class="input" id="ns-jam" type="time" value="05:00"><span class="hint">Scheduler berjalan setiap hari mulai jam ini sampai jam pulang terakhir.</span></div>
+            <label class="toggle"><span class="switch" aria-checked="true" role="switch"></span>Nonaktifkan pengingat di hari libur</label>
+          </div></section>
+
+          <div class="notice"><i data-lucide="info"></i><span><b>Perubahan berlaku untuk semua perusahaan.</b> Karyawan tetap bisa mematikan push dari pengaturan HP-nya sendiri. Pengiriman yang gagal bisa ditelusuri di <a href="notification-logs.html" style="color:var(--primary);font-weight:600">Log Notifikasi</a>.</span></div>
+        </div>
+      </div>
+
+      <p style="font-size:12px;color:var(--muted-foreground)">Mockup statis &mdash; semua angka dan nama di atas adalah data contoh, bukan data asli. Dibuat 27 Okt 2026.</p>
+    </main>
+  </div>
+</div>
+<script src="lucide.min.js"></script>
+<script src="mockup.js"></script>
+</body>
+</html>

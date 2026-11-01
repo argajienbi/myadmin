@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Log Notifikasi — MyPresence Admin (Mockup)</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-tile">M</div>
+      <div>
+        <div class="brand-name">MyPresence</div>
+        <div class="brand-sub">Admin</div>
+      </div>
+    </div>
+    <nav>
+      <div class="nav-group-label">Utama</div>
+      <a class="nav-item" href="dashboard.html"><i data-lucide="layout-dashboard"></i>Dashboard</a>
+      <a class="nav-item" href="approvals.html"><i data-lucide="check-square"></i>Persetujuan<span class="count">7</span></a>
+      <a class="nav-item" href="attendance.html"><i data-lucide="fingerprint"></i>Absensi</a>
+      <a class="nav-item" href="corrections.html"><i data-lucide="history"></i>Koreksi Absensi</a>
+      <div class="nav-group-label">Kelola</div>
+      <a class="nav-item" href="employees.html"><i data-lucide="users"></i>Karyawan</a>
+      <a class="nav-item" href="schedules.html"><i data-lucide="calendar"></i>Jadwal Kerja</a>
+      <a class="nav-item" href="organization.html"><i data-lucide="building-2"></i>Organisasi</a>
+      <a class="nav-item" href="companies.html"><i data-lucide="briefcase"></i>Perusahaan</a>
+      <a class="nav-item" href="company-admins.html"><i data-lucide="shield"></i>Admin PT</a>
+      <a class="nav-item" href="announcements.html"><i data-lucide="megaphone"></i>Pengumuman</a>
+      <div class="nav-group-label">Sistem</div>
+      <a class="nav-item" href="reports.html"><i data-lucide="bar-chart-2"></i>Laporan</a>
+      <a class="nav-item" href="audit.html"><i data-lucide="scroll-text"></i>Audit Log</a>
+      <a class="nav-item" href="database-health.html"><i data-lucide="database"></i>Kesehatan Database</a>
+      <a class="nav-item" href="notification-settings.html"><i data-lucide="bell"></i>Pengaturan Notifikasi</a>
+      <a class="nav-item active" href="notification-logs.html"><i data-lucide="file-text"></i>Log Notifikasi</a>
+      <a class="nav-item" href="settings.html"><i data-lucide="settings"></i>Pengaturan</a>
+      <a class="nav-item" href="admin-guide.html"><i data-lucide="book-open"></i>Buku Petunjuk</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-chip">
+        <span class="avatar av-3">AG</span>
+        <div class="meta">
+          <div class="name">Armin Gandi</div>
+          <div class="role">OWNER</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="icon-btn" aria-label="Toggle sidebar"><i data-lucide="panel-left"></i></button>
+      <nav class="crumbs"><span>Admin</span><i data-lucide="chevron-right"></i><b>Log Notifikasi</b></nav>
+      <div class="spacer"></div>
+      <span class="mode-chip">Owner Mode</span>
+      <span class="bell-wrap">
+        <button class="icon-btn" aria-label="Notifikasi"><i data-lucide="bell"></i></button>
+        <span class="bell-dot">7</span>
+      </span>
+      <button class="icon-btn" data-theme-toggle aria-label="Ganti tema"><i data-lucide="sun"></i></button>
+    </header>
+
+    <main class="content">
+      <div class="page-head">
+        <div>
+          <h1>Pusat Debug &amp; Monitoring Notifikasi</h1>
+          <p>Antrean push, log pengiriman FCM, pusat tes, dan kesehatan token — hanya owner</p>
+        </div>
+        <div class="head-actions">
+          <button class="btn btn-outline"><i data-lucide="refresh-cw"></i>Muat Ulang</button>
+        </div>
+      </div>
+
+      <!-- Filter seperti di NotificationLogs.tsx -->
+      <section class="card"><div class="card-body filters">
+        <div class="field"><label for="nl-status">Filter Status</label>
+          <select class="select" id="nl-status"><option>Semua Status</option><option>Terkirim</option><option>Gagal</option><option>Menunggu</option><option>Diantrekan</option></select></div>
+        <div class="field"><label for="nl-tipe">Filter Tipe / Ref</label>
+          <select class="select" id="nl-tipe"><option>Semua Tipe</option><option>announcement</option><option>approval</option><option>reminder</option><option>schedule_update</option></select></div>
+        <div class="field"><label for="nl-karyawan">Filter Karyawan</label><input class="input" id="nl-karyawan" placeholder="Nama atau email"></div>
+        <div class="field"><label for="nl-tanggal">Filter Tanggal</label><input class="input" id="nl-tanggal" type="date" value="2026-10-27"></div>
+        <label class="toggle" style="align-self:flex-end"><input type="checkbox">Tampilkan ID teknis</label>
+      </div></section>
+
+      <section class="grid-stats" style="grid-template-columns:repeat(4,1fr)">
+        <div class="card stat"><div class="label">Terkirim Hari Ini</div><div class="value">1.284</div><div class="sub">FCM berhasil diterima</div></div>
+        <div class="card stat"><div class="label">Gagal</div><div class="value">17</div><div class="sub">Token tidak valid / tidak terjangkau</div></div>
+        <div class="card stat"><div class="label">Dalam Antrean</div><div class="value">6</div><div class="sub">Menunggu dikirim scheduler</div></div>
+        <div class="card stat"><div class="label">Token Sehat</div><div class="value">96%</div><div class="sub">209 dari 217 perangkat</div></div>
+      </section>
+
+      <!-- Antrean Push Notification -->
+      <section class="card">
+        <div class="card-head"><h2>Antrean Push Notification</h2><p>Notifikasi yang sedang menunggu giliran kirim</p></div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Jadwal Buat</th><th>Judul &amp; Isi</th><th>Status &amp; Aksi</th></tr></thead>
+          <tbody>
+            <tr><td class="num">27 Okt 2026, 13:40</td><td><span class="primary">Pengingat pulang — Grup A</span><div class="secondary">Jangan lupa absen pulang hari ini.</div></td><td><span class="badge badge-warning">Diantrekan</span></td></tr>
+            <tr><td class="num">27 Okt 2026, 13:35</td><td><span class="primary">Hasil approval: Cuti Budi Santoso</span><div class="secondary">Pengajuan cuti 30 Okt &ndash; 1 Nov 2026.</div></td><td><span class="badge badge-warning">Diantrekan</span></td></tr>
+            <tr><td class="num">27 Okt 2026, 13:30</td><td><span class="primary">Pengumuman: Jadwal libur akhir tahun</span><div class="secondary">Libur Natal 25 Des 2026 dan Tahun Baru.</div></td><td><span class="badge badge-success">Terkirim</span></td></tr>
+          </tbody>
+        </table></div>
+      </section>
+
+      <!-- Log Aksi Sistem -->
+      <section class="card">
+        <div class="card-head"><h2>Log Aksi Sistem</h2><p>Aksi otomatis scheduler dan layanan notifikasi</p></div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Waktu</th><th>Aksi</th><th>Detail</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td class="num">27 Okt 2026, 13:30</td><td><span class="badge badge-primary">scheduler_run</span></td><td>Reminder pulang Grup A dijadwalkan (142 target)</td><td><span class="badge badge-success">OK</span></td></tr>
+            <tr><td class="num">27 Okt 2026, 07:30</td><td><span class="badge badge-primary">scheduler_run</span></td><td>Reminder masuk Grup A dijadwalkan (142 target)</td><td><span class="badge badge-success">OK</span></td></tr>
+            <tr><td class="num">27 Okt 2026, 07:31</td><td><span class="badge badge-warning">token_cleanup</span></td><td>3 token FCM kedaluwarsa dihapus</td><td><span class="badge badge-success">OK</span></td></tr>
+          </tbody>
+        </table></div>
+      </section>
+
+      <!-- Log Detail Pengiriman FCM (Per Token) -->
+      <section class="card">
+        <div class="card-head"><h2>Log Detail Pengiriman FCM (Per Token)</h2><p>Status pengiriman tiap perangkat — berguna saat karyawan melapor notifikasi tidak masuk</p></div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Tanggal Kirim</th><th>Notifikasi</th><th>Karyawan &amp; Perangkat</th><th>Status &amp; Error</th></tr></thead>
+          <tbody>
+            <tr><td class="num">27 Okt 2026, 13:30</td><td><span class="primary">Pengingat pulang</span><div class="secondary">reminder &middot; schedule_update</div></td><td>Siti Dahlia &middot; Android &middot; <span class="mono">tok_9f2c&hellip;</span></td><td><span class="badge badge-success">Terkirim</span></td></tr>
+            <tr><td class="num">27 Okt 2026, 13:30</td><td><span class="primary">Pengingat pulang</span><div class="secondary">reminder &middot; schedule_update</div></td><td>Joko Prasetyo &middot; Android &middot; <span class="mono">tok_71ab&hellip;</span></td><td><span class="badge badge-danger">Gagal — token tidak valid</span></td></tr>
+            <tr><td class="num">27 Okt 2026, 07:30</td><td><span class="primary">Pengingat masuk</span><div class="secondary">reminder</div></td><td>Dewi Lestari &middot; iOS &middot; <span class="mono">tok_44e0&hellip;</span></td><td><span class="badge badge-success">Terkirim</span></td></tr>
+          </tbody>
+        </table></div>
+      </section>
+
+      <!-- Notification Debug Center (Pusat Tes) -->
+      <section class="card">
+        <div class="card-head"><h2>Notification Debug Center (Pusat Tes)</h2><p>Kirim notifikasi percobaan ke satu karyawan untuk memastikan jalurnya hidup</p></div>
+        <div class="card-body" style="display:flex;flex-direction:column;gap:16px">
+          <div>
+            <p style="font-size:13px;font-weight:600;margin-bottom:8px">Checklist setelah update:</p>
+            <div class="tabs" style="flex-wrap:wrap">
+              <button class="active">1. Test Push Umum (Custom)</button>
+              <button>2. Test Jadwal Kerja (schedule_update)</button>
+              <button>3. Test Approval Pengajuan (approval)</button>
+              <button>4. Test Reminder Absen (reminder)</button>
+            </div>
+          </div>
+          <div class="filters">
+            <div class="field"><label for="nt-target">Pilih Target Karyawan</label>
+              <select class="select" id="nt-target"><option>Armin Gandi (diri sendiri) &middot; armin.gandi@gmail.com</option><option>Siti Dahlia &middot; EMP-1018</option><option>Andika Kurniawan &middot; EMP-1042</option></select></div>
+            <div class="field"><label for="nt-judul">Judul Kustom</label><input class="input" id="nt-judul" value="Test Push MyPresence"></div>
+            <div class="field"><label for="nt-stage">Stage</label>
+              <select class="select" id="nt-stage"><option>production</option><option>staging</option></select></div>
+            <div class="field"><label for="nt-action">Target Action</label>
+              <select class="select" id="nt-action"><option>Buka aplikasi</option><option>Buka pengumuman</option><option>Buka persetujuan</option></select></div>
+          </div>
+          <div class="field"><label for="nt-isi">Isi Pesan Kustom</label><textarea class="textarea" id="nt-isi">Ini notifikasi percobaan dari MyPresence Admin. Abaikan pesan ini.</textarea></div>
+          <div class="head-actions">
+            <button class="btn btn-primary"><i data-lucide="send"></i>Kirim Test Notifikasi</button>
+            <button class="btn btn-outline"><i data-lucide="play"></i>Jalankan 4 Skenario Sekaligus</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Monitor Kesehatan Token FCM Karyawan -->
+      <section class="card">
+        <div class="card-head"><h2>Monitor Kesehatan Token FCM Karyawan</h2><p>Token yang tidak sehat berarti perangkat itu tidak akan menerima push</p></div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Karyawan</th><th>Platform &amp; Izin</th><th>Token ID Ringkas</th><th>Kesehatan / Alasan Invalidate</th><th>Terakhir Diperbarui</th><th style="text-align:right">Aksi</th></tr></thead>
+          <tbody>
+            <tr><td><span class="primary">Siti Dahlia</span></td><td>Android &middot; <span class="badge badge-success">Izin aktif</span></td><td class="mono">tok_9f2c&hellip;</td><td><span class="badge badge-success">Sehat</span></td><td class="num">27 Okt 2026</td><td><div class="row-actions"><button class="btn btn-outline btn-sm">Test Push</button></div></td></tr>
+            <tr><td><span class="primary">Joko Prasetyo</span></td><td>Android &middot; <span class="badge badge-danger">Izin dicabut</span></td><td class="mono">tok_71ab&hellip;</td><td><span class="badge badge-danger">Tidak valid — token kedaluwarsa</span></td><td class="num">20 Okt 2026</td><td><div class="row-actions"><button class="btn btn-outline btn-sm">Hapus Token</button></div></td></tr>
+            <tr><td><span class="primary">Dewi Lestari</span></td><td>iOS &middot; <span class="badge badge-success">Izin aktif</span></td><td class="mono">tok_44e0&hellip;</td><td><span class="badge badge-success">Sehat</span></td><td class="num">27 Okt 2026</td><td><div class="row-actions"><button class="btn btn-outline btn-sm">Test Push</button></div></td></tr>
+          </tbody>
+        </table></div>
+      </section>
+
+      <!-- Log Scheduler Reminder Attendance -->
+      <section class="card">
+        <div class="card-head"><h2>Log Scheduler Reminder Attendance</h2><p>Setiap jalan scheduler pengingat dicatat di sini</p></div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Run ID &amp; Tanggal (Jakarta)</th><th>Target</th><th>Terkirim</th><th>Gagal</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">run_20261027_1330</td><td>142 karyawan</td><td class="num">140</td><td class="num">2</td><td><span class="badge badge-success">Selesai</span></td></tr>
+            <tr><td class="mono">run_20261027_0730</td><td>142 karyawan</td><td class="num">141</td><td class="num">1</td><td><span class="badge badge-success">Selesai</span></td></tr>
+            <tr><td class="mono">run_20261026_1730</td><td>148 karyawan</td><td class="num">145</td><td class="num">3</td><td><span class="badge badge-success">Selesai</span></td></tr>
+          </tbody>
+        </table></div>
+      </section>
+
+      <p style="font-size:12px;color:var(--muted-foreground)">Mockup statis &mdash; semua angka dan nama di atas adalah data contoh, bukan data asli. Dibuat 27 Okt 2026.</p>
+    </main>
+  </div>
+</div>
+<script src="lucide.min.js"></script>
+<script src="mockup.js"></script>
+</body>
+</html>
