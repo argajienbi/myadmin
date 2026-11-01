@@ -166,7 +166,7 @@
     --warning: #f2c14e;  --warning-bg: color-mix(in oklab, #f2c14e 14%, transparent);
     --danger: #f0868a;   --danger-bg: color-mix(in oklab, #f0868a 14%, transparent);
     --info: #a79cff;     --info-bg: color-mix(in oklab, #a79cff 14%, transparent);
-    --neutral: #a8c3ca;  --neutral-bg: #183139;
+    --neutral: #a8c3ca;  --neutral-bg: color-mix(in oklab, #a8c3ca 14%, transparent);
 
     --chart-1: #4fc3d4;
     --chart-2: #a79cff;

@@ -143,7 +143,7 @@ export function OrganizationPage() {
     }) => saveEntity(companyId, args.type, args.editingId, args.form, actor),
     onSuccess: (_, args) => {
       toast.success(
-        `${ENTITY_LABEL[args.type]} berhasil ${args.editingId ? "diubah" : "ditambahkan"}.`,
+        `${args.editingId ? "Diubah" : "Ditambahkan"} — ${ENTITY_LABEL[args.type]} ${args.form.name}`,
       )
       setEntityModal(null)
       setEntityForm(EMPTY_ENTITY_FORM)
@@ -152,19 +152,25 @@ export function OrganizationPage() {
     onError: (e: Error) => toast.error(e.message),
   })
   const toggle = useMutation({
-    mutationFn: (args: { type: EntityType; id: string; active: boolean }) =>
-      toggleEntity(companyId, args.type, args.id, args.active, actor),
-    onSuccess: () => {
-      toast.success("Status berhasil diubah.")
+    mutationFn: (args: {
+      type: EntityType
+      id: string
+      active: boolean
+      name: string
+    }) => toggleEntity(companyId, args.type, args.id, args.active, actor),
+    onSuccess: (_, args) => {
+      toast.success(
+        `${args.active ? "Diaktifkan" : "Dinonaktifkan"} — ${ENTITY_LABEL[args.type]} ${args.name}`,
+      )
       void invalidate()
     },
     onError: (e: Error) => toast.error(e.message),
   })
   const removeEntity = useMutation({
-    mutationFn: (args: { type: EntityType; id: string }) =>
+    mutationFn: (args: { type: EntityType; id: string; name: string }) =>
       deleteEntity(companyId, args.type, args.id),
     onSuccess: (_, args) => {
-      toast.success(`${ENTITY_LABEL[args.type]} berhasil dihapus.`)
+      toast.success(`Dihapus — ${ENTITY_LABEL[args.type]} ${args.name}`)
       void invalidate()
     },
     onError: (e: Error) => toast.error(`Gagal menghapus: ${e.message}`),
@@ -172,8 +178,13 @@ export function OrganizationPage() {
   const addPatternMutation = useMutation({
     mutationFn: (args: { groupId: string; form: PatternForm }) =>
       addPattern(companyId, args.groupId, args.form, data?.timetables ?? [], actor),
-    onSuccess: () => {
-      toast.success("Berhasil menambah pola jam.")
+    onSuccess: (_result, args) => {
+      const groupName = data?.groups.find(
+        (g) => (g.id ?? "") === args.groupId,
+      )?.name
+      toast.success(
+        `Ditambahkan — Pola jam${groupName ? ` grup ${groupName}` : ""}`,
+      )
       setPatternOpen(false)
       setPatternForm(EMPTY_PATTERN_FORM)
       void invalidate()
@@ -181,10 +192,13 @@ export function OrganizationPage() {
     onError: (e: Error) => toast.error(e.message),
   })
   const removePattern = useMutation({
-    mutationFn: (args: { assignmentId: string; shiftId: string | null }) =>
-      deletePattern(companyId, args.assignmentId, args.shiftId),
-    onSuccess: () => {
-      toast.success("Pola jam berhasil dihapus.")
+    mutationFn: (args: {
+      assignmentId: string
+      shiftId: string | null
+      label: string
+    }) => deletePattern(companyId, args.assignmentId, args.shiftId),
+    onSuccess: (_result, args) => {
+      toast.success(`Dihapus — Pola jam ${args.label}`)
       void invalidate()
     },
     onError: (e: Error) => toast.error(`Gagal menghapus pola: ${e.message}`),
@@ -358,10 +372,10 @@ export function OrganizationPage() {
           onConfirm={() => {
             if (isActive) {
               guardOrRun(type, id, () =>
-                toggle.mutate({ type, id, active: false }),
+                toggle.mutate({ type, id, active: false, name: item.name }),
               )
             } else {
-              toggle.mutate({ type, id, active: true })
+              toggle.mutate({ type, id, active: true, name: item.name })
             }
           }}
         />
@@ -375,7 +389,9 @@ export function OrganizationPage() {
           description={`Hapus permanen ${ENTITY_LABEL[type]} "${item.name}"? Tindakan ini tidak dapat dibatalkan.`}
           confirmLabel="Hapus"
           onConfirm={() =>
-            guardOrRun(type, id, () => removeEntity.mutate({ type, id }))
+            guardOrRun(type, id, () =>
+              removeEntity.mutate({ type, id, name: item.name }),
+            )
           }
         />
       </div>
@@ -627,6 +643,7 @@ export function OrganizationPage() {
                           removePattern.mutate({
                             assignmentId: p.assignmentId,
                             shiftId: p.shiftId,
+                            label: p.name,
                           })
                         }
                       />

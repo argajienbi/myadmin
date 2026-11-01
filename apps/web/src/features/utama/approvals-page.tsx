@@ -595,6 +595,15 @@ export function ApprovalsPage({
     const actionReq = detailReq
     const actionType = actionReq.kind
     const noteText = adminNote.trim()
+    // R5: pesan toast spesifik — aksi + jenis pengajuan + nama pengaju
+    // (mis. "Disetujui — Izin Andika"), menggantikan teks generik.
+    const subjectLabel =
+      actionType === "leave"
+        ? leaveTypeLabel(leaveTypeValue(actionReq))
+        : actionType === "qr"
+          ? "QR Absensi"
+          : "Koreksi Presensi"
+    const successMessage = `${actionStatus === "approved" ? "Disetujui" : "Ditolak"} — ${subjectLabel} ${employeeName(actionReq)}`
     const processApproval = async () => {
       let currentStatus: string
       if (actionType === "leave") {
@@ -1115,7 +1124,7 @@ export function ApprovalsPage({
           ref_id: actionReq.request_id,
         })
       }
-      return "Aksi berhasil diproses"
+      return successMessage
     }
     toast
       .promise(processApproval(), {

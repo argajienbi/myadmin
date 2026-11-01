@@ -428,7 +428,11 @@ export function CorrectionsPage() {
             )
         )
       )
-      toast.success("Koreksi berhasil disimpan.")
+      // R5: toast spesifik — nama karyawan + arah + tanggal koreksi.
+      const correctedEmp = employeeByUid.get(formUid)
+      toast.success(
+        `Koreksi tersimpan — ${correctedEmp ? employeeName(correctedEmp) : formUid} (${formActionType === "check_in" ? "Masuk" : "Pulang"}, ${formatTanggal(formDate)})`
+      )
       // D4: kosongkan seluruh form setelah simpan (lama: setFormData({})),
       // supaya klik Simpan kedua tidak menduplikasi riwayat koreksi.
       setFormUid("")

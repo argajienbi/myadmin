@@ -79,6 +79,9 @@ interface DashboardData {
   recentLogs: AttendanceRow[]
   leaves: MasterRow[]
   pendingCount: number
+  // R3: rincian koreksi menunggu untuk ringkasan "Perlu Tindakan" —
+  // dihitung dari snapshot koreksi yang sama (tanpa baca tambahan).
+  pendingCorr: number
 }
 
 // Baca LANGSUNG dari data mentah RTDB (tanpa node pre-computed):
@@ -167,6 +170,7 @@ async function loadDashboardData(
     recentLogs,
     leaves,
     pendingCount: pendingLeaves + pendingQr + pendingCorr,
+    pendingCorr,
   }
 }
 
@@ -195,6 +199,7 @@ export function DashboardPage() {
   const [recentLogs, setRecentLogs] = useState<AttendanceRow[]>([])
   const [leaveRequests, setLeaveRequests] = useState<MasterRow[]>([])
   const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0)
+  const [pendingCorrectionsCount, setPendingCorrectionsCount] = useState(0)
   const [holidays, setHolidays] = useState<MasterRow[]>([])
   const [specials, setSpecials] = useState<MasterRow[]>([])
   // Penanda request terakhir: bila perusahaan/tanggal berganti sebelum
@@ -249,6 +254,7 @@ export function DashboardPage() {
       setRecentLogs(result.recentLogs)
       setLeaveRequests(result.leaves)
       setPendingApprovalsCount(result.pendingCount)
+      setPendingCorrectionsCount(result.pendingCorr)
       if (!result.silent) toast.success("Ringkasan dashboard berhasil dimuat.")
     },
     onError: (e: Error) =>
@@ -530,6 +536,117 @@ export function DashboardPage() {
         </Card>
       ) : (
         <>
+          {/* R3 — seksi prioritas (REVISI-DESAIN-PR2): antrean persetujuan
+              di paling atas dashboard, sebelum filter & kartu statistik.
+              Semua angka dari data yang SUDAH dibaca dashboard ini:
+              pendingCount (izin+QR+koreksi), pendingCorr, todayStats.absen
+              — tanpa jalur data baru. */}
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+            <Card
+              className="cursor-pointer border-[#f2523f]/50 transition-all hover:-translate-y-0.5 hover:shadow-md"
+              role="button"
+              tabIndex={0}
+              onClick={() =>
+                void navigate({
+                  to: "/admin/approvals",
+                  search: {
+                    tab: undefined,
+                    status: "pending",
+                    date: undefined,
+                  },
+                })
+              }
+              onKeyDown={(e) =>
+                cardKeyDown(e, () =>
+                  void navigate({
+                    to: "/admin/approvals",
+                    search: {
+                      tab: undefined,
+                      status: "pending",
+                      date: undefined,
+                    },
+                  })
+                )
+              }
+            >
+              <CardContent className="flex items-center justify-between gap-4 p-4">
+                <div className="flex flex-col gap-1">
+                  <span className="text-sm font-medium text-muted-foreground">
+                    Approval Pending
+                  </span>
+                  <span className="text-4xl font-bold tracking-tight text-[#f2523f]">
+                    {pendingApprovalsCount}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    Butuh aksi Admin/HR
+                  </span>
+                </div>
+                <span className="flex items-center gap-1 text-sm font-semibold text-[#f2523f]">
+                  Proses
+                  <ArrowRight className="h-4 w-4" />
+                </span>
+              </CardContent>
+            </Card>
+
+            <Card className="lg:col-span-2">
+              <CardContent className="flex flex-col p-4">
+                <span className="text-sm font-medium text-muted-foreground">
+                  Perlu Tindakan
+                </span>
+                <div className="flex flex-col divide-y">
+                  <button
+                    type="button"
+                    className="flex min-h-10 items-center justify-between gap-3 py-1.5 text-left"
+                    onClick={() =>
+                      void navigate({
+                        to: "/admin/approvals",
+                        search: {
+                          tab: undefined,
+                          status: "pending",
+                          date: undefined,
+                        },
+                      })
+                    }
+                  >
+                    <span className="text-sm">Menunggu persetujuan</span>
+                    <span className="flex items-center gap-1.5">
+                      <span className="rounded-full bg-[#f2523f]/10 px-2 py-0.5 text-sm font-bold text-[#f2523f]">
+                        {pendingApprovalsCount}
+                      </span>
+                      <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    className="flex min-h-10 items-center justify-between gap-3 py-1.5 text-left"
+                    onClick={() => void navigate({ to: "/admin/corrections" })}
+                  >
+                    <span className="text-sm">Koreksi menunggu</span>
+                    <span className="flex items-center gap-1.5">
+                      <span className="rounded-full bg-muted px-2 py-0.5 text-sm font-bold">
+                        {pendingCorrectionsCount}
+                      </span>
+                      <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    className="flex min-h-10 items-center justify-between gap-3 py-1.5 text-left"
+                    onClick={() => void navigate({ to: "/admin/reports" })}
+                  >
+                    <span className="text-sm">Belum absen hari ini</span>
+                    <span className="flex items-center gap-1.5">
+                      <span className="rounded-full bg-muted px-2 py-0.5 text-sm font-bold">
+                        {todayStats.absen}
+                      </span>
+                      <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                    </span>
+                  </button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
           <Card>
             <CardContent className="flex flex-wrap items-end gap-4 p-4">
               <div className="flex flex-col gap-1.5">

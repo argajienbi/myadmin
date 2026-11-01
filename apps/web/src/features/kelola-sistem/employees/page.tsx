@@ -45,6 +45,7 @@ import {
 } from "@workspace/ui/components/table"
 import { ConfirmAction } from "@/components/confirm-action"
 import {
+  ListState,
   Pagination,
   TableState,
   useDebounced,
@@ -300,8 +301,8 @@ export function EmployeesPage() {
 
   const create = useMutation({
     mutationFn: (form: EmployeeForm) => createEmployee(companyId, form, actor),
-    onSuccess: () => {
-      toast.success("Berhasil menambahkan karyawan.")
+    onSuccess: (_result, form) => {
+      toast.success(`Ditambahkan — Karyawan ${form.nama_lengkap}`)
       setAddOpen(false)
       setAddForm(EMPTY_FORM)
       void invalidate()
@@ -311,8 +312,8 @@ export function EmployeesPage() {
   const update = useMutation({
     mutationFn: (args: { uid: string; form: EmployeeEditForm }) =>
       updateEmployee(companyId, args.uid, args.form, actor),
-    onSuccess: () => {
-      toast.success("Data karyawan berhasil diubah.")
+    onSuccess: (_result, args) => {
+      toast.success(`Diubah — Karyawan ${args.form.nama_lengkap}`)
       setEditTarget(null)
       setEditForm(null)
       void invalidate()
@@ -320,26 +321,30 @@ export function EmployeesPage() {
     onError: (e: Error) => toast.error(`Gagal mengubah karyawan: ${e.message}`),
   })
   const toggleStatus = useMutation({
-    mutationFn: (args: { uid: string; status: AccountStatus }) =>
+    mutationFn: (args: { uid: string; status: AccountStatus; name: string }) =>
       setEmployeeStatus(companyId, args.uid, args.status, actor),
-    onSuccess: () => {
-      toast.success("Status karyawan berhasil diubah.")
+    onSuccess: (_result, args) => {
+      toast.success(
+        `${args.status === "active" ? "Diaktifkan" : "Dinonaktifkan"} — Karyawan ${args.name}`,
+      )
       void invalidate()
     },
     onError: (e: Error) => toast.error(`Gagal mengubah status: ${e.message}`),
   })
   const resetDevice = useMutation({
-    mutationFn: (uid: string) => resetEmployeeDevice(companyId, uid, actor),
-    onSuccess: () => {
-      toast.success("Data perangkat berhasil direset.")
+    mutationFn: (args: { uid: string; name: string }) =>
+      resetEmployeeDevice(companyId, args.uid, actor),
+    onSuccess: (_result, args) => {
+      toast.success(`Perangkat direset — Karyawan ${args.name}`)
       void invalidate()
     },
     onError: (e: Error) => toast.error(`Gagal mereset perangkat: ${e.message}`),
   })
   const resetFace = useMutation({
-    mutationFn: (uid: string) => resetEmployeeFace(companyId, uid, actor),
-    onSuccess: () => {
-      toast.success("Data wajah berhasil dihapus.")
+    mutationFn: (args: { uid: string; name: string }) =>
+      resetEmployeeFace(companyId, args.uid, actor),
+    onSuccess: (_result, args) => {
+      toast.success(`Data wajah dihapus — Karyawan ${args.name}`)
       void invalidate()
     },
     onError: (e: Error) => toast.error(`Gagal menghapus data wajah: ${e.message}`),
@@ -347,8 +352,10 @@ export function EmployeesPage() {
   const transfer = useMutation({
     mutationFn: (args: { employee: CompanyUser; form: TransferForm }) =>
       transferEmployee(companyId, args.employee, args.form, actor),
-    onSuccess: () => {
-      toast.success("Karyawan berhasil dipindahkan.")
+    onSuccess: (_result, args) => {
+      toast.success(
+        `Dipindahkan — Karyawan ${args.employee.nama_lengkap ?? ""}`,
+      )
       setTransferTarget(null)
       void invalidate()
     },
@@ -406,6 +413,89 @@ export function EmployeesPage() {
       reason: "",
       effective_date: "",
     })
+  }
+
+  // Baris terhitung sekali — dipakai tabel desktop & kartu mobile (R4).
+  const rowData = data
+    ? pageRows.map((e) => ({
+        employee: e,
+        office: data.offices.find((o) => o.id === e.office_id),
+        dept: data.departments.find((d) => d.id === e.department_id),
+        group: data.groups.find((g) => g.id === e.group_id),
+        uid: e.uid ?? e.id ?? "",
+        isActive: e.status_akun === "active",
+        scheduled: hasSchedule(e, data),
+      }))
+    : []
+
+  /** Aksi karyawan — satu sumber untuk tabel desktop & kartu mobile (R4).
+      `large` menaikkan target sentuh ke 40px di kartu mobile. */
+  const renderActions = (
+    e: CompanyUser,
+    uid: string,
+    isActive: boolean,
+    large = false,
+  ) => {
+    const sizeClass = large ? "h-10" : undefined
+    return (
+      <>
+        <Button
+          variant="ghost"
+          size="sm"
+          className={sizeClass}
+          onClick={() => openEdit(e)}
+        >
+          Ubah
+        </Button>
+        <ConfirmAction
+          trigger={
+            <Button variant="ghost" size="sm" className={sizeClass}>
+              {isActive ? "Nonaktifkan" : "Aktifkan"}
+            </Button>
+          }
+          title={isActive ? "Nonaktifkan karyawan?" : "Aktifkan karyawan?"}
+          description={`${e.nama_lengkap ?? ""} akan ${isActive ? "dinonaktifkan" : "diaktifkan"}.`}
+          confirmLabel={isActive ? "Nonaktifkan" : "Aktifkan"}
+          onConfirm={() =>
+            toggleStatus.mutate({
+              uid,
+              status: isActive ? "inactive" : "active",
+              name: e.nama_lengkap ?? "",
+            })
+          }
+        />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm" className={sizeClass}>
+              Lainnya
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => openTransfer(e)}>
+              Pindah Struktur
+            </DropdownMenuItem>
+            {e.face_registered && (
+              <DropdownMenuItem
+                onClick={() =>
+                  resetFace.mutate({ uid, name: e.nama_lengkap ?? "" })
+                }
+              >
+                Reset Wajah
+              </DropdownMenuItem>
+            )}
+            {e.device_id && (
+              <DropdownMenuItem
+                onClick={() =>
+                  resetDevice.mutate({ uid, name: e.nama_lengkap ?? "" })
+                }
+              >
+                Reset Perangkat
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </>
+    )
   }
 
   if (!isFirebaseConfigured())
@@ -618,33 +708,26 @@ export function EmployeesPage() {
             </Select>
           </div>
 
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nama / Email</TableHead>
-                <TableHead>Struktur Organisasi</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Aksi</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <TableState
-                colSpan={4}
-                loading={employeesQuery.isLoading}
-                empty={pageRows.length === 0}
-                error={employeesQuery.error as Error | null}
-                emptyText="Belum ada karyawan yang cocok dengan filter."
-              />
-              {data &&
-                pageRows.map((e) => {
-                  const office = data.offices.find((o) => o.id === e.office_id)
-                  const dept = data.departments.find(
-                    (d) => d.id === e.department_id,
-                  )
-                  const group = data.groups.find((g) => g.id === e.group_id)
-                  const uid = e.uid ?? e.id ?? ""
-                  const isActive = e.status_akun === "active"
-                  return (
+          <div className="hidden md:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nama / Email</TableHead>
+                  <TableHead>Struktur Organisasi</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Aksi</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <TableState
+                  colSpan={4}
+                  loading={employeesQuery.isLoading}
+                  empty={pageRows.length === 0}
+                  error={employeesQuery.error as Error | null}
+                  emptyText="Belum ada karyawan yang cocok dengan filter."
+                />
+                {rowData.map(
+                  ({ employee: e, office, dept, group, uid, isActive, scheduled }) => (
                     <TableRow key={uid}>
                       <TableCell>
                         <p className="font-medium">{e.nama_lengkap ?? "—"}</p>
@@ -655,8 +738,9 @@ export function EmployeesPage() {
                       </TableCell>
                       <TableCell>
                         <p className="text-sm">
-                          {[office?.name, dept?.name].filter(Boolean).join(" — ") ||
-                            "—"}
+                          {[office?.name, dept?.name]
+                            .filter(Boolean)
+                            .join(" — ") || "—"}
                         </p>
                         <p className="text-xs text-muted-foreground">
                           {group?.name ?? ""}
@@ -672,73 +756,74 @@ export function EmployeesPage() {
                           {!e.group_id && (
                             <Badge variant="outline">Belum ada grup</Badge>
                           )}
-                          {!hasSchedule(e, data) && (
+                          {!scheduled && (
                             <Badge variant="outline">Belum ada jadwal</Badge>
                           )}
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => openEdit(e)}
-                          >
-                            Ubah
-                          </Button>
-                          <ConfirmAction
-                            trigger={
-                              <Button variant="ghost" size="sm">
-                                {isActive ? "Nonaktifkan" : "Aktifkan"}
-                              </Button>
-                            }
-                            title={
-                              isActive
-                                ? "Nonaktifkan karyawan?"
-                                : "Aktifkan karyawan?"
-                            }
-                            description={`${e.nama_lengkap ?? ""} akan ${isActive ? "dinonaktifkan" : "diaktifkan"}.`}
-                            confirmLabel={isActive ? "Nonaktifkan" : "Aktifkan"}
-                            onConfirm={() =>
-                              toggleStatus.mutate({
-                                uid,
-                                status: isActive ? "inactive" : "active",
-                              })
-                            }
-                          />
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm">
-                                Lainnya
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => openTransfer(e)}>
-                                Pindah Struktur
-                              </DropdownMenuItem>
-                              {e.face_registered && (
-                                <DropdownMenuItem
-                                  onClick={() => resetFace.mutate(uid)}
-                                >
-                                  Reset Wajah
-                                </DropdownMenuItem>
-                              )}
-                              {e.device_id && (
-                                <DropdownMenuItem
-                                  onClick={() => resetDevice.mutate(uid)}
-                                >
-                                  Reset Perangkat
-                                </DropdownMenuItem>
-                              )}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                          {renderActions(e, uid, isActive)}
                         </div>
                       </TableCell>
                     </TableRow>
-                  )
-                })}
-            </TableBody>
-          </Table>
+                  ),
+                )}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* Daftar kartu mobile (R4) — di bawah md, tanpa scroll horizontal. */}
+          <div className="space-y-3 md:hidden">
+            <ListState
+              loading={employeesQuery.isLoading}
+              empty={pageRows.length === 0}
+              error={employeesQuery.error as Error | null}
+              emptyText="Belum ada karyawan yang cocok dengan filter."
+            />
+            {rowData.map(
+              ({ employee: e, office, dept, group, uid, isActive, scheduled }) => (
+                <div key={uid} className="space-y-2 rounded-lg border p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="font-medium">{e.nama_lengkap ?? "—"}</p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {e.email ?? ""}
+                        {e.nip ? ` · ${e.nip}` : ""}
+                      </p>
+                    </div>
+                    {statusBadge(e)}
+                  </div>
+                  <div>
+                    <p className="text-sm">
+                      {[office?.name, dept?.name].filter(Boolean).join(" — ") ||
+                        "—"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {group?.name ?? ""}
+                      {e.position ? ` · ${e.position}` : ""}
+                    </p>
+                  </div>
+                  {(!e.office_id || !e.group_id || !scheduled) && (
+                    <div className="flex flex-wrap gap-1">
+                      {!e.office_id && (
+                        <Badge variant="outline">Belum ada kantor</Badge>
+                      )}
+                      {!e.group_id && (
+                        <Badge variant="outline">Belum ada grup</Badge>
+                      )}
+                      {!scheduled && (
+                        <Badge variant="outline">Belum ada jadwal</Badge>
+                      )}
+                    </div>
+                  )}
+                  <div className="flex flex-wrap gap-1 border-t pt-2">
+                    {renderActions(e, uid, isActive, true)}
+                  </div>
+                </div>
+              ),
+            )}
+          </div>
 
           <Pagination
             page={page}

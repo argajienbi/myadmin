@@ -239,7 +239,7 @@ export function NotificationSettingsPage() {
       return saveNotificationSettings(companyId, settings, actor)
     },
     onSuccess: () => {
-      toast.success("Pengaturan notifikasi berhasil disimpan.")
+      toast.success("Tersimpan — Pengaturan notifikasi")
       void queryClient.invalidateQueries({
         queryKey: ["ks", "notification-settings", companyId],
       })

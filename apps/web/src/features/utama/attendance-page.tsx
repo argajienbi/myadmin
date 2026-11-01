@@ -669,7 +669,10 @@ export function AttendancePage({ search }: { search: AttendanceSearch }) {
               <p>Tidak ada catatan absensi pada rentang ini.</p>
             </EmptyState>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+            {/* R4: tabel penuh hanya tampil di md+; di bawah md diganti
+                daftar kartu (blok md:hidden setelah tabel ini). */}
+            <div className="hidden overflow-x-auto md:block">
               <table className="w-full text-left text-sm">
                 <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
                   <tr>
@@ -774,6 +777,84 @@ export function AttendancePage({ search }: { search: AttendanceSearch }) {
                 </tbody>
               </table>
             </div>
+            {/* R4 — daftar kartu mobile (<md): nama + status + jam
+                masuk/pulang + aksi Detail (target sentuh 40px), tanpa
+                scroll horizontal di 360px. Data sama dengan tabel
+                desktop (pageRows yang sama). */}
+            <div className="flex flex-col divide-y md:hidden">
+              {pageRows.map((row) => {
+                const emp = employeeByUid.get(String(row.uid))
+                const radius = Number(row.radius_meter || 0)
+                const distance = Number(row.distance_meter || 0)
+                const outside = radius > 0 && distance > radius
+                return (
+                  <div
+                    key={String(row.id)}
+                    className="flex flex-col gap-2 p-4"
+                  >
+                    <div className="flex items-start gap-3">
+                      <AvatarInitials
+                        name={emp ? employeeName(emp) : String(row.uid)}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate font-medium">
+                          {emp ? employeeName(emp) : String(row.uid)}
+                        </div>
+                        <div className="font-mono text-xs text-muted-foreground">
+                          {textValue(
+                            emp?.nip || row.nip,
+                            String(row.uid || "")
+                          )}
+                        </div>
+                      </div>
+                      <StatusBadge tone={statusTone(row)}>
+                        {statusText(row)}
+                      </StatusBadge>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+                      <span>{formatTanggal(String(row.dateKey || ""))}</span>
+                      <span aria-hidden>·</span>
+                      <span className="font-mono">
+                        {String(
+                          row.record_time || row.waktu || row.time || ""
+                        ).slice(0, 5)}{" "}
+                        WIB
+                      </span>
+                      <span aria-hidden>·</span>
+                      <span>
+                        {isCheckIn(row)
+                          ? "Masuk"
+                          : isCheckOut(row)
+                            ? "Pulang"
+                            : String(row.action_type || "")}
+                        {" · "}
+                        <span className="capitalize">
+                          {textValue(row.method, "-")}
+                        </span>
+                      </span>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {row.work_start && row.work_end
+                        ? `Jadwal ${String(row.work_start).slice(0, 5)} – ${String(row.work_end).slice(0, 5)}`
+                        : textValue(row.timetable_name, "-")}
+                      {" · "}
+                      {textValue(row.office_name, "-")}
+                      {radius > 0
+                        ? ` · ${distance} m (${outside ? "di luar radius" : "di dalam radius"})`
+                        : ""}
+                    </div>
+                    <Button
+                      variant="outline"
+                      className="h-10 w-full"
+                      onClick={() => void openDetail(row)}
+                    >
+                      Detail
+                    </Button>
+                  </div>
+                )
+              })}
+            </div>
+            </>
           )}
         </CardContent>
         <div className="flex items-center justify-between border-t px-4 py-3 text-sm text-muted-foreground">

@@ -711,7 +711,10 @@ export async function saveScheduleItem(params: {
         : String(newData.name || newData.id || ""),
   })
 
-  return "Berhasil menyimpan data"
+  const savedLabel = String(formData.name || formData.title || formData.date || "")
+  return savedLabel
+    ? `Tersimpan — ${createLabel(tab)} ${savedLabel}`
+    : `Tersimpan — ${createLabel(tab)}`
 }
 
 export function impactedPreviewForForm(params: {
@@ -981,8 +984,9 @@ export async function toggleScheduleActive(params: {
       extraData: notification.extra,
     })
   }
+  const toggleName = String(item.name || item.title || "")
   toast.success(
-    `${createLabel(tab)} ${nextActive ? "diaktifkan" : "dinonaktifkan"}.`
+    `${nextActive ? "Diaktifkan" : "Dinonaktifkan"} — ${createLabel(tab)}${toggleName ? ` ${toggleName}` : ""}`,
   )
 }
 
@@ -1033,7 +1037,9 @@ export async function repairShiftToFullWeek(params: {
     ref_id: String(shift.id),
     new_value: String(shift.name || shift.id || ""),
   })
-  toast.success("Pola shift diset aktif Senin sampai Minggu.")
+  toast.success(
+    `Disetel aktif Senin–Minggu — Pola shift ${String(shift.name || shift.id || "")}`,
+  )
 }
 
 export async function deleteScheduleItem(params: {
@@ -1074,7 +1080,10 @@ export async function deleteScheduleItem(params: {
       extraData: notification.extra,
     })
   }
-  toast.success(`${createLabel(tab)} dihapus.`)
+  const deletedName = String(item.name || item.title || "")
+  toast.success(
+    `Dihapus — ${createLabel(tab)}${deletedName ? ` ${deletedName}` : ""}`,
+  )
 }
 
 // Re-export helper yang dipakai form UI (hindari import ganda di page).

@@ -13,6 +13,7 @@
 import { useRef, useState, type FormEvent } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
+import { CheckIcon } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { Button } from "@workspace/ui/components/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card"
@@ -41,6 +42,28 @@ import {
   useSettingsData,
 } from "./api"
 
+/** Status simpan inline (R5): "Menyimpan…" selama proses, "Tersimpan"
+    setelah sukses — tampil di samping tombol simpan, bukan hanya toast. */
+function SaveStatus({ pending, saved }: { pending: boolean; saved: boolean }) {
+  if (pending)
+    return (
+      <span role="status" className="text-sm text-muted-foreground">
+        Menyimpan…
+      </span>
+    )
+  if (saved)
+    return (
+      <span
+        role="status"
+        className="inline-flex items-center gap-1 text-sm font-medium text-emerald-600"
+      >
+        <CheckIcon className="size-4" />
+        Tersimpan
+      </span>
+    )
+  return null
+}
+
 export function SettingsPage() {
   const { user } = useAuth()
   const { companyId, company } = useCompanyScope()
@@ -58,6 +81,7 @@ export function SettingsPage() {
   })
   const [logoEnabled, setLogoEnabled] = useState(true)
   const [primaryColor, setPrimaryColor] = useState("#0b7a8c")
+  const [savedForm, setSavedForm] = useState<string | null>(null)
   const [pendingFile, setPendingFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -105,16 +129,20 @@ export function SettingsPage() {
         { nama_lengkap: namaLengkap.trim(), no_hp: noHp.trim() },
       )
     },
+    onMutate: () => setSavedForm(null),
     onSuccess: () => {
-      toast.success("Profil berhasil diperbarui.")
+      toast.success(`Tersimpan — Profil ${namaLengkap.trim()}`)
+      setSavedForm("profil")
       void invalidate()
     },
     onError: (e: Error) => toast.error(e.message),
   })
   const changePasswordMutation = useMutation({
     mutationFn: () => changePassword(newPassword, confirmPassword),
+    onMutate: () => setSavedForm(null),
     onSuccess: () => {
-      toast.success("Password berhasil diperbarui.")
+      toast.success("Diperbarui — Kata sandi akun")
+      setSavedForm("sandi")
       setNewPassword("")
       setConfirmPassword("")
     },
@@ -122,8 +150,12 @@ export function SettingsPage() {
   })
   const saveWebsiteMutation = useMutation({
     mutationFn: () => saveWebsite(companyId, websiteForm, actor),
+    onMutate: () => setSavedForm(null),
     onSuccess: () => {
-      toast.success("Pengaturan website berhasil disimpan.")
+      toast.success(
+        `Tersimpan — Website ${settingsCompany?.name ?? "perusahaan"}`,
+      )
+      setSavedForm("website")
       void invalidate()
     },
     onError: (e: Error) => toast.error(e.message),
@@ -145,8 +177,12 @@ export function SettingsPage() {
       )
       await savePrimaryColor(companyId, primaryColor, actor)
     },
+    onMutate: () => setSavedForm(null),
     onSuccess: () => {
-      toast.success("Branding berhasil disimpan.")
+      toast.success(
+        `Tersimpan — Branding ${settingsCompany?.name ?? "perusahaan"}`,
+      )
+      setSavedForm("branding")
       setPendingFile(null)
       setPreviewUrl(null)
       void invalidate()
@@ -161,7 +197,9 @@ export function SettingsPage() {
         actor,
       ),
     onSuccess: () => {
-      toast.success("Logo berhasil dihapus.")
+      toast.success(
+        `Dihapus — Logo ${settingsCompany?.name ?? "perusahaan"}`,
+      )
       void invalidate()
     },
     onError: (e: Error) => toast.error(e.message),
@@ -231,10 +269,14 @@ export function SettingsPage() {
                   onChange={(e) => setNoHp(e.target.value)}
                 />
               </div>
-              <div>
+              <div className="flex items-center gap-3">
                 <Button type="submit" disabled={saveProfileMutation.isPending}>
                   {saveProfileMutation.isPending ? "Menyimpan..." : "Simpan"}
                 </Button>
+                <SaveStatus
+                  pending={saveProfileMutation.isPending}
+                  saved={savedForm === "profil"}
+                />
               </div>
             </form>
           ) : (
@@ -280,10 +322,14 @@ export function SettingsPage() {
                 autoComplete="new-password"
               />
             </div>
-            <div>
+            <div className="flex items-center gap-3">
               <Button type="submit" disabled={changePasswordMutation.isPending}>
                 {changePasswordMutation.isPending ? "Menyimpan..." : "Ubah Sandi"}
               </Button>
+              <SaveStatus
+                pending={changePasswordMutation.isPending}
+                saved={savedForm === "sandi"}
+              />
             </div>
             <p className="text-xs text-muted-foreground">
               Minimal 6 karakter. Ubah sandi membutuhkan sesi Firebase aktif.
@@ -364,12 +410,16 @@ export function SettingsPage() {
                     }
                   />
                 </div>
-                <div>
+                <div className="flex items-center gap-3">
                   <Button type="submit" disabled={saveWebsiteMutation.isPending}>
                     {saveWebsiteMutation.isPending
                       ? "Menyimpan..."
                       : "Simpan Website"}
                   </Button>
+                  <SaveStatus
+                    pending={saveWebsiteMutation.isPending}
+                    saved={savedForm === "website"}
+                  />
                 </div>
               </form>
             </CardContent>
@@ -446,7 +496,7 @@ export function SettingsPage() {
                   />
                 </div>
               </div>
-              <div>
+              <div className="flex items-center gap-3">
                 <Button
                   type="button"
                   disabled={saveBrandingMutation.isPending}
@@ -456,6 +506,10 @@ export function SettingsPage() {
                     ? "Menyimpan..."
                     : "Simpan Branding"}
                 </Button>
+                <SaveStatus
+                  pending={saveBrandingMutation.isPending}
+                  saved={savedForm === "branding"}
+                />
               </div>
               <p className="text-xs text-muted-foreground">
                 Format logo PNG, JPEG, atau WEBP, maksimal 2 MB.

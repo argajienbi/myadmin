@@ -26,7 +26,7 @@ createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <ThemeProvider>
+        <ThemeProvider defaultTheme="dark">
           <AppRouter />
         </ThemeProvider>
       </AuthProvider>
