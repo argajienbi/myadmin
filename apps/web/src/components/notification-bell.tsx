@@ -82,30 +82,82 @@ export function NotificationBell() {
         {notifications.isPending ? (
           <p className="px-2 py-3 text-sm text-muted-foreground">Memuat…</p>
         ) : items.length ? (
-          items.map((item) => (
-            <DropdownMenuItem
-              key={item.id}
-              className="items-start py-2"
-              onSelect={(e) => {
-                e.preventDefault()
-                if (!item.read) read.mutate(item.id)
-              }}
-            >
-              <span
-                className={
-                  item.read
-                    ? "mt-1.5 size-2 rounded-full bg-transparent"
-                    : "mt-1.5 size-2 rounded-full bg-primary"
-                }
-              />
-              <span className="grid gap-1">
-                <span className="font-medium">{item.title}</span>
-                <span className="line-clamp-2 text-muted-foreground">
-                  {item.body}
+          items.map((item) => {
+            const content = (
+              <>
+                <span
+                  className={
+                    item.read
+                      ? "mt-1.5 size-2 rounded-full bg-transparent"
+                      : "mt-1.5 size-2 rounded-full bg-primary"
+                  }
+                />
+                <span className="grid gap-1">
+                  <span className="font-medium">{item.title}</span>
+                  <span className="line-clamp-2 text-muted-foreground">
+                    {item.body}
+                  </span>
                 </span>
-              </span>
-            </DropdownMenuItem>
-          ))
+              </>
+            )
+            // Notifikasi dengan data.route (mis. peringatan lokasi palsu)
+            // bisa diklik menuju halaman terkait; tanpa route, perilaku
+            // lama dipertahankan (klik hanya menandai dibaca).
+            if (item.data?.route === "/admin/attendance") {
+              // Search route /admin/attendance memakai objek lengkap
+              // (semua kunci validateSearch) — kunci yang tidak diisi
+              // bernilai undefined, seperti goToAttendance di Dashboard.
+              const linkSearch = {
+                date:
+                  typeof item.data.date === "string"
+                    ? item.data.date
+                    : undefined,
+                startDate: undefined,
+                endDate: undefined,
+                search: undefined,
+                method: undefined,
+                action: undefined,
+                office: undefined,
+                department: undefined,
+                group: undefined,
+                status: undefined,
+                geofence: undefined,
+                risk:
+                  typeof item.data.risk === "string"
+                    ? item.data.risk
+                    : undefined,
+              }
+              return (
+                <DropdownMenuItem
+                  key={item.id}
+                  asChild
+                  className="items-start py-2"
+                >
+                  <Link
+                    to="/admin/attendance"
+                    search={linkSearch}
+                    onClick={() => {
+                      if (!item.read) read.mutate(item.id)
+                    }}
+                  >
+                    {content}
+                  </Link>
+                </DropdownMenuItem>
+              )
+            }
+            return (
+              <DropdownMenuItem
+                key={item.id}
+                className="items-start py-2"
+                onSelect={(e) => {
+                  e.preventDefault()
+                  if (!item.read) read.mutate(item.id)
+                }}
+              >
+                {content}
+              </DropdownMenuItem>
+            )
+          })
         ) : (
           <p className="px-2 py-3 text-sm text-muted-foreground">
             Tidak ada notifikasi.
