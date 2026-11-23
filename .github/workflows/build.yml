@@ -26,5 +26,7 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
+      - run: pnpm --filter @workspace/api exec prisma generate
+
       - name: Typecheck and build
         run: pnpm build
