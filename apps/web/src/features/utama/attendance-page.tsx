@@ -55,6 +55,7 @@ export interface AttendanceSearch {
   group?: string
   status?: string
   geofence?: string
+  risk?: string
 }
 
 type MasterRow = Record<string, unknown> & { id?: string; uid?: string }
@@ -98,6 +99,22 @@ function statusText(row: AttendanceRow): string {
   return getAttendanceStatusLabel(status)
 }
 
+// Risiko lokasi: aplikasi menulis dua nama field mock
+// (mock_location_detected / location_mock_detected) dan
+// location_risk_level ("high" bila akurasi buruk / mencurigakan).
+function isMockLocation(row: AttendanceRow): boolean {
+  return (
+    row.mock_location_detected === true ||
+    row.location_mock_detected === true
+  )
+}
+
+function isHighRiskLocation(row: AttendanceRow): boolean {
+  return (
+    !isMockLocation(row) && String(row.location_risk_level || "") === "high"
+  )
+}
+
 export function AttendancePage({ search }: { search: AttendanceSearch }) {
   const { userData, companyId, loading: companyLoading } = useCompany()
   const [startDate, setStartDate] = useState(
@@ -120,6 +137,7 @@ export function AttendancePage({ search }: { search: AttendanceSearch }) {
   const [geofenceFilter, setGeofenceFilter] = useState(
     search.geofence || "all"
   )
+  const [riskFilter, setRiskFilter] = useState(search.risk || "all")
   const [rows, setRows] = useState<AttendanceRow[]>([])
   const [employees, setEmployees] = useState<MasterRow[]>([])
   const [offices, setOffices] = useState<MasterRow[]>([])
@@ -185,6 +203,7 @@ export function AttendancePage({ search }: { search: AttendanceSearch }) {
     search.group || "",
     search.status || "",
     search.geofence || "",
+    search.risk || "",
   ].join("|")
   const [prevSearchSyncKey, setPrevSearchSyncKey] =
     useState(searchSyncKey)
@@ -200,6 +219,7 @@ export function AttendancePage({ search }: { search: AttendanceSearch }) {
     setGroupFilter(search.group || "all")
     setStatusFilter(search.status || "all")
     setGeofenceFilter(search.geofence || "all")
+    setRiskFilter(search.risk || "all")
     setPage(1)
   }
 
@@ -365,6 +385,10 @@ export function AttendancePage({ search }: { search: AttendanceSearch }) {
       const outside = radius > 0 && distance > radius
       if (geofenceFilter === "inside" && outside) return false
       if (geofenceFilter === "outside" && !outside) return false
+      // Risiko lokasi: "mock" = lokasi palsu terdeteksi;
+      // "high" = risk level high tanpa mock.
+      if (riskFilter === "mock" && !isMockLocation(row)) return false
+      if (riskFilter === "high" && !isHighRiskLocation(row)) return false
       return true
     })
   }, [
@@ -377,6 +401,7 @@ export function AttendancePage({ search }: { search: AttendanceSearch }) {
     groupFilter,
     statusFilter,
     geofenceFilter,
+    riskFilter,
     employeeByUid,
     masterNameById,
   ])
@@ -635,6 +660,24 @@ export function AttendancePage({ search }: { search: AttendanceSearch }) {
               </SelectContent>
             </Select>
           </Field>
+          <Field label="Risiko" className="w-44">
+            <Select
+              value={riskFilter}
+              onValueChange={(v) => {
+                setRiskFilter(v)
+                setPage(1)
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Semua Risiko" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua Risiko</SelectItem>
+                <SelectItem value="mock">Hanya Lokasi Palsu</SelectItem>
+                <SelectItem value="high">Hanya Risiko Tinggi</SelectItem>
+              </SelectContent>
+            </Select>
+          </Field>
           <Button
             variant="outline"
             onClick={() => {
@@ -650,6 +693,7 @@ export function AttendancePage({ search }: { search: AttendanceSearch }) {
               setGroupFilter("all")
               setStatusFilter("all")
               setGeofenceFilter("all")
+              setRiskFilter("all")
               setPage(1)
             }}
           >
@@ -761,6 +805,19 @@ export function AttendancePage({ search }: { search: AttendanceSearch }) {
                           <StatusBadge tone={statusTone(row)}>
                             {statusText(row)}
                           </StatusBadge>
+                          {isMockLocation(row) ? (
+                            <div className="mt-1">
+                              <StatusBadge tone="danger">
+                                ⚠️ Lokasi Palsu
+                              </StatusBadge>
+                            </div>
+                          ) : isHighRiskLocation(row) ? (
+                            <div className="mt-1">
+                              <StatusBadge tone="warning">
+                                Risiko Tinggi
+                              </StatusBadge>
+                            </div>
+                          ) : null}
                         </td>
                         <td className="px-4 py-3 text-right">
                           <Button
@@ -807,9 +864,20 @@ export function AttendancePage({ search }: { search: AttendanceSearch }) {
                           )}
                         </div>
                       </div>
-                      <StatusBadge tone={statusTone(row)}>
-                        {statusText(row)}
-                      </StatusBadge>
+                      <div className="flex flex-col items-end gap-1">
+                        <StatusBadge tone={statusTone(row)}>
+                          {statusText(row)}
+                        </StatusBadge>
+                        {isMockLocation(row) ? (
+                          <StatusBadge tone="danger">
+                            ⚠️ Lokasi Palsu
+                          </StatusBadge>
+                        ) : isHighRiskLocation(row) ? (
+                          <StatusBadge tone="warning">
+                            Risiko Tinggi
+                          </StatusBadge>
+                        ) : null}
+                      </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
                       <span>{formatTanggal(String(row.dateKey || ""))}</span>
