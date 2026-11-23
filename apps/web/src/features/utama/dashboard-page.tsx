@@ -458,6 +458,7 @@ export function DashboardPage() {
     group?: string
     status?: string
     geofence?: string
+    risk?: string
   }) => {
     void navigate({
       to: "/admin/attendance",
@@ -473,6 +474,7 @@ export function DashboardPage() {
         group: params.group,
         status: params.status,
         geofence: params.geofence,
+        risk: params.risk,
       },
     })
   }
