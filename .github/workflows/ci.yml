@@ -8,6 +8,23 @@ on:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    # Test-only environment for unit tests: the API validates its whole env
+    # at import time (env.schema.ts), so the suite needs these present even
+    # though unit tests never connect to a database or Redis. All values
+    # below are dummy values for CI only - never real secrets.
+    env:
+      NODE_ENV: test
+      CORS_ORIGIN: http://localhost:5173
+      DATABASE_URL: postgresql://app:app@127.0.0.1:5432/app
+      REDIS_HOST: localhost
+      JWT_ACCESS_SECRET: change-me-32-bytes-minimum-secret-value
+      REFRESH_TOKEN_PEPPER: change-me-refresh-pepper
+      SUPER_ADMIN_EMAIL: admin@app.local
+      SUPER_ADMIN_PASSWORD: test-only-super-admin-password
+      SMTP_HOST: localhost
+      SMTP_PORT: "1025"
+      SMTP_FROM: noreply@app.local
+      LOG_LEVEL: silent
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -62,5 +79,6 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @workspace/api exec prisma generate
       - run: cd apps/api && pnpm exec prisma migrate deploy
       - run: pnpm --filter @workspace/api test:e2e
