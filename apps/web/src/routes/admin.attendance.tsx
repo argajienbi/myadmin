@@ -22,6 +22,7 @@ export const Route = createFileRoute("/admin/attendance")({
     group: pickString(search.group),
     status: pickString(search.status),
     geofence: pickString(search.geofence),
+    risk: pickString(search.risk),
   }),
   component: AttendanceRoute,
 })
