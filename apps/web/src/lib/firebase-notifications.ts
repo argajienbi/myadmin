@@ -15,6 +15,9 @@ export interface FirebaseNotificationItem {
   body: string
   read: boolean
   createdAt: number
+  // Data tambahan dari penulis notifikasi (mis. route tujuan saat item
+  // diklik — dipakai lonceng untuk navigasi ke halaman terkait).
+  data?: Record<string, unknown>
 }
 
 function inboxPath(companyId: string, uid: string) {
@@ -31,6 +34,10 @@ function toItem(
     body: String(raw.body ?? raw.message ?? ""),
     read: raw.read === true || raw.is_read === true,
     createdAt: Number(raw.created_at ?? 0),
+    data:
+      raw.data && typeof raw.data === "object"
+        ? (raw.data as Record<string, unknown>)
+        : undefined,
   }
 }
 
