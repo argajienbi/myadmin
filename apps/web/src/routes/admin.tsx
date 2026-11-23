@@ -1,4 +1,4 @@
-import { Fragment } from "react"
+import { Fragment, useEffect } from "react"
 import {
   createFileRoute,
   Outlet,
@@ -6,6 +6,7 @@ import {
   useLocation,
   useNavigate,
 } from "@tanstack/react-router"
+import { useQueryClient } from "@tanstack/react-query"
 import { MoonIcon, SunIcon } from "lucide-react"
 import {
   Breadcrumb,
@@ -26,7 +27,9 @@ import { AppSidebar } from "@/components/app-sidebar"
 import { NotificationBell } from "@/components/notification-bell"
 import { useTheme } from "@/components/theme-provider"
 import { settledStatus, useAuth } from "@/lib/auth-context"
+import { runMockAlertScanOnce } from "@/lib/mock-alert-scan"
 import { isOwnerLike } from "@/lib/role-access"
+import { useCompany } from "@/lib/use-company"
 
 export const Route = createFileRoute("/admin")({
   beforeLoad: async ({ context, location }) => {
@@ -72,6 +75,29 @@ function AdminLayout() {
   const { theme, setTheme } = useTheme()
   const { profile, logout } = useAuth()
   const navigate = useNavigate()
+  const { companyId } = useCompany()
+  const queryClient = useQueryClient()
+  const uid = profile?.uid ?? ""
+  // Pemindai lokasi palsu (sekali per sesi login): bila ada presensi
+  // lokasi palsu baru hari ini, MyAdmin mengirim notifikasi ke semua
+  // admin + owner; lonceng di-invalidasi supaya badge langsung naik.
+  const canScan =
+    !!profile &&
+    profile.status_akun === "active" &&
+    (isOwnerLike(profile) ||
+      String(profile.role || "").trim().toLowerCase() === "admin")
+  useEffect(() => {
+    if (!companyId || !uid || !canScan) return
+    runMockAlertScanOnce(companyId)
+      .then((notified) => {
+        if (notified > 0) {
+          queryClient.invalidateQueries({
+            queryKey: ["firebase-notifications", companyId, uid],
+          })
+        }
+      })
+      .catch(() => {})
+  }, [companyId, uid, canScan, queryClient])
   const dark =
     theme === "dark" ||
     (theme === "system" &&
