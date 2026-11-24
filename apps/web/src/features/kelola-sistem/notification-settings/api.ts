@@ -45,6 +45,17 @@ export const DEFAULT_NOTIFICATION_SETTINGS: Required<
   approval_push_enabled: true,
   schedule_change_push_enabled: true,
   holiday_notice_push_enabled: true,
+  auto_detect_enabled: true,
+  auto_detect_late_enabled: true,
+  auto_detect_late_tolerance_minutes: 15,
+  auto_detect_no_check_in_enabled: true,
+  auto_detect_no_check_in_cutoff: "10:00",
+  auto_detect_no_check_out_enabled: true,
+  auto_detect_no_check_out_after_minutes: 60,
+  auto_detect_new_request_enabled: true,
+  auto_detect_overtime_enabled: true,
+  auto_detect_overtime_max_hours: 4,
+  auto_detect_overtime_latest_end: "22:00",
   pre_check_in_enabled: true,
   pre_check_in_minutes: 10,
   pre_check_out_enabled: true,
@@ -53,6 +64,19 @@ export const DEFAULT_NOTIFICATION_SETTINGS: Required<
   missed_check_in_minutes: 10,
   missed_check_out_enabled: true,
   missed_check_out_minutes: 10,
+}
+
+// S4 — normalisasi jam "HH:mm" (cerminan asTimeString pemindai
+// auto-detect-scan.ts); tidak valid → fallback.
+function normalizeTimeString(value: unknown, fallback: string): string {
+  const text = String(value ?? "").trim()
+  if (/^\d{1,2}:\d{2}$/.test(text)) {
+    const [h, m] = text.split(":").map(Number)
+    if (h >= 0 && h <= 23 && m >= 0 && m <= 59) {
+      return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`
+    }
+  }
+  return fallback
 }
 
 /** Gabung data tersimpan dengan default + fallback mirror legacy. */
@@ -101,6 +125,16 @@ export function mergeNotificationSettings(
       d.reminder_check_out_late_minutes ?? d.missed_check_out_minutes ?? 10,
     reminder_scheduler_catchup_minutes:
       d.reminder_scheduler_catchup_minutes ?? 6,
+    // S4 — jam "HH:mm" dinormalisasi supaya input type="time" di form
+    // selalu menerima nilai valid (pemindai menolerir mentah, form tidak).
+    auto_detect_no_check_in_cutoff: normalizeTimeString(
+      d.auto_detect_no_check_in_cutoff,
+      "10:00",
+    ),
+    auto_detect_overtime_latest_end: normalizeTimeString(
+      d.auto_detect_overtime_latest_end,
+      "22:00",
+    ),
   }
 }
 
@@ -118,6 +152,7 @@ export function useNotificationSettings(companyId: string) {
 }
 
 /** Karyawan yang sudah menginstal aplikasi (punya ≥1 token FCM aktif). */
+
 export interface InstalledUser {
   uid: string
   name: string
@@ -250,6 +285,45 @@ export async function saveNotificationSettings(
       1,
       120,
       15,
+    ),
+    // S4 — kunci deteksi otomatis (clamp + koersi sama seperti pemindai).
+    auto_detect_enabled: Boolean(settings.auto_detect_enabled),
+    auto_detect_late_enabled: Boolean(settings.auto_detect_late_enabled),
+    auto_detect_late_tolerance_minutes: clampNumber(
+      Number(settings.auto_detect_late_tolerance_minutes),
+      0,
+      720,
+      15,
+    ),
+    auto_detect_no_check_in_enabled: Boolean(
+      settings.auto_detect_no_check_in_enabled,
+    ),
+    auto_detect_no_check_in_cutoff: normalizeTimeString(
+      settings.auto_detect_no_check_in_cutoff,
+      "10:00",
+    ),
+    auto_detect_no_check_out_enabled: Boolean(
+      settings.auto_detect_no_check_out_enabled,
+    ),
+    auto_detect_no_check_out_after_minutes: clampNumber(
+      Number(settings.auto_detect_no_check_out_after_minutes),
+      0,
+      720,
+      60,
+    ),
+    auto_detect_new_request_enabled: Boolean(
+      settings.auto_detect_new_request_enabled,
+    ),
+    auto_detect_overtime_enabled: Boolean(settings.auto_detect_overtime_enabled),
+    auto_detect_overtime_max_hours: clampNumber(
+      Number(settings.auto_detect_overtime_max_hours),
+      1,
+      24,
+      4,
+    ),
+    auto_detect_overtime_latest_end: normalizeTimeString(
+      settings.auto_detect_overtime_latest_end,
+      "22:00",
     ),
     updated_at: Date.now(),
     updated_by: actor.uid,
