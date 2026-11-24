@@ -65,6 +65,31 @@ function ToggleRow({
   )
 }
 
+function TimeInput({
+  label,
+  value,
+  disabled,
+  onChange,
+}: {
+  label: string
+  value: string | undefined
+  disabled?: boolean
+  onChange: (value: string) => void
+}) {
+  return (
+    <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+      {label}
+      <Input
+        type="time"
+        className="w-28"
+        disabled={disabled}
+        value={value ?? ""}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </label>
+  )
+}
+
 function MinutesInput({
   label,
   value,
@@ -462,6 +487,177 @@ export function NotificationSettingsPage() {
                 checked={settings.holiday_notice_push_enabled ?? true}
                 onChange={(c) => patch({ holiday_notice_push_enabled: c })}
               />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Deteksi Otomatis — Pemberitahuan ke Admin</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="mb-2 text-sm text-muted-foreground">
+                Aturan di bawah ini menentukan kapan notifikasi dibuat;
+                semua bisa dimatikan satu per satu. Pemindai jalan sekali
+                per sesi login saat admin membuka MyAdmin — tidak ada
+                server tambahan.
+              </p>
+              <ToggleRow
+                label="Deteksi otomatis"
+                hint="Master switch — bila mati, pemindai tidak mengirim notifikasi apa pun"
+                checked={settings.auto_detect_enabled ?? true}
+                onChange={(c) => patch({ auto_detect_enabled: c })}
+              />
+              <ToggleRow
+                label="⏰ Telat masuk"
+                hint="Beri tahu admin bila karyawan masuk melewati toleransi setelah jam masuk shift."
+                checked={settings.auto_detect_late_enabled ?? true}
+                onChange={(c) => patch({ auto_detect_late_enabled: c })}
+              >
+                <MinutesInput
+                  label="Toleransi"
+                  value={settings.auto_detect_late_tolerance_minutes}
+                  disabled={!settings.auto_detect_late_enabled}
+                  min={0}
+                  max={720}
+                  onChange={(v) =>
+                    patch({ auto_detect_late_tolerance_minutes: v })
+                    }
+                />
+              </ToggleRow>
+              <ToggleRow
+                label="🚫 Tidak absen masuk"
+                hint="Beri tahu admin bila karyawan yang dijadwalkan kerja belum absen masuk sampai jam batas."
+                checked={settings.auto_detect_no_check_in_enabled ?? true}
+                onChange={(c) =>
+                  patch({ auto_detect_no_check_in_enabled: c })
+                }
+              >
+                <TimeInput
+                  label="Batas pukul"
+                  value={settings.auto_detect_no_check_in_cutoff}
+                  disabled={!settings.auto_detect_no_check_in_enabled}
+                  onChange={(v) =>
+                    patch({ auto_detect_no_check_in_cutoff: v })
+                  }
+                />
+              </ToggleRow>
+              <ToggleRow
+                label="🏠 Tidak absen pulang"
+                hint="Beri tahu admin bila karyawan sudah masuk tapi belum absen pulang setelah jam batas."
+                checked={settings.auto_detect_no_check_out_enabled ?? true}
+                onChange={(c) =>
+                  patch({ auto_detect_no_check_out_enabled: c })
+                }
+              >
+                <MinutesInput
+                  label="Setelah jam pulang"
+                  value={settings.auto_detect_no_check_out_after_minutes}
+                  disabled={!settings.auto_detect_no_check_out_enabled}
+                  min={0}
+                  max={720}
+                  onChange={(v) =>
+                    patch({ auto_detect_no_check_out_after_minutes: v })
+                    }
+                />
+              </ToggleRow>
+              <ToggleRow
+                label="📝 Pengajuan baru (izin / cuti / sakit / lembur)"
+                hint="Beri tahu admin begitu ada pengajuan baru masuk — tidak perlu menunggu admin membuka halaman Persetujuan."
+                checked={settings.auto_detect_new_request_enabled ?? true}
+                onChange={(c) =>
+                  patch({ auto_detect_new_request_enabled: c })
+                }
+              />
+              <ToggleRow
+                label="⏱️ Jam lembur janggal"
+                hint="Tandai pengajuan lembur bila durasi melebihi batas, jam akhir melewati batas, atau jam lembur tidak cocok dengan presensi hari itu."
+                checked={settings.auto_detect_overtime_enabled ?? true}
+                onChange={(c) => patch({ auto_detect_overtime_enabled: c })}
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    Maks
+                    <Input
+                      type="number"
+                      className="w-20"
+                      min={1}
+                      max={24}
+                      disabled={!settings.auto_detect_overtime_enabled}
+                      value={settings.auto_detect_overtime_max_hours ?? ""}
+                      onChange={(e) =>
+                        patch({
+                          auto_detect_overtime_max_hours: Number(
+                            e.target.value,
+                          ),
+                        })
+                      }
+                    />
+                    jam/hari
+                  </label>
+                  <TimeInput
+                    label="akhir maks"
+                    value={settings.auto_detect_overtime_latest_end}
+                    disabled={!settings.auto_detect_overtime_enabled}
+                    onChange={(v) =>
+                      patch({ auto_detect_overtime_latest_end: v })
+                    }
+                  />
+                </div>
+              </ToggleRow>
+              <div className="mt-4 space-y-2 border-t pt-4 text-sm text-muted-foreground">
+                <p className="font-medium text-foreground">Cara kerja</p>
+                <ol className="list-decimal space-y-1 pl-5">
+                  <li>
+                    <b className="text-foreground">
+                      Admin membuka MyAdmin.
+                    </b>{" "}
+                    Pemindai jalan sekali per sesi login — pola yang sama
+                    seperti pemindai lokasi palsu. Tidak ada server
+                    tambahan, tidak ada perubahan rules RTDB, tidak ada
+                    perubahan aplikasi.
+                  </li>
+                  <li>
+                    <b className="text-foreground">
+                      Pemindai membandingkan jadwal + presensi + pengajuan
+                      hari ini.
+                    </b>{" "}
+                    Telat dihitung dari getLateMinutes yang sudah ada;
+                    tidak absen = ada jadwal kerja tapi tidak ada record;
+                    pengajuan baru = leave_requests berstatus pending yang
+                    belum pernah diberitahu; jam lembur janggal = durasi
+                    / jam akhir / kecocokan dengan presensi.
+                  </li>
+                  <li>
+                    <b className="text-foreground">
+                      Kejadian baru → notifikasi ke semua admin + owner.
+                    </b>{" "}
+                    Jalur createNotification yang sama (inbox + antrean
+                    push FCM). Satu kejadian hanya diberitahu satu kali —
+                    ditandai di record-nya supaya tidak dobel.
+                  </li>
+                  <li>
+                    <b className="text-foreground">
+                      Klik notifikasi → halaman tujuan terfilter.
+                    </b>{" "}
+                    Telat / tidak absen → Absensi (filter terisi).
+                    Pengajuan / jam janggal → Persetujuan (tab yang
+                    sesuai); jam janggal bisa diperiksa dan diedit dari
+                    sana.
+                  </li>
+                </ol>
+                <p>
+                  <b className="text-foreground">
+                    Yang dilewati pemindai:
+                  </b>{" "}
+                  karyawan yang sudah disetujui izin/cuti/sakit hari itu,
+                  hari libur &amp; hari tanpa jadwal kerja, dan pengajuan
+                  yang sudah disetujui/ditolak.{" "}
+                  <b className="text-foreground">Yang TIDAK berubah:</b>{" "}
+                  aplikasi di HP (tidak ada kode baru), rules RTDB, dan
+                  halaman Pengaturan Notifikasi yang sudah ada — hanya
+                  tambah satu kartu.
+                </p>
+              </div>
             </CardContent>
           </Card>
 
