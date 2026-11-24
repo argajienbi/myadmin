@@ -278,8 +278,8 @@ async function notifyAll(
         title: event.title,
         message: event.message,
         type: event.type,
-        refType: event.refType,
-        refId: event.refId,
+        ref_type: event.refType,
+        ref_id: event.refId,
         data: event.data,
       })
       sent++
