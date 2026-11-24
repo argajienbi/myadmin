@@ -31,7 +31,20 @@ import { useCompany } from "@/lib/use-company"
 import { db, getFileUrl } from "@/lib/firebase"
 import { paths } from "@/lib/firebase-paths"
 import { getAttendanceStatus, getAttendanceStatusLabel, getLateMinutes, isCheckIn, isCheckOut } from "@/lib/attendance-utils"
-import { loadAttendanceByDateRange, todayKey } from "@/lib/rtdb-lean-service"
+import { loadAttendanceByDateRange, buildDateRange, todayKey } from "@/lib/rtdb-lean-service"
+import {
+  DEFAULT_NO_CHECK_IN_CUTOFF,
+  excusedUidsOn,
+  isActiveEmployee,
+  loadScheduleMaster,
+  nowMinutesWIB,
+  resolveDayFor,
+  toMinutes,
+} from "@/lib/schedule-batch-resolve"
+import type {
+  ResolvedDay,
+  ScheduleMaster,
+} from "@/lib/schedule-batch-resolve"
 import { type AttendanceRow } from "@/lib/rtdb-lean-service"
 import { AvatarInitials, EmptyState, Field, StatusBadge } from "./ui"
 import {
@@ -71,7 +84,42 @@ function toMasterList(
   }))
 }
 
+// Baris sintetis "Tidak Absen Masuk" (S2): karyawan yang dijadwalkan
+// kerja tapi tidak ada record masuknya. Bukan record RTDB — jangan
+// dibuka di dialog Detail dan jangan lolos filter status lain.
+function isNoCheckInRow(row: AttendanceRow): boolean {
+  return row.synthetic_no_check_in === true
+}
+
+// Predikat status yang dipakai filter DAN ringkasan (satu definisi).
+function isLateRow(row: AttendanceRow): boolean {
+  const status = getAttendanceStatus(row)
+  return (
+    status.includes("late") ||
+    status.includes("terlambat") ||
+    status.includes("telat")
+  )
+}
+
+function isHadirRow(row: AttendanceRow): boolean {
+  const status = getAttendanceStatus(row)
+  return (
+    status.includes("hadir") ||
+    ["success", "approved", "valid", "on_time", "tepat_waktu"].some((x) =>
+      status.includes(x)
+    ) ||
+    status === ""
+  )
+}
+
+// Jam record untuk perbandingan (kosong -> paling akhir, supaya record
+// masuk terpagi yang dipilih bila ada beberapa masuk dalam sehari).
+function recordTimeOf(row: AttendanceRow): string {
+  return String(row.record_time || row.waktu || row.time || "99:99").slice(0, 5)
+}
+
 function statusTone(row: AttendanceRow): "success" | "warning" | "danger" {
+  if (isNoCheckInRow(row)) return "danger"
   const status = getAttendanceStatus(row)
   if (
     status.includes("late") ||
@@ -87,6 +135,7 @@ function statusTone(row: AttendanceRow): "success" | "warning" | "danger" {
 }
 
 function statusText(row: AttendanceRow): string {
+  if (isNoCheckInRow(row)) return "Tidak Absen Masuk"
   const status = getAttendanceStatus(row)
   if (
     status.includes("late") ||
@@ -186,6 +235,36 @@ export function AttendancePage({ search }: { search: AttendanceSearch }) {
       })
   }, [companyId])
 
+  // Master jadwal + pengajuan untuk sintesis "tidak absen" / "belum
+  // pulang" (S2): dibaca sekali per companyId, dipakai displayRows.
+  // Bila gagal, halaman tetap menampilkan baris asli saja.
+  const [scheduleMaster, setScheduleMaster] =
+    useState<ScheduleMaster | null>(null)
+  const [leavesVal, setLeavesVal] = useState<Record<
+    string,
+    Record<string, unknown>
+  > | null>(null)
+
+  useEffect(() => {
+    if (!companyId) return
+    Promise.all([
+      loadScheduleMaster(companyId),
+      get(ref(db, paths.leaveRequests(companyId))),
+    ])
+      .then(([master, leavesSnap]) => {
+        setScheduleMaster(master)
+        setLeavesVal(
+          (leavesSnap.val() as Record<string, Record<string, unknown>> | null) ||
+            {}
+        )
+      })
+      .catch((err: Error) => {
+        toast.error(`Gagal memuat data jadwal: ${err.message}`)
+        setScheduleMaster(null)
+        setLeavesVal(null)
+      })
+  }, [companyId])
+
   // C7 — sinkronkan filter saat search param berubah (navigasi dalam
   // halaman yang sama, mis. klik dua baris Log Terbaru di Dashboard):
   // penyesuaian state saat render (pola React yang didokumentasikan),
@@ -263,9 +342,140 @@ export function AttendancePage({ search }: { search: AttendanceSearch }) {
     }
   }, [offices, departments, groups])
 
-  const filteredRows = useMemo(() => {
+  // S2 — baris tampilan: baris asli + baris sintetis "Tidak Absen
+  // Masuk" + flag "Belum Pulang" pada record masuk terpagi.
+  // Sintesis butuh master jadwal + pengajuan; bila belum termuat,
+  // tampilkan baris asli saja (halaman tetap berfungsi).
+  const displayRows = useMemo(() => {
+    if (!scheduleMaster || !leavesVal) return rows
+    const today = todayKey()
+    const dates = buildDateRange(startDate, endDate).slice(0, 31)
+    const nowMin = nowMinutesWIB()
+    const cutoffMin = toMinutes(DEFAULT_NO_CHECK_IN_CUTOFF) ?? 600
+    const resolvedCache = new Map<string, ResolvedDay>()
+    const excusedCache = new Map<string, Set<string>>()
+    const getResolved = (
+      emp: Record<string, unknown>,
+      date: string
+    ): ResolvedDay => {
+      const key = `${date}|${String(emp.uid || "")}`
+      const hit = resolvedCache.get(key)
+      if (hit) return hit
+      const resolved = resolveDayFor(emp, date, scheduleMaster)
+      resolvedCache.set(key, resolved)
+      return resolved
+    }
+    const getExcused = (date: string): Set<string> => {
+      const hit = excusedCache.get(date)
+      if (hit) return hit
+      const set = excusedUidsOn(leavesVal, date)
+      excusedCache.set(date, set)
+      return set
+    }
+    // Peta masuk/keluar per hari-karyawan (masuk terpagi saja).
+    const checkInByKey = new Map<string, AttendanceRow>()
+    const hasCheckOutByKey = new Set<string>()
+    for (const row of rows) {
+      const uid = String(row.uid || "")
+      const dateKey = String(row.dateKey || row.record_date || "")
+      if (!uid || !dateKey) continue
+      const key = `${dateKey}|${uid}`
+      if (isCheckIn(row)) {
+        const prev = checkInByKey.get(key)
+        if (!prev || recordTimeOf(row) < recordTimeOf(prev)) {
+          checkInByKey.set(key, row)
+        }
+      }
+      if (isCheckOut(row)) hasCheckOutByKey.add(key)
+    }
+    // Flag "Belum Pulang" pada record masuk terpagi (salinan, bukan
+    // mutasi state): ada masuk, tidak ada pulang, dijadwalkan kerja,
+    // bukan shift malam, dan batas pulang sudah lewat (hari ini:
+    // work_end + 60 mnt; tanggal lampau: hari sudah lewat).
+    const flaggedCopyByKey = new Map<string, AttendanceRow>()
+    for (const [key, checkInRow] of checkInByKey) {
+      if (hasCheckOutByKey.has(key)) continue
+      const [date, uid] = key.split("|")
+      const emp = employeeByUid.get(uid)
+      if (!emp) continue
+      const resolved = getResolved(emp, date)
+      if (!resolved.todayActive) continue
+      if (resolved.crossesMidnight) continue
+      const workEnd = resolved.workEnd || resolved.checkOutEnd
+      const workEndMin = toMinutes(workEnd)
+      if (workEndMin === null) continue
+      if (date === today && nowMin < workEndMin + 60) continue
+      if (date > today) continue
+      flaggedCopyByKey.set(key, { ...checkInRow, no_check_out: true })
+    }
+    const out: AttendanceRow[] = rows.map((row) => {
+      const key = `${String(row.dateKey || row.record_date || "")}|${String(row.uid || "")}`
+      const copy = flaggedCopyByKey.get(key)
+      return copy && checkInByKey.get(key) === row ? copy : row
+    })
+    // Baris sintetis "Tidak Absen Masuk": karyawan aktif yang
+    // dijadwalkan kerja hari itu, tidak sedang izin/cuti/sakit yang
+    // disetujui, dan tidak ada record masuknya. Batas yang sama dengan
+    // aturan (b) S1: tanggal depan tidak pernah disintesis; hari ini
+    // hanya bila sudah lewat batas 10:00 dan shift tidak mulai
+    // setelah batas.
+    for (const date of dates) {
+      if (date > today) continue
+      const excused = getExcused(date)
+      for (const emp of employees) {
+        const uid = String(emp.uid || "")
+        if (!uid || !isActiveEmployee(emp)) continue
+        if (excused.has(uid)) continue
+        if (checkInByKey.has(`${date}|${uid}`)) continue
+        const resolved = getResolved(emp, date)
+        if (!resolved.todayActive) continue
+        if (date === today) {
+          if (nowMin < cutoffMin) continue
+          const workStartMin = toMinutes(resolved.workStart)
+          if (workStartMin !== null && workStartMin > cutoffMin) continue
+        }
+        out.push({
+          id: `no-check-in:${date}:${uid}`,
+          company_id: companyId,
+          record_uid: uid,
+          uid,
+          record_date: date,
+          dateKey: date,
+          record_action: "tidak_absen",
+          action_type: "tidak_absen",
+          work_start: resolved.workStart,
+          work_end: resolved.workEnd,
+          office_name:
+            masterNameById.office.get(String(emp.office_id || "")) || "",
+          synthetic_no_check_in: true,
+        })
+      }
+    }
+    out.sort((a, b) => {
+      const aTime = new Date(`${a.record_date || a.dateKey || ""}T${a.record_time || a.waktu || a.time || "00:00:00"}`).getTime()
+      const bTime = new Date(`${b.record_date || b.dateKey || ""}T${b.record_time || b.waktu || b.time || "00:00:00"}`).getTime()
+      return bTime - aTime
+    })
+    return out
+  }, [
+    rows,
+    employees,
+    employeeByUid,
+    masterNameById,
+    scheduleMaster,
+    leavesVal,
+    startDate,
+    endDate,
+    companyId,
+  ])
+
+  // S2 — populasi ringkasan: baris tampilan yang lolos filter populasi
+  // (cari + kantor + departemen + grup). Strip ringkasan dihitung dari
+  // sini, BUKAN dari filteredRows, supaya strip tetap menjadi ringkasan
+  // hari itu saat filter status/metode/aksi/geofence/risiko diganti.
+  const populationRows = useMemo(() => {
     const q = searchText.trim().toLowerCase()
-    return rows.filter((row) => {
+    return displayRows.filter((row) => {
       const emp = employeeByUid.get(String(row.uid))
       const name = emp ? employeeName(emp) : String(row.uid || "")
       // C1 — pencarian seperti aplikasi lama: nama, NIP, tanggal,
@@ -301,6 +511,86 @@ export function AttendancePage({ search }: { search: AttendanceSearch }) {
           .toLowerCase()
         if (!haystack.includes(q)) return false
       }
+      if (
+        officeFilter !== "all" &&
+        String(row.office_id || emp?.office_id || "") !== officeFilter
+      )
+        return false
+      if (
+        departmentFilter !== "all" &&
+        String(row.department_id || emp?.department_id || "") !==
+          departmentFilter
+      )
+        return false
+      if (
+        groupFilter !== "all" &&
+        String(row.group_id || emp?.group_id || "") !== groupFilter
+      )
+        return false
+      return true
+    })
+  }, [
+    displayRows,
+    searchText,
+    officeFilter,
+    departmentFilter,
+    groupFilter,
+    employeeByUid,
+    masterNameById,
+  ])
+
+  // S2 — ringkasan harian per hari-karyawan (bukan per record): satu
+  // hari-karyawan bisa terhitung di Telat DAN Belum Pulang sekaligus
+  // (flag orthogonal); Hadir dihitung hanya bila tidak telat.
+  // null = angka turunan yang belum bisa dihitung (master jadwal belum
+  // termuat) atau rentang masih dimuat.
+  const summary = useMemo(() => {
+    const derivedReady = scheduleMaster !== null && leavesVal !== null
+    let telat = 0
+    let tidakAbsen = 0
+    let belumPulang = 0
+    let hadir = 0
+    const byDay = new Map<
+      string,
+      {
+        late: boolean
+        hadir: boolean
+        noCheckOut: boolean
+        noCheckIn: boolean
+      }
+    >()
+    for (const row of populationRows) {
+      const key = `${String(row.dateKey || row.record_date || "")}|${String(row.uid || "")}`
+      let day = byDay.get(key)
+      if (!day) {
+        day = { late: false, hadir: false, noCheckOut: false, noCheckIn: false }
+        byDay.set(key, day)
+      }
+      if (isNoCheckInRow(row)) {
+        day.noCheckIn = true
+        continue
+      }
+      if (!isCheckIn(row)) continue
+      if (isLateRow(row)) day.late = true
+      else if (isHadirRow(row)) day.hadir = true
+      if (row.no_check_out === true) day.noCheckOut = true
+    }
+    for (const day of byDay.values()) {
+      if (day.noCheckIn) tidakAbsen++
+      if (day.late) telat++
+      if (day.noCheckOut) belumPulang++
+      if (day.hadir && !day.late) hadir++
+    }
+    return {
+      telat: loading ? null : telat,
+      tidakAbsen: loading || !derivedReady ? null : tidakAbsen,
+      belumPulang: loading || !derivedReady ? null : belumPulang,
+      hadir: loading ? null : hadir,
+    }
+  }, [populationRows, loading, scheduleMaster, leavesVal])
+
+  const filteredRows = useMemo(() => {
+    return populationRows.filter((row) => {
       const method = String(row.method || "").toLowerCase()
       if (methodFilter !== "all" && method !== methodFilter) return false
       if (actionFilter === "masuk" && !isCheckIn(row)) return false
@@ -319,67 +609,47 @@ export function AttendancePage({ search }: { search: AttendanceSearch }) {
           "lembur_pulang"
       )
         return false
-      if (
-        officeFilter !== "all" &&
-        String(row.office_id || emp?.office_id || "") !== officeFilter
-      )
+      // S2 — status: baris sintetis hanya lolos "tidak_absen".
+      if (isNoCheckInRow(row)) {
+        if (statusFilter !== "all" && statusFilter !== "tidak_absen")
+          return false
+      } else if (statusFilter === "tidak_absen") {
         return false
-      if (
-        departmentFilter !== "all" &&
-        String(row.department_id || emp?.department_id || "") !==
-          departmentFilter
-      )
-        return false
-      if (
-        groupFilter !== "all" &&
-        String(row.group_id || emp?.group_id || "") !== groupFilter
-      )
-        return false
-      const status = getAttendanceStatus(row)
-      if (statusFilter === "hadir") {
+      } else if (statusFilter === "belum_pulang") {
+        if (row.no_check_out !== true) return false
+      } else if (statusFilter === "hadir") {
         // Seperti aplikasi lama: "Hadir" mencakup approved/success/
         // valid/on_time/tepat_waktu (record approved tanpa
         // attendance_status ikut masuk); status kosong tetap Hadir
         // (getAttendanceStatusLabel("") = "Hadir").
-        if (
-          !(
-            status.includes("hadir") ||
-            ["success", "approved", "valid", "on_time", "tepat_waktu"].some(
-              (x) => status.includes(x)
-            ) ||
-            status === ""
-          )
-        )
-          return false
+        if (!isHadirRow(row)) return false
       } else if (statusFilter === "izin") {
-        if (!status.includes("izin")) return false
+        if (!getAttendanceStatus(row).includes("izin")) return false
       } else if (statusFilter === "sakit") {
-        if (!status.includes("sakit")) return false
+        if (!getAttendanceStatus(row).includes("sakit")) return false
       } else if (statusFilter === "cuti") {
-        if (!status.includes("cuti")) return false
+        if (!getAttendanceStatus(row).includes("cuti")) return false
       } else if (statusFilter === "alpha") {
+        const status = getAttendanceStatus(row)
         if (!(status.includes("alpha") || status.includes("alpa")))
           return false
       } else if (statusFilter === "libur") {
-        if (!status.includes("libur")) return false
+        if (!getAttendanceStatus(row).includes("libur")) return false
       } else if (statusFilter === "terlambat") {
-        if (
-          !(
-            status.includes("late") ||
-            status.includes("terlambat") ||
-            status.includes("telat")
-          )
-        )
-          return false
+        if (!isLateRow(row)) return false
       } else if (statusFilter === "luar_radius") {
+        const status = getAttendanceStatus(row)
         if (
           !(status.includes("luar_radius") || status.includes("luar radius"))
         )
           return false
       } else if (statusFilter === "pulang_cepat") {
+        const status = getAttendanceStatus(row)
         if (!(status.includes("early") || status.includes("pulang cepat")))
           return false
       }
+      // S2 — baris sintetis tidak punya data lokasi.
+      if (isNoCheckInRow(row) && geofenceFilter !== "all") return false
       const distance = Number(row.distance_meter || 0)
       const radius = Number(row.radius_meter || 0)
       const outside = radius > 0 && distance > radius
@@ -392,18 +662,12 @@ export function AttendancePage({ search }: { search: AttendanceSearch }) {
       return true
     })
   }, [
-    rows,
-    searchText,
+    populationRows,
     methodFilter,
     actionFilter,
-    officeFilter,
-    departmentFilter,
-    groupFilter,
     statusFilter,
     geofenceFilter,
     riskFilter,
-    employeeByUid,
-    masterNameById,
   ])
 
   const pageCount = Math.max(1, Math.ceil(filteredRows.length / PAGE_SIZE))
@@ -475,6 +739,47 @@ export function AttendancePage({ search }: { search: AttendanceSearch }) {
           </Button>
         }
       />
+
+      {/* S2 — ringkasan harian (Frame B mockup): jumlah hari-karyawan
+          per keadaan dalam rentang yang dipilih. "–" bila rentang masih
+          dimuat, atau (untuk Tidak Absen / Belum Pulang) bila data
+          jadwal belum termuat. */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-2xl font-bold text-amber-600">
+              {summary.telat === null ? "–" : summary.telat}
+            </div>
+            <div className="text-sm text-muted-foreground">Telat</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-2xl font-bold text-red-600">
+              {summary.tidakAbsen === null ? "–" : summary.tidakAbsen}
+            </div>
+            <div className="text-sm text-muted-foreground">
+              Tidak absen masuk
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-2xl font-bold text-amber-600">
+              {summary.belumPulang === null ? "–" : summary.belumPulang}
+            </div>
+            <div className="text-sm text-muted-foreground">Belum pulang</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-2xl font-bold text-teal-600">
+              {summary.hadir === null ? "–" : summary.hadir}
+            </div>
+            <div className="text-sm text-muted-foreground">Hadir</div>
+          </CardContent>
+        </Card>
+      </div>
 
       <Card>
         <CardContent className="flex flex-wrap items-end gap-3 p-4">
@@ -632,6 +937,8 @@ export function AttendancePage({ search }: { search: AttendanceSearch }) {
                 <SelectItem value="all">Semua Status</SelectItem>
                 <SelectItem value="hadir">Hadir</SelectItem>
                 <SelectItem value="terlambat">Terlambat</SelectItem>
+                <SelectItem value="tidak_absen">Tidak Absen</SelectItem>
+                <SelectItem value="belum_pulang">Belum Pulang</SelectItem>
                 <SelectItem value="luar_radius">Luar Radius</SelectItem>
                 <SelectItem value="pulang_cepat">Pulang Cepat</SelectItem>
                 <SelectItem value="izin">Izin</SelectItem>
@@ -761,10 +1068,16 @@ export function AttendancePage({ search }: { search: AttendanceSearch }) {
                         <td className="px-4 py-3">
                           <div>{formatTanggal(String(row.dateKey || ""))}</div>
                           <div className="font-mono text-xs text-muted-foreground">
-                            {String(
-                              row.record_time || row.waktu || row.time || ""
-                            ).slice(0, 5)}{" "}
-                            WIB
+                            {isNoCheckInRow(row) ? (
+                              "—"
+                            ) : (
+                              <>
+                                {String(
+                                  row.record_time || row.waktu || row.time || ""
+                                ).slice(0, 5)}{" "}
+                                WIB
+                              </>
+                            )}
                           </div>
                         </td>
                         <td className="px-4 py-3">
@@ -778,16 +1091,22 @@ export function AttendancePage({ search }: { search: AttendanceSearch }) {
                           </div>
                         </td>
                         <td className="px-4 py-3">
-                          <StatusBadge tone="neutral">
-                            {isCheckIn(row)
-                              ? "Masuk"
-                              : isCheckOut(row)
-                                ? "Pulang"
-                                : String(row.action_type || "")}
-                          </StatusBadge>{" "}
-                          <span className="capitalize">
-                            {textValue(row.method, "-")}
-                          </span>
+                          {isNoCheckInRow(row) ? (
+                            "—"
+                          ) : (
+                            <>
+                              <StatusBadge tone="neutral">
+                                {isCheckIn(row)
+                                  ? "Masuk"
+                                  : isCheckOut(row)
+                                    ? "Pulang"
+                                    : String(row.action_type || "")}
+                              </StatusBadge>{" "}
+                              <span className="capitalize">
+                                {textValue(row.method, "-")}
+                              </span>
+                            </>
+                          )}
                         </td>
                         <td className="px-4 py-3">
                           <div className="font-mono">
@@ -805,6 +1124,13 @@ export function AttendancePage({ search }: { search: AttendanceSearch }) {
                           <StatusBadge tone={statusTone(row)}>
                             {statusText(row)}
                           </StatusBadge>
+                          {row.no_check_out === true ? (
+                            <div className="mt-1">
+                              <StatusBadge tone="warning">
+                                Belum Pulang
+                              </StatusBadge>
+                            </div>
+                          ) : null}
                           {isMockLocation(row) ? (
                             <div className="mt-1">
                               <StatusBadge tone="danger">
@@ -823,6 +1149,7 @@ export function AttendancePage({ search }: { search: AttendanceSearch }) {
                           <Button
                             variant="outline"
                             size="sm"
+                            disabled={isNoCheckInRow(row)}
                             onClick={() => void openDetail(row)}
                           >
                             Detail
@@ -868,6 +1195,11 @@ export function AttendancePage({ search }: { search: AttendanceSearch }) {
                         <StatusBadge tone={statusTone(row)}>
                           {statusText(row)}
                         </StatusBadge>
+                        {row.no_check_out === true ? (
+                          <StatusBadge tone="warning">
+                            Belum Pulang
+                          </StatusBadge>
+                        ) : null}
                         {isMockLocation(row) ? (
                           <StatusBadge tone="danger">
                             ⚠️ Lokasi Palsu
@@ -881,25 +1213,34 @@ export function AttendancePage({ search }: { search: AttendanceSearch }) {
                     </div>
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
                       <span>{formatTanggal(String(row.dateKey || ""))}</span>
-                      <span aria-hidden>·</span>
-                      <span className="font-mono">
-                        {String(
-                          row.record_time || row.waktu || row.time || ""
-                        ).slice(0, 5)}{" "}
-                        WIB
-                      </span>
-                      <span aria-hidden>·</span>
-                      <span>
-                        {isCheckIn(row)
-                          ? "Masuk"
-                          : isCheckOut(row)
-                            ? "Pulang"
-                            : String(row.action_type || "")}
-                        {" · "}
-                        <span className="capitalize">
-                          {textValue(row.method, "-")}
-                        </span>
-                      </span>
+                      {isNoCheckInRow(row) ? (
+                        <>
+                          <span aria-hidden>·</span>
+                          <span>—</span>
+                        </>
+                      ) : (
+                        <>
+                          <span aria-hidden>·</span>
+                          <span className="font-mono">
+                            {String(
+                              row.record_time || row.waktu || row.time || ""
+                            ).slice(0, 5)}{" "}
+                            WIB
+                          </span>
+                          <span aria-hidden>·</span>
+                          <span>
+                            {isCheckIn(row)
+                              ? "Masuk"
+                              : isCheckOut(row)
+                                ? "Pulang"
+                                : String(row.action_type || "")}
+                            {" · "}
+                            <span className="capitalize">
+                              {textValue(row.method, "-")}
+                            </span>
+                          </span>
+                        </>
+                      )}
                     </div>
                     <div className="text-xs text-muted-foreground">
                       {row.work_start && row.work_end
@@ -914,6 +1255,7 @@ export function AttendancePage({ search }: { search: AttendanceSearch }) {
                     <Button
                       variant="outline"
                       className="h-10 w-full"
+                      disabled={isNoCheckInRow(row)}
                       onClick={() => void openDetail(row)}
                     >
                       Detail
