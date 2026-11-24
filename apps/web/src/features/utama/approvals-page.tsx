@@ -1239,10 +1239,7 @@ export function ApprovalsPage({
             actionReq.correction_type || actionReq.corr_type || "masuk"
           )
           const employeeSnap = await get(
-            ref(
-              db,
-              paths.companyUser(companyId, String(actionReq.uid || ""))
-            )
+            ref(db, paths.companyUser(companyId, String(actionReq.uid || "")))
           )
           const employee = employeeSnap.exists()
             ? (employeeSnap.val() as Record<string, unknown>)
