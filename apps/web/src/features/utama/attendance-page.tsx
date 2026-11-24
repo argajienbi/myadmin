@@ -479,7 +479,7 @@ export function AttendancePage({ search }: { search: AttendanceSearch }) {
           if (workStartMin !== null && workStartMin > cutoffMin) continue
         }
         out.push({
-          id: `no-check-in:${date}:${uid}`
+          id: `no-check-in:${date}:${uid}`,
           company_id: companyId,
           record_uid: uid,
           uid,
@@ -536,7 +536,7 @@ export function AttendancePage({ search }: { search: AttendanceSearch }) {
               masterNameById.office.get(
                 String(row.office_id || emp?.office_id || "")
               ) ||
-              ""
+    ""
                     ),
           String(
             row.department_name ||
@@ -1077,6 +1077,7 @@ export function AttendancePage({ search }: { search: AttendanceSearch }) {
                     <th className="px-4 py-3 font-medium">Tanggal / Waktu</th>
                     <th className="px-4 py-3 font-medium">Jadwal &amp; Office</th>
                     <th className="px-4 py-3 font-medium">Tipe / Metode</th>
+                    <th className="px-4 py-3 font-medium">Radius &amp; Jarak</th>
                     <th className="px-4 py-3 font-medium">Status / Telat</th>
                     <th className="px-4 py-3 text-right font-medium">Aksi</th>
                   </tr>
