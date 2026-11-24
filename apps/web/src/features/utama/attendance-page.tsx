@@ -268,10 +268,6 @@ export function AttendancePage({ search }: { search: AttendanceSearch }) {
 
   useEffect(() => {
     if (!companyId) return
-    // Reset ke default saat perusahaan berganti; nilai pengaturan
-    // dimuat di bawah dan menimpanya bila ada.
-    setNoCheckInCutoff(DEFAULT_NO_CHECK_IN_CUTOFF)
-    setNoCheckOutAfterMin(60)
     Promise.all([
       loadScheduleMaster(companyId),
       get(ref(db, paths.leaveRequests(companyId))),
