@@ -175,6 +175,7 @@ export interface CompanyInvite {
 export interface Area {
   id?: string;
   name: string;
+  area_id: string;
   company_id?: string;
   active: boolean;
   created_at?: number;
@@ -409,6 +410,20 @@ export interface NotificationSettings {
   missed_check_in_minutes?: number
   missed_check_out_enabled?: boolean
   missed_check_out_minutes?: number
+  /** Deteksi otomatis (S1–S4): dibaca pemindai auto-detect-scan.ts. */
+  auto_detect_enabled?: boolean
+  auto_detect_late_enabled?: boolean
+  auto_detect_late_tolerance_minutes?: number
+  auto_detect_no_check_in_enabled?: boolean
+  /** Batas tidak-absen masuk, "HH:mm" (default "10:00"). */
+  auto_detect_no_check_in_cutoff?: string
+  auto_detect_no_check_out_enabled?: boolean
+  auto_detect_no_check_out_after_minutes?: number
+  auto_detect_new_request_enabled?: boolean
+  auto_detect_overtime_enabled?: boolean
+  auto_detect_overtime_max_hours?: number
+  /** Jam akhir lembur maks, "HH:mm" (default "22:00"). */
+  auto_detect_overtime_latest_end?: string
   updated_at?: number
   updated_by?: string
 }
