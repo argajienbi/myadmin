@@ -175,7 +175,6 @@ export interface CompanyInvite {
 export interface Area {
   id?: string;
   name: string;
-  area_id: string;
   company_id?: string;
   active: boolean;
   created_at?: number;
