@@ -45,6 +45,22 @@ import {
   todayKey,
   type AttendanceRow,
 } from "./rtdb-lean-service"
+import {
+  DEFAULT_NO_CHECK_IN_CUTOFF,
+  excusedUidsOn,
+  fromMinutes,
+  isActiveEmployee,
+  leaveEndDate,
+  leaveStartDate,
+  leaveTypeValue,
+  nowMinutesWIB,
+  resolveDayFor,
+  toMinutes,
+} from "./schedule-batch-resolve"
+import type {
+  ResolvedDay,
+  ScheduleMaster,
+} from "./schedule-batch-resolve"
 
 const MONTHS_ID = [
   "Jan",
@@ -85,7 +101,7 @@ const DEFAULT_AUTO_DETECT_SETTINGS: AutoDetectSettings = {
   lateEnabled: true,
   lateToleranceMinutes: 15,
   noCheckInEnabled: true,
-  noCheckInCutoff: "10:00",
+  noCheckInCutoff: DEFAULT_NO_CHECK_IN_CUTOFF,
   noCheckOutEnabled: true,
   noCheckOutAfterMinutes: 60,
   newRequestEnabled: true,
@@ -175,11 +191,6 @@ function isAdminLike(rec: Record<string, unknown>): boolean {
   )
 }
 
-function isActiveEmployee(rec: Record<string, unknown>): boolean {
-  // Sama seperti Dashboard (filteredEmployees): hanya status_akun active.
-  return String(rec.status_akun || "") === "active"
-}
-
 function employeeName(rec: unknown): string {
   // Sama seperti employeeName di features/utama/format.ts (B1).
   const r = (rec ?? {}) as Record<string, unknown>
@@ -208,37 +219,6 @@ function time5(value: unknown): string {
   return String(value || "").slice(0, 5)
 }
 
-/** "HH:mm" -> menit sejak tengah malam, atau null bila tidak parse. */
-function toMinutes(value: string): number | null {
-  const m = /^(\d{1,2}):(\d{2})/.exec(value.trim())
-  if (!m) return null
-  const h = Number(m[1])
-  const min = Number(m[2])
-  if (!Number.isFinite(h) || !Number.isFinite(min) || h > 23 || min > 59) {
-    return null
-  }
-  return h * 60 + min
-}
-
-function fromMinutes(total: number): string {
-  const h = Math.floor(total / 60)
-  const m = total % 60
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`
-}
-
-/** Menit saat ini dalam WIB (Asia/Jakarta), apa pun zona browser admin. */
-function nowMinutesWIB(): number {
-  const parts = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Asia/Jakarta",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).formatToParts(new Date())
-  const h = Number(parts.find((p) => p.type === "hour")?.value || 0)
-  const m = Number(parts.find((p) => p.type === "minute")?.value || 0)
-  return h * 60 + m
-}
-
 function formatHours(minutes: number): string {
   return `${(minutes / 60).toFixed(1).replace(".", ",")} jam`
 }
@@ -262,47 +242,6 @@ function isPendingStatus(status: unknown): boolean {
   return PENDING_LEAVE.includes(String(status || ""))
 }
 
-function leaveTypeValue(req: Record<string, unknown>): string {
-  return String(req.type || req.leave_type || "izin").toLowerCase()
-}
-
-function leaveStartDate(req: Record<string, unknown>): string {
-  return String(
-    req.date_start ||
-      req.tanggal_mulai ||
-      req.date ||
-      req.tanggal ||
-      req.start_date ||
-      req.overtime_date ||
-      ""
-  )
-}
-
-function leaveEndDate(req: Record<string, unknown>): string {
-  return String(
-    req.date_end ||
-      req.tanggal_selesai ||
-      req.date_start ||
-      req.tanggal_mulai ||
-      req.overtime_date ||
-      req.date ||
-      req.tanggal ||
-      req.start_date ||
-      ""
-  )
-}
-
-function leaveCoversDate(
-  req: Record<string, unknown>,
-  dateKey: string
-): boolean {
-  const start = leaveStartDate(req)
-  const end = leaveEndDate(req)
-  if (start && end) return start <= dateKey && dateKey <= end
-  if (start) return start === dateKey
-  return false
-}
-
 function overtimeMinutes(req: Record<string, unknown>): number | null {
   const direct = Number(req.overtime_duration_minute || 0)
   if (Number.isFinite(direct) && direct > 0) return direct
@@ -311,266 +250,6 @@ function overtimeMinutes(req: Record<string, unknown>): number | null {
   if (s === null || e === null) return null
   const diff = e - s
   return diff > 0 ? diff : null
-}
-
-// --- Resolver jadwal harian in-memory ---
-// Cerminan resolveScheduleForUser di features/utama/schedule-data.ts
-// (prioritas + pencocokan target yang sama), tapi bekerja di atas master
-// data yang sudah dibaca sekali — bukan per karyawan. Helper kecil di
-// bawah disalin dari file itu (isActiveValue, dateExistsInSchedule,
-// targetUidExistsInSchedule, DAY_KEYS, dateInRange).
-
-const DAY_KEYS = [
-  "sunday",
-  "monday",
-  "tuesday",
-  "wednesday",
-  "thursday",
-  "friday",
-  "saturday",
-] as const
-
-function isActiveValue(value: unknown, fallback = false): boolean {
-  if (value === undefined || value === null || value === "") return fallback
-  if (typeof value === "boolean") return value
-  if (typeof value === "number") return value === 1
-  const text = String(value).trim().toLowerCase()
-  return (
-    text === "true" || text === "1" || text === "active" || text === "yes"
-  )
-}
-
-function dateInRange(date: string, startDate: string, endDate?: string): boolean {
-  if (!startDate) return false
-  if (date < startDate) return false
-  if (endDate && date > endDate) return false
-  return true
-}
-
-function dateExistsInSchedule(
-  item: Record<string, unknown>,
-  dateKey: string
-): boolean {
-  const dates = item.dates as Record<string, unknown> | undefined
-  if (dates && typeof dates === "object") {
-    return dates[dateKey] === true || dates[dateKey] === "true"
-  }
-  if (item.date) return item.date === dateKey
-  if (item.date_start && item.date_end)
-    return dateKey >= String(item.date_start) && dateKey <= String(item.date_end)
-  return false
-}
-
-function targetUidExistsInSchedule(
-  item: Record<string, unknown>,
-  uid: string
-): boolean {
-  const targetUids = item.target_uids as
-    | Record<string, unknown>
-    | string[]
-    | undefined
-  if (!targetUids) return false
-  if (Array.isArray(targetUids)) return targetUids.includes(uid)
-  return targetUids[uid] === true || targetUids[uid] === "true"
-}
-
-type ScheduleSource =
-  | "holiday"
-  | "special_schedule"
-  | "user_assignment"
-  | "group_assignment"
-  | "overtime_schedule"
-  | "none"
-
-interface ResolvedDay {
-  todayActive: boolean
-  source: ScheduleSource
-  workStart: string
-  workEnd: string
-  checkOutEnd: string
-  crossesMidnight: boolean
-  overtimeFlag: boolean
-}
-
-interface ScheduleMaster {
-  holidayToday: boolean
-  overtimeSchedules: Record<string, Record<string, unknown>>
-  specials: Record<string, Record<string, unknown>>
-  assignments: Record<string, Record<string, unknown>>
-  shifts: Record<string, Record<string, unknown>>
-  timetables: Record<string, Record<string, unknown>>
-}
-
-const INACTIVE_DAY: ResolvedDay = {
-  todayActive: false,
-  source: "none",
-  workStart: "",
-  workEnd: "",
-  checkOutEnd: "",
-  crossesMidnight: false,
-  overtimeFlag: false,
-}
-
-function buildFromShiftInMemory(
-  master: ScheduleMaster,
-  date: string,
-  shiftId: string,
-  source: ScheduleSource
-): ResolvedDay {
-  const shift = master.shifts[shiftId] as Record<string, unknown> | undefined
-  if (!shift) return { ...INACTIVE_DAY, source: "none" }
-  const dayKey = DAY_KEYS[new Date(`${date}T00:00:00`).getDay()]
-  const days = (shift.days as Record<string, Record<string, unknown>>) || {}
-  const day = days[dayKey]
-  if (!isActiveValue(day?.active, false) || !day?.timetable_id) {
-    return { ...INACTIVE_DAY, source }
-  }
-  const timetable = master.timetables[String(day.timetable_id)] as
-    | Record<string, unknown>
-    | undefined
-  if (!timetable) return { ...INACTIVE_DAY, source }
-  const workStart = String(timetable.work_start || "")
-  const workEnd = String(timetable.work_end || "")
-  return {
-    todayActive: true,
-    source,
-    workStart,
-    workEnd,
-    checkOutEnd: String(timetable.check_out_end || ""),
-    crossesMidnight:
-      timetable.crosses_midnight !== undefined
-        ? Boolean(timetable.crosses_midnight)
-        : workEnd && workStart
-          ? workEnd < workStart
-          : false,
-    overtimeFlag: false,
-  }
-}
-
-function resolveTodayFor(
-  emp: Record<string, unknown>,
-  date: string,
-  master: ScheduleMaster
-): ResolvedDay {
-  const uid = String(emp.uid || "")
-  const groupId = String(emp.group_id || "")
-
-  let selectedOvertime: Record<string, unknown> | null = null
-  for (const id of Object.keys(master.overtimeSchedules)) {
-    const item = master.overtimeSchedules[id]
-    if (!isActiveValue(item.active, true) || item.status === "inactive") continue
-    if (!dateExistsInSchedule(item, date)) continue
-    const matchTargetUids = targetUidExistsInSchedule(item, uid)
-    const matchUser =
-      item.type === "user" &&
-      (item.target_id === uid || item.user_id === uid || item.uid === uid)
-    const matchGroup =
-      item.type === "group" &&
-      (item.target_id === groupId || item.group_id === groupId)
-    if (matchTargetUids || matchUser || matchGroup) {
-      selectedOvertime = { ...item, id }
-      break
-    }
-  }
-
-  let selectedSpecial: Record<string, unknown> | null = null
-  for (const id of Object.keys(master.specials)) {
-    const item = master.specials[id]
-    if (!isActiveValue(item.active, true) || item.date !== date) continue
-    const matchUser =
-      item.type === "user" &&
-      (item.target_id === uid || item.user_id === uid || item.uid === uid)
-    const matchGroup =
-      item.type === "group" &&
-      (item.target_id === groupId || item.group_id === groupId)
-    if (matchUser || matchGroup) {
-      selectedSpecial = { ...item, id }
-      break
-    }
-  }
-
-  if (master.holidayToday && !selectedOvertime && !selectedSpecial) {
-    return { ...INACTIVE_DAY, source: "holiday" }
-  }
-
-  if (selectedOvertime) {
-    let base: ResolvedDay
-    if (selectedOvertime.shift_id) {
-      base = buildFromShiftInMemory(
-        master,
-        date,
-        String(selectedOvertime.shift_id),
-        "overtime_schedule"
-      )
-    } else {
-      const workStart = String(
-        selectedOvertime.work_start || selectedOvertime.time_start || ""
-      )
-      const workEnd = String(
-        selectedOvertime.work_end || selectedOvertime.time_end || ""
-      )
-      base = {
-        todayActive: true,
-        source: "overtime_schedule",
-        workStart,
-        workEnd,
-        checkOutEnd: String(selectedOvertime.check_out_end || ""),
-        crossesMidnight:
-          workStart && workEnd ? workEnd < workStart : false,
-        overtimeFlag: false,
-      }
-    }
-    return { ...base, overtimeFlag: true }
-  }
-
-  if (selectedSpecial) {
-    return buildFromShiftInMemory(
-      master,
-      date,
-      String(selectedSpecial.shift_id),
-      "special_schedule"
-    )
-  }
-
-  let userAssignment: Record<string, unknown> | null = null
-  let groupAssignment: Record<string, unknown> | null = null
-  for (const id of Object.keys(master.assignments)) {
-    const item = master.assignments[id]
-    if (!isActiveValue(item.active, true)) continue
-    if (
-      !dateInRange(
-        date,
-        String(item.start_date || ""),
-        String(item.end_date || "")
-      )
-    ) {
-      continue
-    }
-    if (item.type === "user" && item.target_id === uid) {
-      userAssignment = { ...item, id }
-    }
-    if (item.type === "group" && item.target_id === groupId) {
-      groupAssignment = { ...item, id }
-    }
-  }
-
-  if (userAssignment) {
-    return buildFromShiftInMemory(
-      master,
-      date,
-      String(userAssignment.shift_id),
-      "user_assignment"
-    )
-  }
-  if (groupAssignment) {
-    return buildFromShiftInMemory(
-      master,
-      date,
-      String(groupAssignment.shift_id),
-      "group_assignment"
-    )
-  }
-  return { ...INACTIVE_DAY }
 }
 
 // --- Kejadian + pengiriman ---
@@ -599,8 +278,8 @@ async function notifyAll(
         title: event.title,
         message: event.message,
         type: event.type,
-        ref_type: event.refType,
-        ref_id: event.refId,
+        refType: event.refType,
+        refId: event.refId,
         data: event.data,
       })
       sent++
@@ -678,9 +357,7 @@ export async function scanAutoDetect(companyId: string): Promise<number> {
       (leavesSnap.val() as Record<string, Record<string, unknown>> | null) || {}
     dedupeToday = (dedupeSnap.val() as Record<string, unknown> | null) || {}
     master = {
-      holidayToday:
-        holidaySnap.exists() &&
-        isActiveValue(holidaySnap.val()?.active, true),
+      holidays: holidaySnap.exists() ? { [today]: holidaySnap.val() } : {},
       overtimeSchedules:
         (overtimeSnap.val() as Record<string, Record<string, unknown>> | null) ||
         {},
@@ -715,29 +392,16 @@ export async function scanAutoDetect(companyId: string): Promise<number> {
     if (isCheckOut(row) && !checkOutByUid.has(uid)) checkOutByUid.set(uid, row)
   }
 
-  // Karyawan yang izin/cuti/sakit-nya disetujui dan mencakup hari ini
-  // (cerminan Dashboard): mereka dilewati aturan tidak-absen.
-  const excusedToday = new Set<string>()
-  for (const [key, raw] of Object.entries(leavesVal)) {
-    const req = (raw ?? {}) as Record<string, unknown>
-    // "validated" dinormalisasi jadi "approved" di aplikasi (PORT_CONTRACT
-    // §7.5: approved bila approved|disetujui|validated|success|done) —
-    // karyawan yang izinnya sudah divalidasi juga dilewati aturan
-    // tidak-absen, supaya tidak dapat notifikasi mangkir yang keliru.
-    if (!["approved", "validated"].includes(String(req.status || "")))
-      continue
-    if (!["izin", "cuti", "sakit"].includes(leaveTypeValue(req))) continue
-    if (!leaveCoversDate(req, today)) continue
-    const uid = String(req.uid || key)
-    if (uid) excusedToday.add(uid)
-  }
+  // Karyawan yang izin/cuti/sakit-nya disetujui dan mencakup hari ini:
+  // mereka dilewati aturan tidak-absen.
+  const excusedToday = excusedUidsOn(leavesVal, today)
 
   // Jadwal hari ini per karyawan aktif (di-resolve sekali, dipakai
   // aturan b, c, dan cek silang lembur).
   const resolvedByUid = new Map<string, ResolvedDay>()
   for (const [uid, rec] of Object.entries(usersVal)) {
     if (!rec || !isActiveEmployee(rec)) continue
-    resolvedByUid.set(uid, resolveTodayFor({ ...rec, uid }, today, master))
+    resolvedByUid.set(uid, resolveDayFor({ ...rec, uid }, today, master))
   }
 
   const events: AutoDetectEvent[] = []
@@ -815,7 +479,7 @@ export async function scanAutoDetect(companyId: string): Promise<number> {
         type: "warning",
         refType: "attendance",
         refId: `${today}_${uid}_no_check_in`,
-        data: { route: "/admin/attendance", date: today },
+        data: { route: "/admin/attendance", date: today, status: "tidak_absen" },
         mark: async () => {
           await set(
             ref(
@@ -855,7 +519,7 @@ export async function scanAutoDetect(companyId: string): Promise<number> {
         type: "warning",
         refType: "attendance",
         refId: `${today}_${uid}_no_check_out`,
-        data: { route: "/admin/attendance", date: today },
+        data: { route: "/admin/attendance", date: today, status: "belum_pulang" },
         mark: markAttendanceRecord(uid, actionKey, {
           auto_detect_no_checkout_notified: true,
         }),
