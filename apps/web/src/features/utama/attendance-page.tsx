@@ -29,7 +29,7 @@ import {
 import { PageHeader } from "@/components/page"
 import { useCompany } from "@/lib/use-company"
 import { db, getFileUrl } from "@/lib/firebase"
-import { paths } from "@/lib/firebase-paths"
+import { firestorePaths, paths } from "@/lib/firebase-paths"
 import { getAttendanceStatus, getAttendanceStatusLabel, getLateMinutes, isCheckIn, isCheckOut } from "@/lib/attendance-utils"
 import { loadAttendanceByDateRange, buildDateRange, todayKey } from "@/lib/rtdb-lean-service"
 import {
@@ -55,6 +55,19 @@ import {
 } from "./format"
 
 const PAGE_SIZE = 8
+
+// S4 — normalisasi jam "HH:mm" untuk batas tidak-absen (cerminan
+// asTimeString di lib/auto-detect-scan.ts); tidak valid → default.
+function normalizeCutoffTime(value: unknown): string {
+  const text = String(value ?? "").trim()
+  if (/^\d{1,2}:\d{2}$/.test(text)) {
+    const [h, m] = text.split(":").map(Number)
+    if (h >= 0 && h <= 23 && m >= 0 && m <= 59) {
+      return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`
+    }
+  }
+  return DEFAULT_NO_CHECK_IN_CUTOFF
+}
 
 export interface AttendanceSearch {
   date?: string
@@ -240,6 +253,14 @@ export function AttendancePage({ search }: { search: AttendanceSearch }) {
   // Bila gagal, halaman tetap menampilkan baris asli saja.
   const [scheduleMaster, setScheduleMaster] =
     useState<ScheduleMaster | null>(null)
+  // S4 — batas tidak-absen dari pengaturan notifikasi (sekali per
+  // companyId; gagal baca → default, sama seperti pemindai).
+  const [noCheckInCutoff, setNoCheckInCutoff] = useState(
+    DEFAULT_NO_CHECK_IN_CUTOFF
+  )
+  // S4 — batas tidak-absen pulang dari pengaturan notifikasi (menit
+  // setelah jam pulang; default 60, sama seperti pemindai).
+  const [noCheckOutAfterMin, setNoCheckOutAfterMin] = useState(60)
   const [leavesVal, setLeavesVal] = useState<Record<
     string,
     Record<string, unknown>
@@ -247,15 +268,37 @@ export function AttendancePage({ search }: { search: AttendanceSearch }) {
 
   useEffect(() => {
     if (!companyId) return
+    // Reset ke default saat perusahaan berganti; nilai pengaturan
+    // dimuat di bawah dan menimpanya bila ada.
+    setNoCheckInCutoff(DEFAULT_NO_CHECK_IN_CUTOFF)
+    setNoCheckOutAfterMin(60)
     Promise.all([
       loadScheduleMaster(companyId),
       get(ref(db, paths.leaveRequests(companyId))),
+      // S4 — batas tidak-absen dari pengaturan; gagal baca tidak
+      // menggagalkan batch (jatuh ke default).
+      get(ref(db, firestorePaths.notificationSettings(companyId))).catch(
+        () => null
+      ),
     ])
-      .then(([master, leavesSnap]) => {
+      .then(([master, leavesSnap, settingsSnap]) => {
         setScheduleMaster(master)
         setLeavesVal(
           (leavesSnap.val() as Record<string, Record<string, unknown>> | null) ||
             {}
+        )
+        const settingsVal =
+          (settingsSnap?.val() as Record<string, unknown> | null) ?? null
+        setNoCheckInCutoff(
+          normalizeCutoffTime(settingsVal?.auto_detect_no_check_in_cutoff)
+        )
+        const afterRaw = Number(
+          settingsVal?.auto_detect_no_check_out_after_minutes
+        )
+        setNoCheckOutAfterMin(
+          Number.isFinite(afterRaw) && afterRaw >= 0 && afterRaw <= 720
+            ? afterRaw
+            : 60
         )
       })
       .catch((err: Error) => {
@@ -351,7 +394,7 @@ export function AttendancePage({ search }: { search: AttendanceSearch }) {
     const today = todayKey()
     const dates = buildDateRange(startDate, endDate).slice(0, 31)
     const nowMin = nowMinutesWIB()
-    const cutoffMin = toMinutes(DEFAULT_NO_CHECK_IN_CUTOFF) ?? 600
+    const cutoffMin = toMinutes(noCheckInCutoff) ?? 600
     const resolvedCache = new Map<string, ResolvedDay>()
     const excusedCache = new Map<string, Set<string>>()
     const getResolved = (
@@ -391,7 +434,8 @@ export function AttendancePage({ search }: { search: AttendanceSearch }) {
     // Flag "Belum Pulang" pada record masuk terpagi (salinan, bukan
     // mutasi state): ada masuk, tidak ada pulang, dijadwalkan kerja,
     // bukan shift malam, dan batas pulang sudah lewat (hari ini:
-    // work_end + 60 mnt; tanggal lampau: hari sudah lewat).
+    // work_end + batas pengaturan, default 60 mnt; tanggal lampau:
+    // hari sudah lewat).
     const flaggedCopyByKey = new Map<string, AttendanceRow>()
     for (const [key, checkInRow] of checkInByKey) {
       if (hasCheckOutByKey.has(key)) continue
@@ -404,7 +448,7 @@ export function AttendancePage({ search }: { search: AttendanceSearch }) {
       const workEnd = resolved.workEnd || resolved.checkOutEnd
       const workEndMin = toMinutes(workEnd)
       if (workEndMin === null) continue
-      if (date === today && nowMin < workEndMin + 60) continue
+      if (date === today && nowMin < workEndMin + noCheckOutAfterMin) continue
       if (date > today) continue
       flaggedCopyByKey.set(key, { ...checkInRow, no_check_out: true })
     }
@@ -416,9 +460,9 @@ export function AttendancePage({ search }: { search: AttendanceSearch }) {
     // Baris sintetis "Tidak Absen Masuk": karyawan aktif yang
     // dijadwalkan kerja hari itu, tidak sedang izin/cuti/sakit yang
     // disetujui, dan tidak ada record masuknya. Batas yang sama dengan
-    // aturan (b) S1: tanggal depan tidak pernah disintesis; hari ini
-    // hanya bila sudah lewat batas 10:00 dan shift tidak mulai
-    // setelah batas.
+    // aturan (b) S1 (kini dari pengaturan, default 10:00): tanggal
+    // depan tidak pernah disintesis; hari ini hanya bila sudah lewat
+    // batas dan shift tidak mulai setelah batas.
     for (const date of dates) {
       if (date > today) continue
       const excused = getExcused(date)
@@ -435,7 +479,7 @@ export function AttendancePage({ search }: { search: AttendanceSearch }) {
           if (workStartMin !== null && workStartMin > cutoffMin) continue
         }
         out.push({
-          id: `no-check-in:${date}:${uid}`,
+          id: `no-check-in:${date}:${uid}`
           company_id: companyId,
           record_uid: uid,
           uid,
@@ -464,6 +508,8 @@ export function AttendancePage({ search }: { search: AttendanceSearch }) {
     masterNameById,
     scheduleMaster,
     leavesVal,
+    noCheckInCutoff,
+    noCheckOutAfterMin,
     startDate,
     endDate,
     companyId,
@@ -491,7 +537,7 @@ export function AttendancePage({ search }: { search: AttendanceSearch }) {
                 String(row.office_id || emp?.office_id || "")
               ) ||
               ""
-          ),
+                    ),
           String(
             row.department_name ||
               masterNameById.department.get(
@@ -1031,7 +1077,6 @@ export function AttendancePage({ search }: { search: AttendanceSearch }) {
                     <th className="px-4 py-3 font-medium">Tanggal / Waktu</th>
                     <th className="px-4 py-3 font-medium">Jadwal &amp; Office</th>
                     <th className="px-4 py-3 font-medium">Tipe / Metode</th>
-                    <th className="px-4 py-3 font-medium">Radius &amp; Jarak</th>
                     <th className="px-4 py-3 font-medium">Status / Telat</th>
                     <th className="px-4 py-3 text-right font-medium">Aksi</th>
                   </tr>
