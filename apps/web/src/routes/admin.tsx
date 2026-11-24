@@ -27,6 +27,7 @@ import { AppSidebar } from "@/components/app-sidebar"
 import { NotificationBell } from "@/components/notification-bell"
 import { useTheme } from "@/components/theme-provider"
 import { settledStatus, useAuth } from "@/lib/auth-context"
+import { runAutoDetectScanOnce } from "@/lib/auto-detect-scan"
 import { runMockAlertScanOnce } from "@/lib/mock-alert-scan"
 import { isOwnerLike } from "@/lib/role-access"
 import { useCompany } from "@/lib/use-company"
@@ -78,9 +79,11 @@ function AdminLayout() {
   const { companyId } = useCompany()
   const queryClient = useQueryClient()
   const uid = profile?.uid ?? ""
-  // Pemindai lokasi palsu (sekali per sesi login): bila ada presensi
-  // lokasi palsu baru hari ini, MyAdmin mengirim notifikasi ke semua
-  // admin + owner; lonceng di-invalidasi supaya badge langsung naik.
+  // Pemindai lokasi palsu + deteksi otomatis (sekali per sesi login):
+  // bila ada presensi lokasi palsu atau kejadian deteksi baru hari ini
+  // (telat, tidak absen, pengajuan baru, jam lembur janggal), MyAdmin
+  // mengirim notifikasi ke semua admin + owner; lonceng di-invalidasi
+  // supaya badge langsung naik.
   const canScan =
     !!profile &&
     profile.status_akun === "active" &&
@@ -88,9 +91,12 @@ function AdminLayout() {
       String(profile.role || "").trim().toLowerCase() === "admin")
   useEffect(() => {
     if (!companyId || !uid || !canScan) return
-    runMockAlertScanOnce(companyId)
-      .then((notified) => {
-        if (notified > 0) {
+    Promise.all([
+      runMockAlertScanOnce(companyId),
+      runAutoDetectScanOnce(companyId),
+    ])
+      .then(([mockNotified, autoNotified]) => {
+        if (mockNotified + autoNotified > 0) {
           queryClient.invalidateQueries({
             queryKey: ["firebase-notifications", companyId, uid],
           })
