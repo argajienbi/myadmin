@@ -120,7 +120,10 @@ export function NotificationBell() {
                 office: undefined,
                 department: undefined,
                 group: undefined,
-                status: undefined,
+                status:
+                  typeof item.data.status === "string"
+                    ? item.data.status
+                    : undefined,
                 geofence: undefined,
                 risk:
                   typeof item.data.risk === "string"
@@ -135,6 +138,42 @@ export function NotificationBell() {
                 >
                   <Link
                     to="/admin/attendance"
+                    search={linkSearch}
+                    onClick={() => {
+                      if (!item.read) read.mutate(item.id)
+                    }}
+                  >
+                    {content}
+                  </Link>
+                </DropdownMenuItem>
+              )
+            }
+            if (item.data?.route === "/admin/approvals") {
+              // Search route /admin/approvals memakai objek lengkap
+              // (semua kunci validateSearch: tab, status, date) — kunci
+              // yang tidak diisi bernilai undefined.
+              const linkSearch = {
+                tab:
+                  typeof item.data.tab === "string"
+                    ? item.data.tab
+                    : undefined,
+                status:
+                  typeof item.data.status === "string"
+                    ? item.data.status
+                    : undefined,
+                date:
+                  typeof item.data.date === "string"
+                    ? item.data.date
+                    : undefined,
+              }
+              return (
+                <DropdownMenuItem
+                  key={item.id}
+                  asChild
+                  className="items-start py-2"
+                >
+                  <Link
+                    to="/admin/approvals"
                     search={linkSearch}
                     onClick={() => {
                       if (!item.read) read.mutate(item.id)
