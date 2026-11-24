@@ -152,7 +152,6 @@ export function useNotificationSettings(companyId: string) {
 }
 
 /** Karyawan yang sudah menginstal aplikasi (punya ≥1 token FCM aktif). */
-
 export interface InstalledUser {
   uid: string
   name: string
