@@ -536,8 +536,8 @@ export function AttendancePage({ search }: { search: AttendanceSearch }) {
               masterNameById.office.get(
                 String(row.office_id || emp?.office_id || "")
               ) ||
-    ""
-                    ),
+              ""
+          ),
           String(
             row.department_name ||
               masterNameById.department.get(
