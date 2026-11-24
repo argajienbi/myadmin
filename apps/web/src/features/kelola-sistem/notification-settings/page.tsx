@@ -521,7 +521,7 @@ export function NotificationSettingsPage() {
                   max={720}
                   onChange={(v) =>
                     patch({ auto_detect_late_tolerance_minutes: v })
-                    }
+                  }
                 />
               </ToggleRow>
               <ToggleRow
@@ -557,7 +557,7 @@ export function NotificationSettingsPage() {
                   max={720}
                   onChange={(v) =>
                     patch({ auto_detect_no_check_out_after_minutes: v })
-                    }
+                  }
                 />
               </ToggleRow>
               <ToggleRow
