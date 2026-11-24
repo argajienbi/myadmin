@@ -614,7 +614,7 @@ export async function scanAutoDetect(companyId: string): Promise<number> {
             refId: `${requestId}_overtime`,
             data: {
               route: "/admin/approvals",
-              tab: "izin",
+              tab: "lembur",
               status: "pending",
               date: overtimeDate || startDate,
             },
@@ -674,7 +674,7 @@ export async function scanAutoDetect(companyId: string): Promise<number> {
         refId: `${requestId}_new`,
         data: {
           route: "/admin/approvals",
-          tab: "izin",
+          tab: type === "lembur" ? "lembur" : "izin",
           status: "pending",
           date: startDate,
         },
